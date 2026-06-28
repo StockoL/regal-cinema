@@ -8,14 +8,13 @@
 The platform is purpose-built to solve a critical commercial bottleneck for boutique venues: standard, off-the-shelf ticketing systems treat cinema seats as uniform inventory, completely decoupling the ticket purchase from premium hospitality workflows. This application introduces an intelligent, full-stack composition that bridges relational database integrity with container-aware user interfaces to maximise bar margins and optimise premium seat configurations.
 
 ```text
-
 ┌─────────────────────────────────────────────────────────────────┐
-  │  THE REGAL CINEMA ENGINE ── Relational continuo architecture     │
-  ├─────────────────────────────────────────────────────────────────┤
-  │  [Django Backend]   ──►  Atomic SQL validation & Inventory      │
-  │  [Every Layout]     ──►  Self-governing viewports (No Break)   │
-  │  [Design System]    ──►  Obsidian/Ivory Perceptual Tokens      │
-  └─────────────────────────────────────────────────────────────────┘
+│  THE REGAL CINEMA ENGINE ── Relational continuo architecture    │
+├─────────────────────────────────────────────────────────────────┤
+│  [Django Backend]   ──►  Atomic SQL validation & Inventory      │
+│  [Every Layout]     ──►  Self-governing viewports (No Break)    │
+│  [Design System]    ──►  Obsidian/Ivory Perceptual Tokens       │
+└─────────────────────────────────────────────────────────────────┘
 
 ```
 
@@ -187,7 +186,39 @@ The Skeleton Plane translates our abstract structures into tangible, wireframe-r
 
 ```text
 
-1. Film Model (The Source of Truth) ├── id (PK) ├── title (CharField) ├── duration_minutes (IntegerField) ├── age_rating (CharField: 'PG', '12A', '15', etc.) └── poster_image (ImageField) 2. Screen Model (The Venue Layout) ├── id (PK) ├── name (CharField: 'Main Auditorium', 'Studio Screen') └── total_capacity (IntegerField) 3. Screening Model (The Relational Bridge) ├── id (PK) ├── film_id (FK -> Film) ├── screen_id (FK -> Screen) ├── date_time (DateTimeField) └── base_ticket_price (DecimalField) 4. Seat Model (The Grid Array) ├── id (PK) ├── screen_id (FK -> Screen) ├── row_label (CharField: 'A', 'B', 'C') ├── seat_number (IntegerField) └── tier (CharField: 'Standard Seat', 'Luxury Sofa') 5. Booking Model (The Transaction) ├── id (PK) ├── screening_id (FK -> Screening) ├── user_id (FK -> User) ├── seat_id (FK -> Seat) ├── pre_ordered_bar_items (JSONField / Relational Model) └── is_paid (BooleanField)
+1. Film Model (The Source of Truth)
+   ├── id (PK)
+   ├── title (CharField)
+   ├── duration_minutes (IntegerField)
+   ├── age_rating (CharField: 'PG', '12A', '15', etc.)
+   └── poster_image (ImageField)
+
+2. Screen Model (The Venue Layout)
+   ├── id (PK)
+   ├── name (CharField: 'Main Auditorium', 'Studio Screen')
+   └── total_capacity (IntegerField)
+
+3. Screening Model (The Relational Bridge)
+   ├── id (PK)
+   ├── film_id (FK -> Film)
+   ├── screen_id (FK -> Screen)
+   ├── date_time (DateTimeField)
+   └── base_ticket_price (DecimalField)
+
+4. Seat Model (The Grid Array)
+   ├── id (PK)
+   ├── screen_id (FK -> Screen)
+   ├── row_label (CharField: 'A', 'B', 'C')
+   ├── seat_number (IntegerField)
+   └── tier (CharField: 'Standard Seat', 'Luxury Sofa')
+
+5. Booking Model (The Transaction Ledger)
+   ├── id (PK)
+   ├── screening_id (FK -> Screening)
+   ├── user_id (FK -> User)
+   ├── seat_id (FK -> Seat)
+   ├── pre_ordered_bar_items (JSONField / Relational Model)
+   └── is_paid (BooleanField)
 
 ```
 
