@@ -33,6 +33,7 @@ Django (data model, business logic)
 7. [Credits & Acknowledgements](#credits)
 8. [Development Log & Engineering Phases](#dev-log)
 9. [Testing & Quality Assurance Portfolio](#testing)
+10. [Marketing Development Thoughts (Future Business Ideas)](#marketing-development)
 
 ---
 
@@ -49,7 +50,7 @@ _Focus: booking seats, adding food/drink, and being recognised as a returning cu
   - _Acceptance criteria:_ seat availability reflects the current state accurately; the same seat can never be booked twice for the same screening; the seating plan is usable on a phone-sized screen.
 - **User story:** As a customer needing a captioned or audio-described screening, I want that information shown clearly on the listing, so I can choose an appropriate showing without having to ask.
 - **User story:** As a customer, I want to add drinks or snacks to my order at checkout, so they're ready for me on arrival instead of queuing at the bar.
-- **User story:** As a returning customer, I want my membership discount applied automatically and my loyalty points tracked toward a free ticket, so repeat visits feel rewarded.
+- **User story:** As a returning customer, I want my membership discount applied automatically, so being a Friend member feels worthwhile.
 
 ### The Venue Manager
 
@@ -82,25 +83,25 @@ This section follows Jesse James Garrett's "five planes" model — Strategy, Sco
 ### I. Strategy
 
 - **User goals:** customers want an easy way to check what's on, book the seats they want, and optionally add food and drink to their order. Staff want a simple way to manage screenings and see bookings without needing developer help.
-- **Site goals:** encourage premium seat bookings and food/drink add-ons, and build repeat custom through the membership and loyalty scheme.
-- **Target audience:** local film-goers looking for a more comfortable, hospitality-led experience than a standard multiplex — including families, older customers (who get a daytime discount), students, and people booking the venue privately for events.
+- **Site goals:** encourage premium seat bookings and food/drink add-ons, and build repeat custom through the membership scheme.
+- **Target audience:** local film-goers looking for a more comfortable, hospitality-led experience than a standard multiplex — including families and older customers (served by discounted showings like Family Super Saver and Silver Screen), students, and people booking the venue privately for events.
 
 ### II. Scope
 
 #### Feature summary
 
-| Area         | In scope                                                                                                  | Out of scope (for now)                                |
-| :----------- | :-------------------------------------------------------------------------------------------------------- | :---------------------------------------------------- |
-| Booking      | Seat selection on an interactive seating plan, by tier (standard / sofa / box)                            | Split payments between multiple people on one booking |
-| Food & drink | Pre-ordering linked to a booking                                                                          | Live in-seat ordering during a screening              |
-| Membership   | Self-selected membership type with automatic discount; loyalty points toward a free ticket; gift vouchers | Automated ID/eligibility verification online          |
-| Admin        | CRUD for films, screens, and screenings; visibility of bookings and enquiries                             | Automated pricing based on historical sales data      |
+| Area         | In scope                                                                                | Out of scope (for now)                                |
+| :----------- | :-------------------------------------------------------------------------------------- | :---------------------------------------------------- |
+| Booking      | Seat selection on an interactive seating plan, by tier (standard / sofa / box)          | Split payments between multiple people on one booking |
+| Food & drink | Pre-ordering linked to a booking                                                        | Live in-seat ordering during a screening              |
+| Membership   | Paid, tiered Friend membership (priority booking, ticket/food discounts); gift vouchers | Automatic recurring renewal/billing                   |
+| Admin        | CRUD for films, screens, and screenings; visibility of bookings and enquiries           | Automated pricing based on historical sales data      |
 
 #### Design principles
 
 - **No frontend framework, organised with CUBE CSS.** The interface is built with plain, semantic HTML and CSS — no React/Vue, no build step — using Andy Bell's **CUBE CSS** methodology to organise the CSS itself: **C**omposition, **U**tility, **B**lock, **E**xception. This isn't a separate decision from the "no framework" choice — CUBE CSS is specifically designed with _Every Layout_ as its Composition layer, so adopting it extends a decision already made rather than adding a competing one.
   - **Composition** — the _Every Layout_ patterns already decided: a "stack" for consistent vertical spacing, a "switcher" for elements that sit side-by-side on desktop and stack on mobile without manual breakpoints, and similar layout-level primitives. These control arrangement, not appearance.
-  - **Utility** — small, single-purpose classes for common needs that don't deserve their own component: a `.visually-hidden` class for text that's read by a screen reader but not shown visually (used directly for the seat map's accessible seat names in [4.18](#architecture)), spacing utilities built on the same CSS custom properties already used for the design tokens (e.g. `var(--space-m)`).
+  - **Utility** — small, single-purpose classes for common needs that don't deserve their own component: a `.visually-hidden` class for text that's read by a screen reader but not shown visually (used directly for the seat map's accessible seat names in [4.17](#architecture)), spacing utilities built on the same CSS custom properties already used for the design tokens (e.g. `var(--space-m)`).
   - **Block** — the actual reusable components, each with its own scoped, sensibly-named styles: `.seat-map`, `.film-card`, `.nav`. This is where the "cards for film posters" idea from Surface (below) is actually implemented, as a named, self-contained block rather than a one-off set of styles.
   - **Exception** — scoped, deliberate overrides for a component in an unusual state, applied via data attributes rather than piling on more classes. **This maps directly onto the seat map's states from [4.8](#architecture):** rather than four separate modifier classes for available/selected/held/booked, each seat carries a single `data-seat-status` attribute, and the exception layer defines what changes for each value. One attribute reflects the seat's actual state; the styling for every state lives in one predictable place rather than being scattered across conditional classes.
 
@@ -139,7 +140,7 @@ Home (what's on)
   └─ Film detail (synopsis, trailer, showtimes)
         └─ Screening (seat selection)
               └─ Checkout (add food/drink → pay)
-  Membership / account (profile, loyalty points, vouchers)
+  Membership / account (profile, vouchers)
   About / private hire (static content, enquiry form)
 ```
 
@@ -163,11 +164,11 @@ The project is split into seven Django apps, each covering one distinct area of 
 
 | App           | Responsibility                                                                 |
 | :------------ | :----------------------------------------------------------------------------- |
-| `accounts`    | User profile data: date of birth, membership type, verification status         |
+| `accounts`    | User profile data: membership tier and expiry                                  |
 | `screenings`  | The venue's fixed catalogue: films, screens, seats, and scheduled screenings   |
 | `bookings`    | The transactional core: bookings and the seats attached to them                |
 | `concessions` | Bar/snack products and the items attached to a booking                         |
-| `membership`  | Membership types, gift/loyalty vouchers, and the loyalty points ledger         |
+| `membership`  | Membership tiers and gift vouchers                                             |
 | `venue`       | Static site content and private hire / event enquiries                         |
 | `staff`       | Staff-only tooling that cuts across the other apps: audit log, sales reporting |
 
@@ -176,18 +177,19 @@ The project is split into seven Django apps, each covering one distinct area of 
 - **Film** — `tmdb_id` (nullable — see 4.15), `title`, `synopsis`, `poster_path`, `trailer_key`, `age_rating`, `duration_minutes`. Populated from the TMDb API and cached locally rather than queried live on every page load — see [4.15](#architecture) for the full mechanics.
 - **Screen** — `name`, `total_capacity`.
 - **Seat** — `screen` (FK), `row_label`, `seat_number`, `tier` (standard / sofa / box). The fixed physical seating plan for a screen; does not change per booking.
-- **Screening** — `film` (FK), `screen` (FK), `date_time`, `base_price`, `has_captions`, `has_audio_description`.
+- **TicketClass** — `name` (e.g. Standard, Silver Screen, Summer Saver, Family Super Saver, Subtitled, Live Event), `description`, `default_price_pence` (nullable — a convenience suggestion, not an enforced price). Modelled directly on how the real Regal Cinema actually prices things: a discounted showing (like a senior-focused "Silver Screen" screening) is a _property of that specific showing_, not a discount computed from who's booking it. See [4.18](#architecture).
+- **Screening** — `film` (FK), `screen` (FK), `ticket_class` (FK to `TicketClass`), `date_time`, `base_price`, `public_onsale_at` (nullable — see 4.18 for priority booking), `is_private` (boolean, default `False` — see [4.19](#architecture) for private hire), `has_captions`, `has_audio_description`.
 
 ### 4.2 `bookings`
 
-- **Booking** — `user` (nullable FK — see design note below), `screening` (FK), `status` (pending / paid / cancelled / refunded), `channel` (online / in_venue), `payment_method` (`card_online` / `cash` / `card_in_person`), `stripe_payment_intent_id` (nullable — only set for `card_online`), `created_by` (nullable FK to `User`, the staff member who took an in-venue booking), `voucher_used` (nullable FK to `Voucher`), `discount_applied_percent` (snapshot, see note below), `staff_discount_pence` (nullable, default 0 — see `staff` app note in 4.9), `created_at`.
+- **Booking** — `user` (nullable FK — see design note below), `screening` (FK), `status` (pending / paid / cancelled / refunded), `channel` (online / in_venue), `payment_method` (`card_online` / `card_in_person`), `stripe_payment_intent_id` (nullable — only set for `card_online`), `created_by` (nullable FK to `User`, the staff member who took an in-venue booking), `voucher_used` (nullable FK to `Voucher`), `discount_applied_percent` (snapshot, see note below), `created_at`.
 - **SeatBooking** — `booking` (FK), `seat` (FK), `screening` (FK, duplicated from `booking.screening` specifically so the database can enforce a `unique_together` constraint on `(screening, seat)`). This is what stops two people booking the same seat for the same screening.
 
 A booking can have several `SeatBooking` rows (a party booking four seats together is four rows against one `Booking`), which is why seats live on their own linking table rather than as a single field on `Booking`.
 
-**Design note — snapshotting the discount:** `Booking.discount_applied_percent` stores the discount rate that actually applied at the moment of purchase, rather than the app always looking up the user's _current_ membership type. This means if someone's membership type changes later, their historical bookings and receipts don't silently change with it — a small but realistic data-integrity decision worth explaining in this README rather than leaving implicit.
+**Design note — snapshotting the discount:** `Booking.discount_applied_percent` stores the membership tier discount rate that actually applied at the moment of purchase, rather than the app always looking up the user's _current_ membership tier. This means if someone's membership lapses or changes later, their historical bookings and receipts don't silently change with it.
 
-**Design note — `user` is nullable.** A walk-up customer paying cash at the venue doesn't need an account, in the same way buying a ticket at a real box office doesn't. If they want their membership discount or loyalty points, staff look their account up (e.g. by email) and link the booking to it; otherwise it proceeds as a guest sale with no discount or points. See 4.14 for the full in-venue flow.
+**Design note — `user` is nullable.** A walk-up customer paying by card at the venue doesn't need an account, in the same way buying a ticket at a real box office doesn't. If they want their membership discount, staff look their account up (e.g. by email) and link the booking to it; otherwise it proceeds as a guest sale with no discount. See 4.14 for the full in-venue flow.
 
 ### 4.3 `concessions`
 
@@ -196,38 +198,33 @@ A booking can have several `SeatBooking` rows (a party booking four seats togeth
 
 ### 4.4 `membership`
 
-- **MembershipType** — `name` (e.g. Standard, OAP, Family, Student), `discount_percent`, `description`. Selected by the user on their profile (self-declared, per the venue's real-world policy of checking eligibility in person rather than online — see below).
-- **Voucher** — `code`, `initial_value_pence`, `remaining_value_pence`, `expires_at`, `source` (purchased / loyalty_reward / screening_cancelled / manual_goodwill), `is_active`. Not tied to a specific user, in the same way a physical gift card isn't — whoever has the code can redeem it. A voucher's balance is drawn down at checkout and can be spread across more than one booking until it reaches zero.
-- **LoyaltyTransaction** — `user` (FK), `points_change`, `reason`, `related_booking` (nullable FK), `created_at`. Points are recorded as a ledger of individual earn/spend events rather than a single mutable counter on the user's profile — this gives an auditable history and avoids two simultaneous transactions corrupting a shared counter. A user's current balance is the sum of their transactions.
-
-**Design note — loyalty rewards reuse the voucher system.** When a member's points balance crosses the reward threshold, the system issues them a `Voucher` (valued at one standard ticket, `source='loyalty_reward'`) rather than implementing a second, separate redemption mechanism. It then goes through the same checkout logic as a purchased gift voucher. One mechanism, two ways of earning it.
-
-**Design note — membership verification.** `Profile.membership_verified` (see 4.5) records whether staff have physically checked a discount card (e.g. a student ID) at the venue. The discount itself applies as soon as a user self-selects their membership type online — verification is a record-keeping and spot-check field, not a gate on the discount — which mirrors how most real cinemas actually enforce concessionary pricing in person rather than online.
+- **MembershipTier** — `name` (e.g. Friend, Premium Friend), `annual_fee_pence`, `priority_booking_hours` (how far ahead of general on-sale a member of this tier can book), `ticket_discount_percent`, `food_drink_discount_percent` (nullable — a higher-tier-only perk), `description`. Modelled on real theatre "Friends" schemes (e.g. Chelmsford Theatre's two-tier structure of priority booking plus escalating discounts) rather than the demographic self-select approach originally drafted here — see [4.18](#architecture) for the full reasoning and how priority booking actually works.
+- **Voucher** — `code`, `initial_value_pence`, `remaining_value_pence`, `expires_at`, `source` (purchased / screening_cancelled), `is_active`. Not tied to a specific user, in the same way a physical gift card isn't — whoever has the code can redeem it. A voucher's balance is drawn down at checkout and can be spread across more than one booking until it reaches zero.
 
 ### 4.5 `accounts`
 
-- **Profile** — `user` (1:1 with Django's built-in `User`), `date_of_birth` (nullable), `membership_type` (nullable FK to `MembershipType`), `membership_verified` (boolean, default `False`, staff-editable only).
+- **Profile** — `user` (1:1 with Django's built-in `User`), `membership_tier` (nullable FK to `MembershipTier`), `membership_expires_at` (nullable — see 4.18).
+
+**Design note — `date_of_birth` and `membership_verified` are dropped.** Both existed in an earlier draft of this design to support demographic discount verification (e.g. confirming someone was actually a senior or a student), which is no longer needed now that discounted showings are priced per-screening via `TicketClass` rather than computed from who's booking. Neither field would have a purpose left, so rather than leave dead columns in the schema, they're removed — a paid membership's validity is simply whether `membership_expires_at` is in the future, a database check rather than a staff judgement call.
 
 ### 4.6 `venue`
 
-- **EnquiryRequest** — `name`, `email`, `event_type`, `preferred_date`, `party_size`, `message`, `status`. Handles private hire and event enquiries without needing a full booking/payment flow.
-- **NewsletterSubscriber** — `email` (unique), `user` (nullable FK — linked automatically if the email matches a registered account), `opt_in_deals`, `opt_in_digest` (both boolean, default `False`), `subscribed_at`, `is_active`. Deliberately not folded into `Profile`: anyone can subscribe from the site footer without an account, and subscribing is not the same thing as registering.
-- **NewsletterCampaign** — `subject`, `body`, `campaign_type` (`one_off_deal` / `monthly_digest`), `status` (`draft` / `sent`), `created_by` (FK staff), `sent_at`.
-- **PromoCode** — `code`, `discount_percent`, `valid_from`, `valid_until`, `max_total_redemptions` (nullable — unlimited if blank), `times_redeemed`, `is_active`. See [4.17](#architecture) for why this is a separate model from `Voucher` rather than a reuse of it.
+- **EnquiryRequest** — `name`, `email`, `event_type`, `preferred_date`, `party_size`, `message`, `status`, `resulting_screening` (nullable FK to `Screening` — see [4.19](#architecture)). Handles private hire and event enquiries without needing a full booking/payment flow.
 - Static content (About, Accessibility policy, Membership terms) — plain templates rather than models, unless there's a reason later to make them admin-editable.
 
 ### 4.7 Relationship overview
 
 ```text
-User ──1:1── Profile ──FK── MembershipType
+User ──1:1── Profile ──FK── MembershipTier
   │
   └──FK── Booking ──FK── Screening ──FK── Film
+              │              │              └──FK── TicketClass
               │              └──FK── Screen ──1:N── Seat
               ├──1:N── SeatBooking ──FK── Seat
               ├──1:N── OrderItem ──FK── Product
               └──FK (nullable)── Voucher
 
-User ──1:N── LoyaltyTransaction ──FK (nullable)── Booking
+EnquiryRequest ──FK (nullable)── Screening
 ```
 
 ### 4.8 Core Flow: Seat Selection & Holds
@@ -255,11 +252,11 @@ A gap exists between a user selecting seats and completing payment — without h
 
 This app has no customer-facing models of its own. It owns the one genuinely new cross-cutting concern — accountability for staff actions — and otherwise only _reads_ data that already lives in the other apps, for reporting. Keeping it separate avoids scattering staff-only concerns across every domain app, and avoids duplicating booking/sales data into a second model just to report on it.
 
-- **AuditLogEntry** — `actor` (FK to `User`), `action_type` (choices: `manual_discount`, `refund`, `manual_voucher_issue`, `membership_verified`, `screening_cancelled`), `related_booking` (nullable FK), `related_voucher` (nullable FK), `reason` (text, required), `created_at`.
+- **AuditLogEntry** — `actor` (FK to `User`), `action_type` (choices: `refund`, `screening_cancelled`), `related_booking` (nullable FK), `related_voucher` (nullable FK), `reason` (text, required), `created_at`.
 
 **Design note — logging is automatic, not a separate step.** An `AuditLogEntry` is created by the same server-side action that performs the sensitive operation itself (applying a discount, issuing a refund, etc.) — not filled in by staff afterwards as an extra form. This means it can't be forgotten or skipped, and the "who and why" is guaranteed to exist for anything sensitive that happened.
 
-**Permission tiers.** Two Django Groups: `FrontOfHouse` and `Manager`. `FrontOfHouse` can apply a bounded discretionary discount (see 4.10) and verify a member's ID on the spot. `Manager` can additionally process refunds, manually issue vouchers, cancel a screening, and view the sales dashboard. The discount cap for `FrontOfHouse` is stored as a single configurable value (not hard-coded inline), consistent with the project's general principle of keeping configuration in one changeable place.
+**Permission tiers.** Two Django Groups: `FrontOfHouse` and `Manager`. `FrontOfHouse` handles day-to-day booking and enquiry tasks. `Manager` additionally processes refunds, cancels a screening, and views the sales dashboard.
 
 **Business overview (Manager only).** Rather than a separate reporting model, this is a set of read-only views built on Django's aggregate queries over existing data — revenue by day/week/month, revenue and seat occupancy by screening, top-selling concessions, and total value of discounts/vouchers redeemed. Because it's computed live from `Booking`/`SeatBooking`/`OrderItem` rather than stored separately, the numbers can never drift out of sync with the underlying bookings.
 
@@ -267,19 +264,24 @@ This app has no customer-facing models of its own. It owns the one genuinely new
 
 ### 4.10 Business Rule: Discount & Voucher Order of Operations
 
-With membership discounts, staff discounts, and vouchers all potentially applying to the same booking, the order they're applied in has to be fixed and documented — otherwise it's easy for the same logic to be implemented two different ways in two different places. The order is:
+With ticket-class pricing, membership discounts, and vouchers all potentially touching the same booking, the order they're applied in has to be fixed and documented — otherwise it's easy for the same logic to be implemented two different ways in two different places.
 
-1. Start from the sum of the base ticket price(s) and any concessions.
-2. Apply the membership discount, if any (`discount_applied_percent`).
-3. Apply a staff discretionary discount, if any (`staff_discount_pence`) — applied as a flat amount off the post-membership-discount total.
-4. Deduct whatever's left from the customer's voucher balance, if a voucher code was entered, up to the voucher's remaining balance.
-5. Charge the remainder to Stripe. If the voucher fully covers the total, no Stripe charge is needed, but the `Booking` is still marked paid.
+**Ticket-class pricing isn't part of this stack at all.** A screening's `base_price` already reflects its `TicketClass` (4.1) before any of the following runs — a Silver Screen showing is simply priced lower from the start, the same way a standard evening showing is priced higher. There's nothing to "apply"; it's just the starting number.
+
+The order is:
+
+1. Start from the sum of the base ticket price(s) (as already set by the screening's ticket class) and any concessions.
+2. Apply the customer's membership tier discount, if any — snapshotted onto `discount_applied_percent` (4.2).
+3. Deduct whatever's left from the customer's voucher balance, if a voucher code was entered, up to the voucher's remaining balance.
+4. Charge the remainder to Stripe. If the voucher fully covers the total, no Stripe charge is needed, but the `Booking` is still marked paid.
 
 A voucher can never take a booking below £0 — any unused voucher balance stays on the voucher for a future booking, it isn't paid out as cash or credit.
 
+_(An earlier version of this design also included a staff discretionary discount and a promo-code layer, each with its own stacking rule. Those have been moved to [Marketing Development Thoughts](#marketing-development) as future business ideas rather than part of the initial build — see that section for the reasoning that was worked out for them.)_
+
 ### 4.11 Business Rule: Screening Cancellation
 
-If a screening has to be cancelled (e.g. a technical fault), a manager cancelling it triggers, for every existing `Booking` against that screening: the booking is marked `cancelled`, its seats are released, and the customer is automatically issued a `Voucher` (`source='loyalty_reward'` doesn't apply here — a distinct `source='screening_cancelled'` value) for the full amount they paid, rather than requiring an individual refund to be processed by hand for each customer. Each of these is logged as an `AuditLogEntry` with the manager as actor and "screening cancelled" as the reason, so there's a single, reviewable batch of entries rather than the cancellation being invisible.
+If a screening has to be cancelled (e.g. a technical fault), a manager cancelling it triggers, for every existing `Booking` against that screening: the booking is marked `cancelled`, its seats are released, and the customer is automatically issued a `Voucher` (`source='screening_cancelled'`) for the full amount they paid, rather than requiring an individual refund to be processed by hand for each customer. Each of these is logged as an `AuditLogEntry` with the manager as actor and "screening cancelled" as the reason, so there's a single, reviewable batch of entries rather than the cancellation being invisible.
 
 ### 4.12 Note: Staff System Separation Beyond This Submission
 
@@ -306,14 +308,14 @@ The core principle: **a Stripe webhook, not the customer's browser, is the sourc
 2. **If the total is £0** (a voucher fully covers it), there's no Stripe interaction at all — the booking is marked paid immediately, server-side.
 3. Otherwise, the customer completes payment through Stripe's client-side card element; card details never touch this application's own server.
 4. The server's only immediate response to the browser is "payment submitted," not "payment succeeded."
-5. Stripe sends a `payment_intent.succeeded` webhook. **This** is what finalises everything: the seat hold converts to confirmed `SeatBooking` rows, the voucher balance is decremented (not before — see below), loyalty points are awarded, and a confirmation is sent.
+5. Stripe sends a `payment_intent.succeeded` webhook. **This** is what finalises everything: the seat hold converts to confirmed `SeatBooking` rows, the voucher balance is decremented (not before — see below), and a confirmation is sent.
 6. A genuinely declined/failed attempt (`payment_intent.payment_failed`) does not release the seat hold — see the retry behaviour in 4.8, step 5.
 7. **Uncertain outcomes** (e.g. the connection dropped after submission but before the browser heard back) are resolved by checking the PaymentIntent's actual status with Stripe before allowing a new attempt — never by assuming failure just because the client didn't get a response. This avoids ever double-charging a card that actually went through.
 
 Two implementation details worth being explicit about, since they're easy to get subtly wrong:
 
 - **Webhook signature verification.** Stripe signs every webhook payload; the endpoint must verify that signature before trusting it, or anyone could POST a fake "payment succeeded" event.
-- **Idempotency.** Stripe can and does redeliver the same webhook event more than once. Finalisation logic checks "is this booking already marked paid?" before acting, so a redelivered webhook can't double-award loyalty points or double-decrement a voucher.
+- **Idempotency.** Stripe can and does redeliver the same webhook event more than once. Finalisation logic checks "is this booking already marked paid?" before acting, so a redelivered webhook can't double-decrement a voucher.
 
 **Consequence for 4.10:** a voucher's balance is only decremented once payment is _confirmed_ by the webhook, not at checkout time — otherwise an abandoned or failed payment would have permanently spent someone's voucher for nothing. It's the same "provisional, not committed" pattern as the seat hold, applied a second time.
 
@@ -321,17 +323,17 @@ Two implementation details worth being explicit about, since they're easy to get
 
 **Known limitation, deliberately not solved:** a voucher's balance isn't "held" the way a seat is. If the same code were entered in two simultaneous checkouts, there's a narrow window where both could succeed against the same balance before either payment confirms. Given a voucher requires manually typing a code, this is a low-probability, low-severity edge case — solving it properly would mean a second holding mechanism mirroring `SeatHold`, which is disproportionate complexity for the risk involved. This is recorded as a known issue (see [Testing](#testing)) rather than engineered around.
 
-### 4.14 In-Venue Bookings (Staff-Assisted, Cash or Card)
+### 4.14 In-Venue Bookings (Staff-Assisted, Card Only)
 
-A walk-up customer at the venue should be able to book largely the same way an online customer does — same seat map, same concessions, same membership/voucher discounts — with a member of staff completing it on their behalf.
+A walk-up customer at the venue should be able to book largely the same way an online customer does — same seat map, same concessions, same discounts — with a member of staff completing it on their behalf. Matching the real Regal Cinema's own policy, this project is **cashless — card payments only**, in venue as well as online.
 
-Channel (online vs in-venue) and payment method (card vs cash) are two separate decisions, not one — a customer at the venue can pay by card without that meaning "online," and specifically without needing to give an email address or create an account. This matters for privacy-minded customers who'd rather not hand over an email just to pay by card at the counter.
+Channel (online vs in-venue) is a separate decision from payment method — a customer at the venue pays by card without that meaning "online," and specifically without needing to give an email address or create an account. This matters for privacy-minded customers who'd rather not hand over an email just to pay at the counter.
 
-This deliberately reuses the existing booking flow rather than being a separate code path: the same `SeatHold` → `SeatBooking` mechanics, the same discount stacking order (4.10), and the same audit logging if a staff discretionary discount is applied (4.9) all apply unchanged. The only real differences are in who initiates it and how payment is recorded:
+This deliberately reuses the existing booking flow rather than being a separate code path: the same `SeatHold` → `SeatBooking` mechanics and the same discount stacking order (4.10) apply unchanged. The only real differences are in who initiates it and how payment is recorded:
 
-- `Booking.channel = 'in_venue'`, `Booking.created_by` set to the staff member completing the sale.
-- `Booking.payment_method` is `cash` or `card_in_person` — the latter meaning the customer paid by card on the venue's own separate card machine, not through Stripe. That card terminal sits entirely outside this application, the same as a physical till would; staff simply mark the booking as paid once payment is taken, exactly as they would for cash. No Stripe PaymentIntent is created for either — `stripe_payment_intent_id` stays null regardless of which of the two tender types was used.
-- `Booking.user` is left blank by default for a walk-up sale — **no account or email is required for either cash or card-in-person**, mirroring a real box office and respecting a customer who'd rather not provide one. If the customer wants their membership discount or loyalty points, staff look their account up (e.g. by email) and attach it to the booking; otherwise it proceeds as a fully anonymous guest sale.
+- `Booking.channel = 'in_venue'`, `Booking.payment_method = 'card_in_person'`, `Booking.created_by` set to the staff member completing the sale.
+- `card_in_person` means the customer paid by card on the venue's own separate card machine, not through Stripe. That card terminal sits entirely outside this application, the same as a physical till would; staff simply mark the booking as paid once payment is confirmed. No Stripe PaymentIntent is created — `stripe_payment_intent_id` stays null.
+- `Booking.user` is left blank by default for a walk-up sale — **no account or email is required**, mirroring a real box office and respecting a customer who'd rather not provide one. If the customer wants their membership discount, staff look their account up (e.g. by email) and attach it to the booking; otherwise it proceeds as a fully anonymous guest sale.
 - The customer doesn't need an email confirmation for a same-day in-person purchase, though staff can send one if the customer chooses to provide an address — the till/booking screen itself serves as the receipt.
 
 **Available to:** Front of House, as a routine day-to-day action — this is the standard box-office sale, not a discretionary override.
@@ -363,7 +365,7 @@ Building on the `Film` model (4.1) and the hybrid approach decided earlier — r
 
 ### 4.16 Authentication & Registration Flow
 
-**Signup is deliberately minimal:** email and password only. `Profile` (4.5) is created automatically via a signal the moment a `User` is created, rather than being a second form the customer has to fill in — date of birth and membership type are added afterwards, on the profile page, only if and when they're relevant.
+**Signup is deliberately minimal:** email and password only. `Profile` (4.5) is created automatically via a signal the moment a `User` is created, rather than being a second form the customer has to fill in — a membership tier is only added afterwards, on the profile page, if and when the customer chooses to become a Friend (see 4.18).
 
 **Simplification, stated explicitly:** rather than building a fully custom Django user model with email as the username field (the more "correct" long-term approach), this project keeps Django's default `User` model and derives a username automatically from the email address behind the scenes. A custom user model has to be decided before the very first migration ever runs — a real risk for a project at this stage — so the registration _form_ only ever shows email and password, while the underlying model stays the simpler, lower-risk default.
 
@@ -375,32 +377,13 @@ Building on the `Film` model (4.1) and the hybrid approach decided earlier — r
 
 **Email verification is sent, but non-blocking.** A verification email goes out on registration, but the account is usable immediately — someone registering specifically to book a seat in the next five minutes shouldn't be stuck waiting on an email that might take a few minutes to arrive. Verification is a gentle reminder (e.g. a banner), not a gate on using the site. Password reset reuses the same signed-token approach Django already provides for this, rather than needing a second, separate token-storage model for verification.
 
-**Registration is required to complete an online checkout, but not to browse or select seats, and not for an in-venue cash sale.** This is deliberately two different rules for two different real-world contexts, not an inconsistency: browsing and picking seats works anonymously, but finishing an _online_ purchase requires an account — which is exactly the "clear reason to register" the assessment criteria ask for, since booking history, loyalty points, and the membership discount all depend on having one. In-venue cash sales stay guest-friendly, as already decided in 4.14, because a walk-up customer at a real box office was never going to be asked to create an account first.
+**Registration is required to complete an online checkout, but not to browse or select seats, and not for an in-venue card sale.** This is deliberately two different rules for two different real-world contexts, not an inconsistency: browsing and picking seats works anonymously, but finishing an _online_ purchase requires an account — which is exactly the "clear reason to register" the assessment criteria ask for, since booking history and the membership discount both depend on having one. In-venue sales stay guest-friendly, as already decided in 4.14, because a walk-up customer at a real box office was never going to be asked to create an account first.
 
 **Design note — seat holds surviving a mid-checkout login.** Django deliberately rotates a user's session ID at the moment they log in, as a defence against session-fixation attacks. Since `SeatHold` (4.8) is tied to `session_key`, a customer who selects seats anonymously and then registers or logs in _mid-checkout_ — exactly the moment "continue to checkout" prompts them to, per the rule above — would otherwise silently lose their hold the instant login succeeds. To prevent that: `SeatHold` carries a nullable `user` FK alongside `session_key`, and on a successful login, any holds under the current session are reassigned to that user. A small addition, but it closes a gap that would otherwise cause a confusing, hard-to-reproduce failure at exactly the point a customer is trying to convert.
 
 **Staff logins are entirely separate** from all of the above — a different URL, a different login template (4.9/4.12), and unrelated to whether a given staff member also happens to hold their own personal customer account.
 
-### 4.17 Newsletter & Promotional Emails
-
-**Subscribing is separate from having an account.** Anyone can subscribe from the site footer — no registration required — because a newsletter subscriber and a registered customer are genuinely different things, even though the two overlap for many people. `NewsletterSubscriber.user` links automatically where the email matches an existing account (for personalisation), but stays null for a footer-only subscriber.
-
-**Consent is explicit and granular, not assumed.** Two separate opt-in checkboxes at subscribe time — deals and the monthly digest — both unticked by default. Having an account never implies consent to marketing email; the two are deliberately kept apart, in line with UK PECR rules on marketing communications.
-
-**Two campaign types:**
-
-- **Monthly digest** — auto-drafted rather than written from scratch each time: the system pulls newly added films and upcoming screenings since the last digest was sent (reusing data that already exists in `screenings`, not duplicating it into email-specific content) and composes a draft with a "Book Now" button under each item, linking straight to that film or screening's actual page. As with the TMDb integration (4.15), **the system drafts, a human confirms before it sends** — staff review the draft, can add their own commentary, and send when ready. Nothing is ever auto-sent.
-- **One-off deal** — fully staff-authored, since "£5 tickets this weekend" isn't something the system could sensibly invent. Optionally linked to a `PromoCode` (see below); its "Book Now" button can include the code as a URL parameter so it's pre-filled at checkout rather than needing to be copied in by hand.
-
-**Why `PromoCode` is a separate model from `Voucher`.** `Voucher` (4.4) represents a personal balance — a gift card or loyalty reward, spent down by one holder over time. A promotional deal code is a different shape of thing entirely: one shared code, redeemed by potentially hundreds of different subscribers, each getting the discount once, within a date window and possibly a total redemption cap. Forcing that into `Voucher`'s balance semantics would mean the first handful of customers could drain a "balance" meant to serve everyone. At checkout, the "enter a code" field checks both `Voucher` and `PromoCode` behind the scenes — one input field, two different things it might match, invisible to the customer either way.
-
-**The membership upsell.** Subscription confirmation and every digest email include a short block — "Members get an automatic discount, loyalty points toward a free ticket, and gift vouchers — create an account" — but only where `NewsletterSubscriber.user` is null. An existing member obviously doesn't need to be sold on joining.
-
-**Unsubscribe** works exactly like the email verification and password reset flows in 4.16: a signed token embedded in the email link, requiring no login, immediately setting `is_active = False` on click. Third reuse of the same mechanism rather than a fourth bespoke implementation.
-
-**Beyond this submission.** At real scale, bulk marketing email and transactional email (booking confirmations, password resets) are usually best sent through separate infrastructure — a spam-flagged newsletter can drag down deliverability for the transactional email that actually matters (a customer's booking confirmation reaching them reliably is more important than a digest). Not a concern at this project's scale, but worth recording as a known trade-off rather than solving now.
-
-### 4.18 Accessibility Implementation
+### 4.17 Accessibility Implementation
 
 The captioned/audio-described flags on `Screening` (4.1) are about the film experience itself. This section is about the _website_ — making sure the interface is genuinely usable by someone using a keyboard alone, a screen reader, or with low vision — which is a separate concern the project hasn't pinned down yet.
 
@@ -424,6 +407,37 @@ The captioned/audio-described flags on `Screening` (4.1) are about the film expe
 
 **Verification.** Rather than assuming accessible markup is accessible in practice, this gets checked concretely: an automated pass (e.g. Lighthouse or axe) catches the mechanical issues — contrast, missing labels, landmark structure — and a manual keyboard-only pass through the booking flow, the highest-risk journey in the project, catches what automated tools can't, such as whether the live region actually announces a lost seat sensibly. See [Testing](#testing).
 
+### 4.18 Ticket Classes, Membership Tiers & Priority Booking
+
+This section replaces an earlier draft of the membership design, after checking it against how the real Regal Cinema, Evesham actually structures things. Two changes fall out of that: discounted showings are a property of the _screening_, not the _customer_, and "membership" is a paid Friends/Patron scheme rather than a free, self-selected discount category.
+
+**Ticket Classes.** The real venue's own site lists named categories — Silver Screen, Summer Saver, Family Super Saver, Subtitled, Live Event, and others — and a customer review confirms what one of these actually is: a specifically discounted showing (Silver Screen, priced around £8 against a higher standard price), not a discount computed from who's booking it. This project models that directly: `TicketClass` (4.1) is a label with an optional default price, assigned to a `Screening` when it's created. Staff pick the class, the system suggests a price, staff can override it — no age or identity check involved, because there isn't meant to be one. Anyone can book a Silver Screen showing; it's simply priced for that audience.
+
+**Membership as a paid Friends scheme.** `MembershipTier` (4.4) replaces the free, self-selected OAP/Family/Student category from the earlier draft with a paid, tiered scheme in the pattern real UK theatres commonly use — e.g. Chelmsford Theatre's structure of an entry tier with priority booking and a higher tier adding further discounts. A customer purchases a tier via a one-off Stripe charge (the same `card_online` payment pattern as a booking, not a new payment mechanism), which sets `Profile.membership_tier` and `membership_expires_at` to one year from purchase.
+
+**No auto-renewal.** Membership doesn't automatically renew or re-charge a saved card when it lapses — that would mean building recurring billing (a materially bigger feature, involving Stripe subscriptions and their own webhook events), which is disproportionate for this project's scope. Instead, a lapsed member simply sees a "renew your membership" prompt and repeats the same one-off purchase. Worth recording as a deliberate scope boundary, in the same spirit as 4.12's other "beyond this submission" notes, rather than an oversight.
+
+**Priority booking.** `Screening.public_onsale_at` (4.1) is when a screening opens to the general public. Before that point, only a member whose tier's `priority_booking_hours` covers the gap can book it — i.e. `now >= public_onsale_at − tier.priority_booking_hours`. If `public_onsale_at` is left blank entirely, the screening is members-only permanently rather than on a countdown — this is the same mechanism used for something like the real venue's members' Q&A events, just with no eventual public on-sale date rather than a future one. One field, two related purposes, rather than two separate booleans that could contradict each other.
+
+**Ticket and food/drink discounts** from a member's tier apply through the discount stacking order already defined in 4.10 — nothing new needed there beyond what's already specified.
+
+**What this removes from the earlier design.** The old `MembershipType`'s self-declared category and the staff "verify a member's ID" action (previously in 4.9) are no longer needed: a paid membership's validity is a straightforward `membership_expires_at` check, not a subjective judgement call staff have to make in person. This is a genuine simplification, not just a change — one less thing for Front of House to manage, and one less field (`membership_verified`) sitting in the schema without a clear purpose.
+
+### 4.19 Private Hire & Screening Visibility
+
+`EnquiryRequest` (4.6) handles the initial private hire or event conversation, but nothing so far connects it to an actual bookable — or _unbookable_ — `Screening`. Two things needed pinning down: how an agreed hire becomes a real screening, and whether the public should ever see or book it.
+
+**No automatic conversion.** Once terms are agreed with a hirer, staff manually create a `Screening` the same way they'd create any other one — picking a film (or, for a non-film event, a manually-added `Film` entry per 4.15), a screen, and a date/time — and tick `is_private`. Building an automated enquiry-to-screening pipeline would mean also handling quoting and invoicing, which is a genuinely different, larger feature area than this project's booking system; a manual step here is a deliberate scope boundary, not an oversight. For traceability, `EnquiryRequest.resulting_screening` links back to whichever `Screening` came out of that conversation, so staff can see the connection later without needing to remember it.
+
+**What `is_private = True` actually changes:**
+
+- The screening doesn't appear in public "what's on" listings.
+- Anonymous/customer online booking is blocked for it entirely — there's no public seat map to book against.
+- It still participates fully in the existing screen/time overlap check (4.1's "system prevents two screenings overlapping on the same screen") — a private hire still physically occupies the screen for that slot, so it has to block public screenings from clashing with it exactly like any other screening would.
+- If the hirer wants named individual seats tracked (rather than a single flat-fee block booking), staff create those bookings through the existing in-venue flow (4.14) — no new booking mechanism needed, since a private hire's seats are conceptually no different from a staff-assisted walk-up sale, just arranged in advance.
+
+**Payment for the hire itself stays outside this system.** The actual private-hire fee is negotiated and settled through the `EnquiryRequest` conversation (an invoice, a bank transfer, whatever the venue's existing process is) rather than through Stripe — building a quoting/invoicing flow is out of scope here, and real private hire agreements are usually bespoke enough (catering add-ons, differing durations, negotiated rates) that forcing them through a fixed per-seat checkout wouldn't actually fit. `is_private` exists to reserve the slot and control visibility, not to process the hire's payment.
+
 ## <p align="right">(<a href="#top">Back to top</a>)</p>
 
 ## 5. <a name="features"></a> Core Features
@@ -436,13 +450,13 @@ Two kinds of user: registered customers, and staff. Staff status (`is_staff`) is
 
 Deliberately, staff do not use Django's built-in `/admin` for day-to-day work. `/admin` exposes every field on every model, which is more power — and more room for accidental mistakes — than day-to-day duties call for, and it isn't designed to match the rest of the site or guide someone unfamiliar with Django through their actual tasks. Instead, staff get a small set of custom views, built with the same templates and design system as the public site, that expose exactly the actions listed below, gated by group-based permission checks rather than open `/admin` access. `/admin` still exists behind the scenes for genuine one-off data fixes, but it isn't part of the day-to-day handover.
 
-Anything financial or account-affecting (a discount, a refund, a manually issued voucher, a membership verification) is automatically recorded in the audit log with who did it and why — see [4.9](#architecture).
+Anything financial (a refund, a screening cancellation) is automatically recorded in the audit log with who did it and why — see [4.9](#architecture).
 
 ### 5.1 `screenings`
 
 **Customer-facing**
 
-- Browse current/upcoming screenings, filterable by date
+- Browse current/upcoming screenings, filterable by date, showing each one's ticket class (e.g. Silver Screen, Family Super Saver) and price
 - Film detail page (synopsis, trailer, age rating, captioned/audio-described indicator)
 - Seat selection on an interactive seating plan, by tier
 
@@ -451,7 +465,9 @@ Anything financial or account-affecting (a discount, a refund, a manually issued
 - _(Front of House)_ View a screening's current seat occupancy at a glance
 - _(Manager)_ Search TMDb and add a film to the local catalogue, reviewing and confirming the fetched details (including age rating) before saving — see [4.15](#architecture)
 - _(Manager)_ Add a film manually for anything without a TMDb entry (event cinema, private hire content), or refresh an existing film's cached details from TMDb
-- _(Manager)_ Create, edit, or cancel a screening (film, screen, date/time, price) — the system prevents two screenings overlapping on the same screen; cancelling one triggers the [screening cancellation flow](#architecture)
+- _(Manager)_ Create, edit, or cancel a screening (film, screen, date/time, price, ticket class, priority booking window, private/public visibility) — the system prevents two screenings overlapping on the same screen; cancelling one triggers the [screening cancellation flow](#architecture)
+- _(Manager)_ Mark a screening private for a confirmed private hire or exclusive event — hides it from public listings and blocks public online booking (see [4.19](#architecture))
+- _(Manager)_ Manage the list of ticket classes and their default prices (see [4.18](#architecture))
 
 ### 5.2 `bookings`
 
@@ -463,11 +479,10 @@ Anything financial or account-affecting (a discount, a refund, a manually issued
 
 **Staff-facing**
 
-- _(Front of House)_ Create a booking on behalf of a walk-up customer, by cash or card, without requiring an email or account — same seat map, concessions, and discount rules as the online flow (see [4.14](#architecture))
+- _(Front of House)_ Create a booking on behalf of a walk-up customer, by card, without requiring an email or account — same seat map, concessions, and discount rules as the online flow (see [4.14](#architecture))
 - _(Front of House)_ View bookings for a given screening, for door/headcount purposes
 - _(Front of House)_ View a single booking's full detail (seats, concessions ordered, payment status) — useful for resolving a customer query at the door or by phone
-- _(Front of House)_ Apply a discretionary discount to a booking, up to a configured cap, with a required reason
-- _(Manager)_ Apply a discount above the Front of House cap, or process a full refund/cancellation — both release the booking's seats and are logged
+- _(Manager)_ Process a full refund/cancellation — releases the booking's seats and is logged
 
 ### 5.3 `concessions`
 
@@ -484,15 +499,13 @@ Anything financial or account-affecting (a discount, a refund, a manually issued
 
 **Customer-facing**
 
-- Self-select membership type on their profile
-- View loyalty points balance and progress toward a free ticket
+- Purchase or renew a Friend membership tier, with the discount and priority booking window applying immediately (see [4.18](#architecture))
+- Book a screening during its priority window before general on-sale, if their tier covers it
 - Enter a gift voucher code at checkout
 
 **Staff-facing**
 
-- _(Front of House)_ Mark a member as verified — the in-person "can I see your student card" check
-- _(Manager)_ Manually issue a voucher (e.g. as a goodwill gesture for a complaint) — this reuses the same `Voucher` model and redemption logic as purchased or loyalty-earned vouchers, so no separate mechanism is needed
-- _(Front of House)_ View a member's loyalty transaction history if a query comes up
+- _(Front of House)_ View a member's tier and expiry status if a query comes up
 
 ### 5.5 `venue`
 
@@ -500,20 +513,17 @@ Anything financial or account-affecting (a discount, a refund, a manually issued
 
 - Static pages: About, Accessibility policy, Membership terms
 - Private hire / event enquiry form
-- Subscribe to the newsletter (deals and/or monthly digest, independent opt-ins, no account required); one-click unsubscribe
 
 **Staff-facing**
 
-- _(Front of House)_ View and update the status of enquiries (new / contacted / booked / declined)
-- _(Manager)_ Review and send the auto-drafted monthly digest, or write and send a one-off deal campaign, optionally attached to a promo code — see [4.17](#architecture)
-- _(Manager)_ Create and manage promo codes (discount, validity window, redemption cap)
+- _(Front of House)_ View and update the status of enquiries (new / contacted / booked / declined), and see which `Screening` an enquiry turned into once one exists (see [4.19](#architecture))
 
 ### 5.6 `staff`
 
 **Staff-facing**
 
-- _(Manager)_ Sales/business overview: revenue by day/week/month, revenue and occupancy by screening, top-selling concessions, total discounts and vouchers redeemed
-- _(Manager)_ Audit log: a searchable/filterable list of every discount, refund, manual voucher, and verification action, with who did it and why
+- _(Manager)_ Sales/business overview: revenue by day/week/month, revenue and occupancy by screening, top-selling concessions, total vouchers redeemed
+- _(Manager)_ Audit log: a searchable/filterable list of refund and screening-cancellation actions, with who did it and why
 - _(Front of House and Manager)_ Nothing customer-facing — this app exists purely to support the other apps
 
 ## <p align="right">(<a href="#top">Back to top</a>)</p>
@@ -659,3 +669,47 @@ Cross-origin audio context rendering pipelines were explicitly verified across m
 ### 9. Known Issues
 
 <p align="right">(<a href="#top">Back to top</a>)</p>
+
+## 10. <a name="marketing-development"></a> Marketing Development Thoughts (Future Business Ideas)
+
+**Everything in this section is explicitly out of scope for the initial build.** The project's core is now modelled as closely as possible on the real Regal Cinema, Evesham — ticket classes, paid Friend membership tiers, gift cards, cashless payments — rather than on features invented without a real-world equivalent to check them against. The ideas below were worked out in earlier design sessions and are preserved here in full, not because they're being built now, but because the reasoning behind them took real effort and could become a genuine business development pitch later — extending what the real venue currently offers, once the core platform exists and (potentially) once there's a real conversation with the venue about it.
+
+### 10.1 Loyalty Points Scheme
+
+A free, automatic points scheme, separate from the paid Friend tiers — anyone with an account earns points per booking, redeemable toward a free ticket once a threshold is reached.
+
+- **LoyaltyTransaction** — `user` (FK), `points_change`, `reason`, `related_booking` (nullable FK), `created_at`. A ledger of individual earn/spend events rather than a single mutable counter on the user's profile — this gives an auditable history and avoids two simultaneous transactions corrupting a shared counter. A user's current balance is the sum of their transactions.
+
+**Design logic — reusing the voucher system.** Rather than inventing a second redemption mechanism, when a member's points balance crosses the reward threshold, the system would issue them a `Voucher` (valued at one standard ticket, `source='loyalty_reward'`), which then goes through the exact same checkout logic as a purchased gift card. One mechanism, two ways of earning it — the same principle used elsewhere in this project (e.g. screening-cancellation refunds also reusing `Voucher`).
+
+**Proposed rate (illustrative, not fact-checked against anything real).** Unlike the ticket classes and membership tiers, there's no evidence the real Regal Cinema runs a loyalty scheme at all — this idea has no confirmed real-world counterpart to model against, so any numbers here are a starting proposal rather than a researched fact. A simple, easily-explained rate: **1 point per £1 spent** (tickets and concessions both), with **100 points** earning a free standard ticket — roughly equivalent to a traditional "buy nine, get the tenth free" loyalty card, a pattern most customers already recognise instinctively. Both the rate and the threshold would be stored as single configurable values (the same "keep configuration in one place" principle used elsewhere in this project) rather than hard-coded, so they could be tuned once real spending data existed to judge whether that's actually sustainable for the venue's margins — a genuine business decision that shouldn't be guessed at permanently, only enough to make the idea concrete rather than hand-wavy.
+
+### 10.2 Newsletter & Promotional Emails
+
+- **NewsletterSubscriber** — `email` (unique), `user` (nullable FK — linked automatically if the email matches a registered account), `opt_in_deals`, `opt_in_digest` (both boolean, default `False`), `subscribed_at`, `is_active`. Deliberately not folded into `Profile`: anyone could subscribe from the site footer without an account.
+- **NewsletterCampaign** — `subject`, `body`, `campaign_type` (`one_off_deal` / `monthly_digest`), `status` (`draft` / `sent`), `created_by` (FK staff), `sent_at`.
+- **PromoCode** — `code`, `discount_percent`, `valid_from`, `valid_until`, `max_total_redemptions` (nullable — unlimited if blank), `times_redeemed`, `is_active`. A shared, rule-based marketing code, deliberately modelled separately from `Voucher`: `Voucher` is a personal balance (a gift card), spent down by one holder over time, while a promo code is redeemed by potentially hundreds of subscribers, each once, within a date window — forcing that into `Voucher`'s balance semantics would mean the first handful of customers could drain a "balance" meant to serve everyone.
+
+**Consent, done properly.** Two separate opt-in checkboxes at subscribe time — deals and the monthly digest — both unticked by default. Having an account would never imply consent to marketing email; the two would be deliberately kept apart, in line with UK PECR rules on marketing communications.
+
+**Two campaign types, with "Book Now" CTAs (the ODEON-style prompt that motivated this in the first place):**
+
+- **Monthly digest** — auto-drafted rather than written from scratch: the system would pull newly added films and upcoming screenings since the last digest (reusing data that already exists in `screenings`, not duplicating it) and compose a draft with a "Book Now" button under each item, linking straight to that film or screening's page. As with the TMDb integration (4.15), the principle would be **the system drafts, a human confirms before it sends** — never auto-sent.
+- **One-off deal** — fully staff-authored, since "£5 tickets this weekend" isn't something a system could sensibly invent. Optionally linked to a `PromoCode`, with the code pre-filled at checkout via a URL parameter on the "Book Now" button.
+
+**The membership upsell.** Subscription confirmation and every digest email would include a short block — "Members get priority booking and ticket discounts — create an account" — but only for subscribers without a linked account. An existing member obviously doesn't need selling on joining.
+
+**Unsubscribe** would reuse the same signed-token pattern as email verification and password reset (4.16) — one mechanism, several uses, rather than a separate implementation.
+
+**Beyond even this.** At real scale, bulk marketing email and transactional email (booking confirmations, password resets) are usually best sent through separate infrastructure, since a spam-flagged newsletter can drag down deliverability for the transactional email that actually matters. Worth knowing, not worth solving at this stage.
+
+### 10.3 Staff Discretionary "Goodwill" Discounts
+
+The original motivating scenario: a disgruntled patron, or someone whose membership hasn't quite synced — front-of-house staff having the flexibility to make it right on the spot.
+
+- `Booking.staff_discount_pence` (nullable) — a flat discretionary discount, applied on top of whatever else the booking already qualifies for.
+- A configurable discount cap for the `FrontOfHouse` tier (stored as a single changeable value, not hard-coded), with `Manager` able to exceed it.
+- Every use logged automatically to `AuditLogEntry` (`action_type='manual_discount'`) with a required reason — accountability without adding friction to using the discretion in the first place.
+- The same pattern extended to manually issuing a `Voucher` as a goodwill gesture (`source='manual_goodwill'`) — reusing the existing voucher redemption logic rather than inventing a second one.
+
+**Why this moved out rather than staying core:** there's no evidence the real Regal Cinema actually operates this way — their site shows fixed ticket classes and a structured membership scheme, not visible discretionary pricing. Keeping the initial build close to what's verifiably real took priority over a plausible-sounding feature with no confirmed real-world counterpart. The reasoning is sound and the mechanism (bounded discretion, mandatory logging) would be a legitimate real-world addition if a venue ever wanted it — it just isn't part of what's being built now.
