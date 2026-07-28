@@ -1,80 +1,79 @@
-# The Regal Cinema: Hospitality-First Booking Engine
+# Regal Cinema — Booking Platform
 
-## 🎭 A Full-Stack Django Application & Algorithmic Design System
+## A Full-Stack Django Application
 
-## 🎬 Introduction
+## Introduction
 
-**The Regal Cinema Booking Engine** is a boutique, commercial-grade business-to-business (B2B) showcase web application engineered for independent, high-end picture houses. Inspired by the premium hospitality models of elite cinema groups like Everyman and Tivoli, this application shifts the digital window of independent cinema from a static noticeboard into an immersive, ambient transaction experience.
-The platform is purpose-built to solve a critical commercial bottleneck for boutique venues: standard, off-the-shelf ticketing systems treat cinema seats as uniform inventory, completely decoupling the ticket purchase from premium hospitality workflows. This application introduces an intelligent, full-stack composition that bridges relational database integrity with container-aware user interfaces to maximise bar margins and optimise premium seat configurations.
+Regal Cinema is a fictional boutique cinema, and this project is a full-stack Django booking platform built for it as my Milestone 4 submission. It's inspired by independent, hospitality-led cinemas — venues with table seating, a bar, and a broader events calendar, rather than a standard multiplex.
+
+The project exists to address a real gap: many small independent cinemas run on generic, off-the-shelf ticketing systems that treat every seat as identical inventory and don't reflect what actually makes these venues distinctive — premium seating tiers, food and drink service, membership schemes, and private event hire. This application builds those things in as core features rather than bolting them on afterwards.
 
 ```text
-┌─────────────────────────────────────────────────────────────────┐
-│  THE REGAL CINEMA ENGINE ── Relational continuo architecture    │
-├─────────────────────────────────────────────────────────────────┤
-│  [Django Backend]   ──►  Atomic SQL validation & Inventory      │
-│  [Every Layout]     ──►  Self-governing viewports (No Break)    │
-│  [Design System]    ──►  Obsidian/Ivory Perceptual Tokens       │
-└─────────────────────────────────────────────────────────────────┘
-
+Django (data model, business logic)
+  └─ Server-rendered templates
+       └─ CSS design system + a small amount of hand-written JavaScript
 ```
 
-### The Technical Instrumentation
+### Technical approach
 
-To ensure the codebase remains strictly **DRY (Don't Repeat Yourself)** and highly cohesive, the system architecture treats the backend and frontend as distinct but perfectly harmonised parts of a contrapuntal composition:
-
-- **The Core Database & Ledger:** Built on Python and the Django MVC framework, utilising a relational SQL database layout. The schema is engineered around concrete, real-world constraints, treating showtimes, auditoriums, luxury sofa tiers, and culinary inventories as strict relational nodes to eliminate data anomalies and double-booking race conditions.
-- **The Algorithmic Frontend:** Built with raw, highly semantic HTML and bespoke modern CSS primitives inspired by Heydon Pickering and Andy Bell's Every Layout axioms. Rather than loading heavy framework runtimes to map a responsive interface, the application uses self-governing layout primitives (such as the Switcher, Stack, and Sidebar) that allow the browser's native algorithms to handle viewport transitions seamlessly.
-- **The Perceptual Design Language:** Guided by Alla Kholmatova's **Design Systems** philosophy, the visual skin uses an integrated set of design patterns and shared vocabulary. The user interface utilises a deep, cinematic dark-mode palette tokenised via global CSS custom properties to replicate the visual gravity and premium weight of a luxury theatre lounge.
+- **Backend:** Django with a relational (PostgreSQL) database. The schema is built directly around the venue's real domain — screenings, seat tiers, bookings, concessions, membership — with relationships and constraints designed to prevent issues like double-booking.
+- **Frontend:** Server-rendered Django templates, plain CSS, and a small amount of purpose-written JavaScript, rather than a frontend framework. This was a deliberate choice given the project's assessment criteria — see the [UX Design Strategy](#ux-strategy) section for the reasoning.
+- **Design system:** A dark, cinema-inspired visual style built from a small set of reusable layout and colour patterns, rather than one-off page styles — based on the _Every Layout_ approach (Heydon Pickering and Andy Bell) and Alla Kholmatova's _Design Systems_.
 
 ---
 
-## <a name="top"></a>📋 Table of Contents
+## <a name="top"></a>Table of Contents
 
-1. [📖 Project Purpose & User Stories](#purpose)
-2. [🔬 Strategic Research](#research)
-3. [🖼️ UX Design Strategy (The 5 Planes)](#ux-strategy)
-4. [🗺️ System Architecture & Logic Maps](#architecture)
-5. [✨ Core Features & UI Overhauls](#features)
-6. [🌐 Deployment Guide](#deployment)
-7. [🤝 Credits & Acknowledgements](#credits)
-8. [🏗️ Development Log & Engineering Phases](#dev-log)
-9. [🧪 Testing & Quality Assurance Portfolio](#testing)
+1. [Project Purpose & User Stories](#purpose)
+2. [Strategic Research](#research)
+3. [UX Design Strategy (The 5 Planes)](#ux-strategy)
+4. [System Architecture & Logic Maps](#architecture)
+5. [Core Features & UI Overhauls](#features)
+6. [Deployment Guide](#deployment)
+7. [Credits & Acknowledgements](#credits)
+8. [Development Log & Engineering Phases](#dev-log)
+9. [Testing & Quality Assurance Portfolio](#testing)
 
 ---
 
-## 1. <a name="purpose"></a> 📖 Project Purpose & User Stories
+## 1. <a name="purpose"></a>Project Purpose & User Stories
 
-The overarching purpose of The Regal Cinematic Platform is to modernise the last mile of local independent theater commerce. By replacing a rigid, uninspired layout with an algorithmic, immersive interface, the application bridges the gap between premium physical hospitality and modern digital booking systems.
+Regal Cinema exists to give a boutique independent cinema a booking experience that actually matches its offering — premium seating, food and drink service, and a membership scheme — rather than a generic multiplex ticketing template.
 
-### 1. The Luxury Patron
+### The Cinema-Goer
 
-_Focus: Frictionless Seat Booking & Table Service Upgrades_
+_Focus: booking seats, adding food/drink, and being recognised as a returning customer_
 
-- **User Story:** As a cinema-goer looking for a date night, I want to seamlessly browse showtimes on my smartphone and select specific luxury sofas on an interactive seating chart so that I can secure the best view without rendering glitches.
-  - _Acceptance Criterion:_ The seating matrix component must use fluid wrapping mechanics to fit standard phone viewports cleanly, ensuring selectable touch target regions never drop below 44px by 44px.
-- **User Story:** As a premium ticket holder, I want to pre-order a bottle of wine and snacks during the checkout flow to be delivered directly to my seat number so that I can skip the bar queue upon arrival.
-  - _Acceptance Criterion (BDD):_ **Given** the user has selected a 'Balcony Sofa' ticket, **When** they advance to the optional upgrades phase, **Then** the interface must dynamically render an inventory grid of approved bar items linked explicitly to their session ticket ID.
+- **User story:** As a customer, I want to see what's on and browse showtimes clearly, so I can decide what to watch and when.
+- **User story:** As a customer, I want to choose specific seats on a seating plan, so I can pick my preferred view and seat type (standard, sofa, or box).
+  - _Acceptance criteria:_ seat availability reflects the current state accurately; the same seat can never be booked twice for the same screening; the seating plan is usable on a phone-sized screen.
+- **User story:** As a customer needing a captioned or audio-described screening, I want that information shown clearly on the listing, so I can choose an appropriate showing without having to ask.
+- **User story:** As a customer, I want to add drinks or snacks to my order at checkout, so they're ready for me on arrival instead of queuing at the bar.
+- **User story:** As a returning customer, I want my membership discount applied automatically and my loyalty points tracked toward a free ticket, so repeat visits feel rewarded.
 
-### 2. The Theater Front-of-House Manager
+### The Venue Manager
 
-_Focus: Automated Schedule Orchestration & Inventory Control_
+_Focus: managing schedules and enquiries without needing developer help_
 
-- **User Story:** As the theater manager, I want an administrative dashboard where I can assign a film to a specific screen, set showtimes, and automatically push updates live to the customer-facing front-end.
-  - _Acceptance Criterion:_ Creating a new screening entry must trigger automatic validation rules to prevent scheduling overlaps or double-booking conflicts in the database.
-
-## <p align="right">(<a href="#top">Back to top</a>)</p>
-
-## 2. <a name="research"></a>🔬 Strategic Research
-
-### 1. Everyman & Tivoli Cinema Group (The Luxury Hospitality Benchmark)
-
-- **The High Note (What works):** Masterful use of Perceptual Patterns to establish brand identity. The interface utilises full-bleed dark themes, cinematic typography scales, and high-contrast gold accents that make the digital window feel precisely like entering a physical, premium theater lounge. Their checkout flow prioritises food-and-drink "seat service" upsells as a native, elegant feature module rather than a clumsy afterthought.
-- **The Flat Note (What fails):** Because they operate as massive corporate chains, their systems are heavily integrated with enterprise ticketing software (like Vista). This creates a highly rigid scheduling layout that cannot easily adapt to hyper-local community events, single-screen live theater rentals, or bespoke artisan screenings.
-- **Innovation:** The Regal Cinematic Engine will borrow the dark, immersive aesthetic qualities and table-service transaction logic of the Everyman group but pair it with a lightweight, flexible Django-backed administration model. This empowers local managers to dynamically reconfigure seat matrices, handle local membership clubs, and adjust screen schedules instantly without enterprise corporate bloat.
+- **User story:** As a manager, I want to add and edit screenings (film, screen, time, price) through an admin interface, so I can update what's showing myself.
+  - _Acceptance criteria:_ the system prevents two screenings being scheduled on the same screen at overlapping times.
+- **User story:** As a manager, I want to see private hire and event enquiries in one place, so I can follow them up.
 
 ## <p align="right">(<a href="#top">Back to top</a>)</p>
 
-## 3. <a name="ux-strategy"></a> 🖼️ UX Design Strategy (The 5 Planes)
+## 2. <a name="research"></a>Research
+
+### Everyman & Tivoli Cinema Group
+
+- **What works well:** A dark, premium visual style that makes the site feel consistent with the in-person venue experience. Food and drink pre-ordering is built into the booking flow as a core step, not added on as an afterthought.
+- **What doesn't translate to this project:** As large chains, they run on enterprise ticketing platforms (e.g. Vista) built to serve many venues at once. That's more infrastructure than a single independent site needs, and makes it harder to support small-venue specifics — a local membership scheme, or one-off private hire.
+- **What this project takes from them:** the dark, premium visual language, and the idea of treating food/drink pre-ordering as a first-class part of checkout — built on a much simpler, single-venue Django backend rather than enterprise ticketing software.
+
+## <p align="right">(<a href="#top">Back to top</a>)</p>
+
+## 3. <a name="ux-strategy"></a>UX Design Strategy (The Five Planes)
+
+This section follows Jesse James Garrett's "five planes" model — Strategy, Scope, Structure, Skeleton, Surface — moving from the most abstract design decisions to the most concrete.
 
 ### Wireframes
 
@@ -82,176 +81,192 @@ _Focus: Automated Schedule Orchestration & Inventory Control_
 
 ### I. Strategy
 
-The Strategy Plane establishes the overarching why of the platform, aligning the commercial objectives of a luxury boutique cinema with the lifestyle expectations of its user base.
-
-- **User Goals:**
-  - **The Experience Seekers:** Patrons want to transition seamlessly from checking film availability on a mobile phone to configuring a premium night out (selecting luxury sofas, pre-ordering bar refreshments) without experiencing cognitive friction or layout regressions.
-  - **The Theatre Administrators:** Managers require an absolute, single source of truth database system to coordinate showtimes, prevent seat inventory overlapping, and track catering fulfillment without technical complexity.
-- **Target Audience:** Discerning film enthusiasts, local theatre club members, families looking for premium comfort, and private event hirers in the Evesham and wider Worcestershire area who appreciate the historical Art Deco hospitality of The Regal but expect modern, digital transaction speed.
-- **The Future Runway:** The underlying system is engineered to scale from a single-site ticket booker into a regional, multi-tenant boutique theatre SaaS. The architecture leaves a clean, non-breaking runway open to implement localised loyalty schemes, automatic membership subscription recurring billings, and live in-seat table service tracking utilising persistent WebSocket connections.
+- **User goals:** customers want an easy way to check what's on, book the seats they want, and optionally add food and drink to their order. Staff want a simple way to manage screenings and see bookings without needing developer help.
+- **Site goals:** encourage premium seat bookings and food/drink add-ons, and build repeat custom through the membership and loyalty scheme.
+- **Target audience:** local film-goers looking for a more comfortable, hospitality-led experience than a standard multiplex — including families, older customers (who get a daytime discount), students, and people booking the venue privately for events.
 
 ### II. Scope
 
-#### 1. Core Feature Matrix
+#### Feature summary
 
-To deliver a platform that rivals the premium experience of groups like Everyman or Tivoli, the application's scope must bridge relational database integrity with intuitive, content-driven presentation.
+| Area         | In scope                                                                                                  | Out of scope (for now)                                |
+| :----------- | :-------------------------------------------------------------------------------------------------------- | :---------------------------------------------------- |
+| Booking      | Seat selection on an interactive seating plan, by tier (standard / sofa / box)                            | Split payments between multiple people on one booking |
+| Food & drink | Pre-ordering linked to a booking                                                                          | Live in-seat ordering during a screening              |
+| Membership   | Self-selected membership type with automatic discount; loyalty points toward a free ticket; gift vouchers | Automated ID/eligibility verification online          |
+| Admin        | CRUD for films, screens, and screenings; visibility of bookings and enquiries                             | Automated pricing based on historical sales data      |
 
-| Feature Area            | In-Scope (MVP Release)                                                                                                            | Out-of-Scope (Future Iterations)                                                                          |
-| :---------------------- | :-------------------------------------------------------------------------------------------------------------------------------- | :-------------------------------------------------------------------------------------------------------- |
-| **Patron Booking**      | Dynamic selection of specific auditorium seats or premium seating via an interactive, wrapped matrix layout.                      | Real-time split-payment processing between multiple patron wallets.                                       |
-| **Hospitality Upgrade** | Contextual food-and-drink pre-ordering mapped to ticket tiers, triggering downstream production tickets for staff.                | Live in-theatre table summoning or post-purchase order amendments via native SMS.                         |
-| **Staff Dashboard**     | Relational CRUD interface to map films to screens, establish single-session timelines, and automatically track seat availability. | Predictive algorithmic modelling for ticket price optimisation based on historical local box-office data. |
+#### Design principles
 
-#### 2. Interface & Presentation Scope (System Axioms)
+- **No frontend framework.** The interface is built with plain, semantic HTML and CSS, using layout patterns from Andy Bell and Heydon Pickering's _Every Layout_ — for example, a "stack" pattern for consistent vertical spacing, and a "switcher" pattern for elements that sit side-by-side on desktop and stack on mobile without manual breakpoints. This keeps the build simple (no bundler/build step) and keeps JavaScript limited to the places it's actually needed, such as the seat-selection flow.
+- **Dark, cinema-inspired palette:** dark background, light text, a warm accent colour for interactive states — meant to evoke a cinema auditorium rather than a typical light-mode web app.
+- **Consistent media framing:** posters and trailers are shown at fixed aspect ratios so the page layout doesn't jump as images load.
 
-We reject the convention of writing arbitrary, localised layout hacks or heavy framework wrappers. Instead, the layout generation relies on fundamental rendering logic and native browser algorithms.
+#### Data & security principles
 
-- **Dark-Mode Tokens:** The system implements a deeply ambient palette tokenised via global CSS custom properties. The backdrop utilises an obsidian colorway (#0b0b0d) to mimic a cinematic blackout environment, offset by premium ivory text typography (#f5f5f7) and warm gold active states.
-- **The Switcher Component:** The checkout interface utilises the native Switcher structural primitive. When rendering the ticket breakdown alongside the interactive seating matrix on a desktop browser, they sit in a horizontal counterpoint. On mobile viewports, the layout self-governs and fluidly shifts into a vertical single-column layout without manual, fragile media query breakpoints.
-- **The Frame Primitive:** All film trailers, promotional billing banners, and movie posters are bound tightly within a Frame primitive. This dictates explicit cinematic aspect ratios (such as 16:9 and 2:3) through native properties, ensuring that media scales smoothly without layout shifting or asset skewing.
+- Seat double-booking is prevented at the database level (a unique constraint), not just in the interface, so it holds even if two requests arrive at almost the same time.
+- No card details or passwords are stored directly. Payments go through Stripe, and only a payment reference is kept in the local database.
 
-#### III. Data Security & Integrity
+### III. Structure
 
-As Marijn Haverbeke notes in Eloquent JavaScript, computers are completely pedantic beasts that require absolute logical clarity. Our system scope enforces strict data boundaries:
+#### Interaction model
 
-- **Concurrency Resolution:** The booking backend handles double-booking conflicts as a strict, atomic database validation layer rather than relying on client-side state.
-- **Sensitive Data Constraints:** The backend intentionally restricts the storage of sensitive diagnostic data, customer credentials, or raw payment details. Financial transactions are offloaded entirely to encrypted third-party webhooks, passing only reference receipts back to our local SQL ledger.
-
-### III. Structure (Interaction Design & Information Architecture)
-
-The Structure Plane maps out how the system behaves in response to user intent and details how information flows logically through the application using the Model-View-Controller (MVC) framework.
-
-#### 1. The Interaction Model (The Event Loop)
-
-Following the structural discipline of Eloquent JavaScript, user interactions are managed via asynchronous event orchestration rather than synchronous page refreshes.
+Actions that need a live check against the database — most importantly, reserving a seat — are handled with a JavaScript fetch request to the server rather than a full page reload. This means the page can show an inline error (e.g. "that seat was just taken") without losing the user's other selections, rather than reloading the whole page.
 
 ```text
-
-[User Clicks "Reserve Sofa"]
-          │
-          ▼
-[View Layer triggers Event Listener]
-          │
-          ▼
-[Controller initiates Asynchronous Fetch API Request]
-          │
-          ▼
-[Model runs Validation Check against PostgreSQL State]
-    ├── SUCCESS ──► [Database commits Atomic Transaction] ──► [View Updates DOM State]
-    └── CONFLICT ─► [Database rolls back Transaction]    ──► [View renders Error Primitive]
-
+User selects seats, clicks "Continue"
+        │
+        ▼
+JS sends a fetch request with the chosen seat IDs
+        │
+        ▼
+Server checks seat availability
+    ├── available → holds are created, checkout proceeds
+    └── conflict  → affected seats are returned and marked unavailable in the UI
 ```
 
-#### 2. Information Architecture (Node Mapping)
-
-The site’s data nodes are hierarchically nested to keep user traversal routes as short and clear as possible:
+#### Site map
 
 ```text
-
-Home View (Current Screenings & Promotional Billing)
-  ├── Film Detail View (Trailers, Synopsis, Metadata Tokens)
-  │     └── Screening Selection (Date / Time Relational Matrix)
-  │           └── Checkout Flow (The Secure Transaction Pipeline)
-  │                 ├── Step 1: Seat Allocation Grid (Standalone Primitive)
-  │                 ├── Step 2: Hospitality Inventory Menu (Contextual Upgrades)
-  │                 └── Step 3: Payment Gate & Ledger Confirmation
-  ├── Membership Portal (User Profiles, Passports, Loyalty Ledger)
-  └── About / Venue Hire (Static Content, Contact Vectors)
-
+Home (what's on)
+  └─ Film detail (synopsis, trailer, showtimes)
+        └─ Screening (seat selection)
+              └─ Checkout (add food/drink → pay)
+  Membership / account (profile, loyalty points, vouchers)
+  About / private hire (static content, enquiry form)
 ```
 
-### IV. Skeleton (Interface, Navigation, & Information Design)
+### IV. Skeleton
 
-The Skeleton Plane translates our abstract structures into tangible, wireframe-ready structural layouts. Following Heydon Pickering and Andy Bell's Every Layout axioms, the visual blueprint relies completely on self-governing primitives that treat content as a flexible hypothesis.
-
-- **Interface Layout Design:** The ticket dashboard utilises a dual-axis presentation managed via The Sidebar and The Switcher primitives.
-  - On wide media (desktops), the heavy interactive element (the Auditorium Seating Matrix) fills the dominant horizontal space, while the billing breakdown and ticket configuration parameters remain docked to the side.
-
-  - If space is constrained below a strict operational threshold, the layout engine drops the elements into a single-column, linearly stacked vertical layout, preventing clipping or overflow scrolling.
-
-- **Navigation Architecture:** The top navigation bar is orchestrated using The Cluster primitive. Link items, branding marks, and login triggers are distributed evenly. If a patron opens the platform on a narrow viewport, the items automatically wrap or condense into an accessible, touch-friendly tray without breaking the document's header box margins.
-
-- **Information Density & Rhythm:** Vertical relationships throughout long text layouts (such as film synopses, terms of service, or event schedules) are governed entirely by The Stack primitive. Spacing is governed via standard CSS custom properties (var(--space-m)), eliminating the presence of unpredictable margin-collusion errors and maintaining an unbroken reading cadence based on a rigid Modular Scale.
+- **Booking page layout:** the seating plan and the order summary sit side by side on wide screens, and stack vertically on narrow ones, using the "switcher" layout pattern rather than a manual breakpoint for each screen size.
+- **Navigation:** a simple top nav bar (the "cluster" pattern), which wraps naturally onto a second line on small screens rather than switching to a separate mobile menu component.
+- **Content spacing:** long text sections (film synopses, policies) use consistent vertical spacing via CSS custom properties, so spacing stays uniform without repeated one-off margin values.
 
 ### V. Surface
 
-- **The Cinematic Palette:** The root theme employs dark, rich obsidian backdrops (`#0b0b0d`) to mimic a blacked-out cinema hall, contrasting against sharp ivory text typography (`#f5f5f7`) and striking "Popcorn Gold" or "Velvet Crimson" accent boundaries for active focus states.
-- **The Box Primitive:** Applied to film billing cards. Captures padding rhythm entirely through system token variables (`var(--space-m)`), establishing crisp borders (`1px solid var(--border-subtle)`) that cleanly frame the cinematic posters.
-- **The Switcher Primitive:** Orchestrates the ticket checkout flow. When space is plentiful on an office screen, the interactive seating chart and the billing sidebar sit elegantly side-by-side. On narrow mobile viewports, the layout algorithmically stacks them into a singular vertical timeline layer—preventing catastrophic horizontal page blowouts.
-- **The Frame Primitive:** Applied universally to film trailer video embeddings and poster images. Enforces a strict cinematic aspect ratio (e.g., `16:9` or `2:3`) via raw CSS layout algorithms, guaranteeing content scales smoothly without skewing the dimensions or forcing unexpected runtime component jumps.
+- **Palette:** dark background (`#0b0b0d`), light text (`#f5f5f7`), and a warm gold accent colour for active/selected states.
+- **Cards:** film posters and information sit in a simple bordered card with consistent internal padding.
+- **Media:** trailers and posters are constrained to fixed aspect ratios (16:9 for video, 2:3 for posters) so they scale without distortion or causing the layout to shift as they load.
 
 ## <p align="right">(<a href="#top">Back to top</a>)</p>
 
-## 4. <a name="architecture"></a> 🗺️ System Architecture & Logic Maps
+## 4. <a name="architecture"></a>System Architecture & Data Model
+
+The project is split into six Django apps, each covering one distinct area of the domain. Splitting it this way keeps each app's models and logic focused on a single responsibility, and means several of the apps (`concessions`, `membership`) could realistically be reused on a different project with minimal change.
+
+| App           | Responsibility                                                               |
+| :------------ | :--------------------------------------------------------------------------- |
+| `accounts`    | User profile data: date of birth, membership type, verification status       |
+| `screenings`  | The venue's fixed catalogue: films, screens, seats, and scheduled screenings |
+| `bookings`    | The transactional core: bookings and the seats attached to them              |
+| `concessions` | Bar/snack products and the items attached to a booking                       |
+| `membership`  | Membership types, gift/loyalty vouchers, and the loyalty points ledger       |
+| `venue`       | Static site content and private hire / event enquiries                       |
+
+### 4.1 `screenings`
+
+- **Film** — `tmdb_id`, `title`, `synopsis`, `poster_url`, `trailer_key`, `age_rating`, `duration_minutes`. Populated from the TMDb API and cached locally rather than queried live on every page load.
+- **Screen** — `name`, `total_capacity`.
+- **Seat** — `screen` (FK), `row_label`, `seat_number`, `tier` (standard / sofa / box). The fixed physical seating plan for a screen; does not change per booking.
+- **Screening** — `film` (FK), `screen` (FK), `date_time`, `base_price`, `has_captions`, `has_audio_description`.
+
+### 4.2 `bookings`
+
+- **Booking** — `user` (FK), `screening` (FK), `status` (pending / paid / cancelled / refunded), `stripe_payment_intent_id`, `voucher_used` (nullable FK to `Voucher`), `discount_applied_percent` (snapshot, see note below), `created_at`.
+- **SeatBooking** — `booking` (FK), `seat` (FK), `screening` (FK, duplicated from `booking.screening` specifically so the database can enforce a `unique_together` constraint on `(screening, seat)`). This is what stops two people booking the same seat for the same screening.
+
+A booking can have several `SeatBooking` rows (a party booking four seats together is four rows against one `Booking`), which is why seats live on their own linking table rather than as a single field on `Booking`.
+
+**Design note — snapshotting the discount:** `Booking.discount_applied_percent` stores the discount rate that actually applied at the moment of purchase, rather than the app always looking up the user's _current_ membership type. This means if someone's membership type changes later, their historical bookings and receipts don't silently change with it — a small but realistic data-integrity decision worth explaining in this README rather than leaving implicit.
+
+### 4.3 `concessions`
+
+- **Product** — `name`, `price`, `category` (drink / snack).
+- **OrderItem** — `booking` (FK), `product` (FK), `quantity`. Food and drink pre-orders ride along with the ticket purchase through the same checkout and the same `Booking` record, rather than being a separate transaction.
+
+### 4.4 `membership`
+
+- **MembershipType** — `name` (e.g. Standard, OAP, Family, Student), `discount_percent`, `description`. Selected by the user on their profile (self-declared, per the venue's real-world policy of checking eligibility in person rather than online — see below).
+- **Voucher** — `code`, `initial_value_pence`, `remaining_value_pence`, `expires_at`, `source` (purchased / loyalty_reward), `is_active`. Not tied to a specific user, in the same way a physical gift card isn't — whoever has the code can redeem it. A voucher's balance is drawn down at checkout and can be spread across more than one booking until it reaches zero.
+- **LoyaltyTransaction** — `user` (FK), `points_change`, `reason`, `related_booking` (nullable FK), `created_at`. Points are recorded as a ledger of individual earn/spend events rather than a single mutable counter on the user's profile — this gives an auditable history and avoids two simultaneous transactions corrupting a shared counter. A user's current balance is the sum of their transactions.
+
+**Design note — loyalty rewards reuse the voucher system.** When a member's points balance crosses the reward threshold, the system issues them a `Voucher` (valued at one standard ticket, `source='loyalty_reward'`) rather than implementing a second, separate redemption mechanism. It then goes through the same checkout logic as a purchased gift voucher. One mechanism, two ways of earning it.
+
+**Design note — membership verification.** `Profile.membership_verified` (see 4.5) records whether staff have physically checked a discount card (e.g. a student ID) at the venue. The discount itself applies as soon as a user self-selects their membership type online — verification is a record-keeping and spot-check field, not a gate on the discount — which mirrors how most real cinemas actually enforce concessionary pricing in person rather than online.
+
+### 4.5 `accounts`
+
+- **Profile** — `user` (1:1 with Django's built-in `User`), `date_of_birth` (nullable), `membership_type` (nullable FK to `MembershipType`), `membership_verified` (boolean, default `False`, staff-editable only).
+
+### 4.6 `venue`
+
+- **EnquiryRequest** — `name`, `email`, `event_type`, `preferred_date`, `party_size`, `message`, `status`. Handles private hire and event enquiries without needing a full booking/payment flow.
+- Static content (About, Accessibility policy, Membership terms) — plain templates rather than models, unless there's a reason later to make them admin-editable.
+
+### 4.7 Relationship overview
 
 ```text
+User ──1:1── Profile ──FK── MembershipType
+  │
+  └──FK── Booking ──FK── Screening ──FK── Film
+              │              └──FK── Screen ──1:N── Seat
+              ├──1:N── SeatBooking ──FK── Seat
+              ├──1:N── OrderItem ──FK── Product
+              └──FK (nullable)── Voucher
 
-1. Film Model (The Source of Truth)
-   ├── id (PK)
-   ├── title (CharField)
-   ├── duration_minutes (IntegerField)
-   ├── age_rating (CharField: 'PG', '12A', '15', etc.)
-   └── poster_image (ImageField)
-
-2. Screen Model (The Venue Layout)
-   ├── id (PK)
-   ├── name (CharField: 'Main Auditorium', 'Studio Screen')
-   └── total_capacity (IntegerField)
-
-3. Screening Model (The Relational Bridge)
-   ├── id (PK)
-   ├── film_id (FK -> Film)
-   ├── screen_id (FK -> Screen)
-   ├── date_time (DateTimeField)
-   └── base_ticket_price (DecimalField)
-
-4. Seat Model (The Grid Array)
-   ├── id (PK)
-   ├── screen_id (FK -> Screen)
-   ├── row_label (CharField: 'A', 'B', 'C')
-   ├── seat_number (IntegerField)
-   └── tier (CharField: 'Standard Seat', 'Luxury Sofa')
-
-5. Booking Model (The Transaction Ledger)
-   ├── id (PK)
-   ├── screening_id (FK -> Screening)
-   ├── user_id (FK -> User)
-   ├── seat_id (FK -> Seat)
-   ├── pre_ordered_bar_items (JSONField / Relational Model)
-   └── is_paid (BooleanField)
-
+User ──1:N── LoyaltyTransaction ──FK (nullable)── Booking
 ```
 
+### 4.8 Core Flow: Seat Selection & Holds
+
+A gap exists between a user selecting seats and completing payment — without handling this deliberately, a user could pick seats, spend time in checkout, and then be told at the payment step that someone else got there first. To avoid that, seat selection uses a short-lived **hold**, separate from a confirmed booking.
+
+- **SeatHold** — `screening` (FK), `seat` (FK), `session_key`, `expires_at`. `unique_together = ('screening', 'seat')`.
+
+`SeatHold` is deliberately a separate model from `SeatBooking` (4.2): a hold is provisional and expires if unused, whereas a `SeatBooking` means the seat has actually been paid for. Keeping them apart means an abandoned checkout can never permanently block a seat.
+
+**Sequence:**
+
+1. **Page load** — the seat grid is rendered server-side with each seat's live status (available / held / booked), so the user is never looking at stale information.
+2. **Selecting seats** — pure client-side toggling while browsing the grid; no server call yet.
+3. **Proceeding to checkout** — a single request sends the chosen seat IDs. The server, in one transaction, clears any expired holds for that screening, checks the requested seats are still free against both live holds and confirmed bookings, and if clear, creates fresh `SeatHold` rows with a short TTL (e.g. 10 minutes).
+4. **Conflict** — if a seat was taken in the gap between page load and this request, the server returns exactly which seat(s) failed. The page updates only those seats to "taken," deselects them, and shows an inline message — the user's other selections are preserved rather than the whole flow restarting.
+5. **Successful payment** — the hold converts into a permanent `Booking` and its `SeatBooking` rows.
+6. **Failed or abandoned payment** — nothing needs to actively release the seat; the hold simply expires and is swept up by the next hold-attempt's cleanup step (step 3).
+7. **Hold expires mid-checkout** — payment confirmation re-validates the hold still exists before accepting the charge. If it's expired, the user is sent back to the seat map with a plain explanation rather than a confusing card decline for seats they no longer hold.
+8. **Back/forward navigation** — the seat grid re-fetches live state on page show rather than trusting a cached view, so the browser's back button can never display an out-of-date "your seats" state.
+
 ## <p align="right">(<a href="#top">Back to top</a>)</p>
 
-## 5. <a name="features"></a> ✨ Core Features & UI Overhauls
+## 5. <a name="features"></a>Core Features & UI Overhauls
 
 ## <p align="right">(<a href="#top">Back to top</a>)</p>
 
-## 6. <a name="deployment"></a> 🌐 Deployment Guide
+## 6. <a name="deployment"></a>Deployment Guide
 
-This project was developed using Git version control and is hosted on GitHub. It has been deployed as a live web application using **GitHub Pages**.
+This project needs a hosting platform that can run a Python/Django application with a PostgreSQL database — a static host such as GitHub Pages isn't sufficient, since the app relies on server-side logic, a live database, and Stripe integration. Suitable platforms include **Render**, **Railway**, or **Heroku**.
 
-### Deployment Steps
+_(This section will be filled in with the exact steps once the project is actually deployed. Planned approach below.)_
 
-To deploy the site to GitHub Pages, the following steps were executed:
+### Planned Deployment Steps
 
-1. **Repository Access:** Click on the **Settings** tab located in the repository's main navigation bar.
-2. **Pages Configuration:** In the left-hand sidebar, click on **Pages**.
-3. **Source Selection:** Ensure the "Source" dropdown is set to **Deploy from a branch**.
-4. **Branch Targeting:** Select the **`main`** branch, and ensure the folder dropdown is set to **`/ (root)`**.
-5. **Save & Build:** Click the **Save** button to trigger the automated GitHub Actions build workflow.
-6. **Live Link:** After a few minutes, the link appears at the top of the settings page: _"Your site is live at [[URL](https://)]"_.
+1. Push the project to GitHub, including a `requirements.txt` and a `Procfile`.
+2. Create a new web service on the chosen platform, connected to the GitHub repository.
+3. Add a managed PostgreSQL database and connect it via an environment variable (e.g. `DATABASE_URL`).
+4. Set environment variables for `SECRET_KEY`, the Stripe API keys, and the TMDb API key — none of these are committed to the repository.
+5. Set `DEBUG = False` for the production environment.
+6. Deploy, then run database migrations against the production database.
+7. Verify the live site matches the development version, and that static files (CSS, images) are served correctly.
 
 ### Local Deployment (Cloning)
 
-To run this project locally on your own machine:
+_(To be completed with the actual local setup steps once the project is underway.)_
 
-### ⚡ Quick Local Spin-Up Alternatives
+### Quick Local Spin-Up Alternatives
 
 ## <p align="right">(<a href="#top">Back to top</a>)</p>
 
-## 7. <a name="credits"></a> 🤝 Credits & Acknowledgements
+## 7. <a name="credits"></a>Credits & Acknowledgements
 
 ### AI Pair Programming & Academic Integrity
 
@@ -259,16 +274,16 @@ Artificial Intelligence (LLMs) was utilised strictly as a "Pair Programmer" and 
 
 ### Technologies Used
 
-### 📂 Repository Structural Layout
+### Repository Structural Layout
 
 ## <p align="right">(<a href="#top">Back to top</a>)</p>
 
-## 8. <a name="dev-log"></a>🏗️ Development Log & Engineering Phases
+## 8. <a name="dev-log"></a>Development Log & Engineering Phases
 
 ### Phase 1:
 
 <details>
-<summary><b>🔍 Expand Engineering Case Study: Phase 1</b></summary>
+<summary><b>Expand Engineering Case Study: Phase 1</b></summary>
 
 ####
 
@@ -277,7 +292,7 @@ Artificial Intelligence (LLMs) was utilised strictly as a "Pair Programmer" and 
 ### Phase 2:
 
 <details>
-<summary><b>🔍 Expand Engineering Case Study: Phase 2</b></summary>
+<summary><b>Expand Engineering Case Study: Phase 2</b></summary>
 
 ####
 
@@ -288,7 +303,7 @@ Artificial Intelligence (LLMs) was utilised strictly as a "Pair Programmer" and 
 ### Phase 3:
 
 <details>
-<summary><b>🔍 Expand Engineering Case Study: Phase 3</b></summary>
+<summary><b>Expand Engineering Case Study: Phase 3</b></summary>
 
 ####
 
@@ -299,7 +314,7 @@ Artificial Intelligence (LLMs) was utilised strictly as a "Pair Programmer" and 
 ###
 
 <details>
-<summary><b>🔍 Expand Engineering Case Study: Phase 4</b></summary>
+<summary><b>Expand Engineering Case Study: Phase 4</b></summary>
 
 ####
 
@@ -310,7 +325,7 @@ Artificial Intelligence (LLMs) was utilised strictly as a "Pair Programmer" and 
 ###
 
 <details>
-<summary><b>🔍 Expand Engineering Case Study: Phase 5</b></summary>
+<summary><b>Expand Engineering Case Study: Phase 5</b></summary>
 
 ####
 
@@ -325,7 +340,7 @@ Artificial Intelligence (LLMs) was utilised strictly as a "Pair Programmer" and 
 ###
 
 <details>
-<summary><b>🔍 Expand Engineering Case Study: Phase 7</b></summary>
+<summary><b>Expand Engineering Case Study: Phase 7</b></summary>
 
 ####
 
@@ -341,7 +356,7 @@ Artificial Intelligence (LLMs) was utilised strictly as a "Pair Programmer" and 
 
 ## <p align="right">(<a href="#top">Back to top</a>)</p>
 
-## 9. <a name="testing"></a> 🧪 Testing & Quality Assurance Portfolio
+## 9. <a name="testing"></a>Testing & Quality Assurance Portfolio
 
 This section outlines the holistic verification suite executed to guarantee the engineering integrity, mathematical precision, and cross-platform accessibility of…
 
