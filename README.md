@@ -28,7 +28,7 @@ Django (data model, business logic)
 2. [Strategic Research](#research)
 3. [UX Design Strategy (The 5 Planes)](#ux-strategy)
 4. [System Architecture & Logic Maps](#architecture)
-5. [Core Features & UI Overhauls](#features)
+5. [Core Features](#features)
 6. [Deployment Guide](#deployment)
 7. [Credits & Acknowledgements](#credits)
 8. [Development Log & Engineering Phases](#dev-log)
@@ -36,7 +36,7 @@ Django (data model, business logic)
 
 ---
 
-## 1. <a name="purpose"></a>Project Purpose & User Stories
+## 1. <a name="purpose"></a> Project Purpose & User Stories
 
 Regal Cinema exists to give a boutique independent cinema a booking experience that actually matches its offering — premium seating, food and drink service, and a membership scheme — rather than a generic multiplex ticketing template.
 
@@ -61,7 +61,7 @@ _Focus: managing schedules and enquiries without needing developer help_
 
 ## <p align="right">(<a href="#top">Back to top</a>)</p>
 
-## 2. <a name="research"></a>Research
+## 2. <a name="research"></a> Research
 
 ### Everyman & Tivoli Cinema Group
 
@@ -71,7 +71,7 @@ _Focus: managing schedules and enquiries without needing developer help_
 
 ## <p align="right">(<a href="#top">Back to top</a>)</p>
 
-## 3. <a name="ux-strategy"></a>UX Design Strategy (The Five Planes)
+## 3. <a name="ux-strategy"></a> UX Design Strategy (The Five Planes)
 
 This section follows Jesse James Garrett's "five planes" model — Strategy, Scope, Structure, Skeleton, Surface — moving from the most abstract design decisions to the most concrete.
 
@@ -115,14 +115,14 @@ Actions that need a live check against the database — most importantly, reserv
 
 ```text
 User selects seats, clicks "Continue"
-        │
-        ▼
+   │
+   ▼
 JS sends a fetch request with the chosen seat IDs
-        │
-        ▼
+   │
+   ▼
 Server checks seat availability
-    ├── available → holds are created, checkout proceeds
-    └── conflict  → affected seats are returned and marked unavailable in the UI
+   ├── available → holds are created, checkout proceeds
+   └── conflict  → affected seats are returned and marked unavailable in the UI
 ```
 
 #### Site map
@@ -150,18 +150,19 @@ Home (what's on)
 
 ## <p align="right">(<a href="#top">Back to top</a>)</p>
 
-## 4. <a name="architecture"></a>System Architecture & Data Model
+## 4. <a name="architecture"></a> System Architecture & Data Model
 
-The project is split into six Django apps, each covering one distinct area of the domain. Splitting it this way keeps each app's models and logic focused on a single responsibility, and means several of the apps (`concessions`, `membership`) could realistically be reused on a different project with minimal change.
+The project is split into seven Django apps, each covering one distinct area of the domain. Splitting it this way keeps each app's models and logic focused on a single responsibility, and means several of the apps (`concessions`, `membership`) could realistically be reused on a different project with minimal change.
 
-| App           | Responsibility                                                               |
-| :------------ | :--------------------------------------------------------------------------- |
-| `accounts`    | User profile data: date of birth, membership type, verification status       |
-| `screenings`  | The venue's fixed catalogue: films, screens, seats, and scheduled screenings |
-| `bookings`    | The transactional core: bookings and the seats attached to them              |
-| `concessions` | Bar/snack products and the items attached to a booking                       |
-| `membership`  | Membership types, gift/loyalty vouchers, and the loyalty points ledger       |
-| `venue`       | Static site content and private hire / event enquiries                       |
+| App           | Responsibility                                                                 |
+| :------------ | :----------------------------------------------------------------------------- |
+| `accounts`    | User profile data: date of birth, membership type, verification status         |
+| `screenings`  | The venue's fixed catalogue: films, screens, seats, and scheduled screenings   |
+| `bookings`    | The transactional core: bookings and the seats attached to them                |
+| `concessions` | Bar/snack products and the items attached to a booking                         |
+| `membership`  | Membership types, gift/loyalty vouchers, and the loyalty points ledger         |
+| `venue`       | Static site content and private hire / event enquiries                         |
+| `staff`       | Staff-only tooling that cuts across the other apps: audit log, sales reporting |
 
 ### 4.1 `screenings`
 
@@ -172,7 +173,7 @@ The project is split into six Django apps, each covering one distinct area of th
 
 ### 4.2 `bookings`
 
-- **Booking** — `user` (FK), `screening` (FK), `status` (pending / paid / cancelled / refunded), `stripe_payment_intent_id`, `voucher_used` (nullable FK to `Voucher`), `discount_applied_percent` (snapshot, see note below), `created_at`.
+- **Booking** — `user` (FK), `screening` (FK), `status` (pending / paid / cancelled / refunded), `stripe_payment_intent_id`, `voucher_used` (nullable FK to `Voucher`), `discount_applied_percent` (snapshot, see note below), `staff_discount_pence` (nullable, default 0 — see `staff` app note in 4.9), `created_at`.
 - **SeatBooking** — `booking` (FK), `seat` (FK), `screening` (FK, duplicated from `booking.screening` specifically so the database can enforce a `unique_together` constraint on `(screening, seat)`). This is what stops two people booking the same seat for the same screening.
 
 A booking can have several `SeatBooking` rows (a party booking four seats together is four rows against one `Booking`), which is why seats live on their own linking table rather than as a single field on `Booking`.
@@ -187,7 +188,7 @@ A booking can have several `SeatBooking` rows (a party booking four seats togeth
 ### 4.4 `membership`
 
 - **MembershipType** — `name` (e.g. Standard, OAP, Family, Student), `discount_percent`, `description`. Selected by the user on their profile (self-declared, per the venue's real-world policy of checking eligibility in person rather than online — see below).
-- **Voucher** — `code`, `initial_value_pence`, `remaining_value_pence`, `expires_at`, `source` (purchased / loyalty_reward), `is_active`. Not tied to a specific user, in the same way a physical gift card isn't — whoever has the code can redeem it. A voucher's balance is drawn down at checkout and can be spread across more than one booking until it reaches zero.
+- **Voucher** — `code`, `initial_value_pence`, `remaining_value_pence`, `expires_at`, `source` (purchased / loyalty_reward / screening_cancelled / manual_goodwill), `is_active`. Not tied to a specific user, in the same way a physical gift card isn't — whoever has the code can redeem it. A voucher's balance is drawn down at checkout and can be spread across more than one booking until it reaches zero.
 - **LoyaltyTransaction** — `user` (FK), `points_change`, `reason`, `related_booking` (nullable FK), `created_at`. Points are recorded as a ledger of individual earn/spend events rather than a single mutable counter on the user's profile — this gives an auditable history and avoids two simultaneous transactions corrupting a shared counter. A user's current balance is the sum of their transactions.
 
 **Design note — loyalty rewards reuse the voucher system.** When a member's points balance crosses the reward threshold, the system issues them a `Voucher` (valued at one standard ticket, `source='loyalty_reward'`) rather than implementing a second, separate redemption mechanism. It then goes through the same checkout logic as a purchased gift voucher. One mechanism, two ways of earning it.
@@ -236,13 +237,141 @@ A gap exists between a user selecting seats and completing payment — without h
 7. **Hold expires mid-checkout** — payment confirmation re-validates the hold still exists before accepting the charge. If it's expired, the user is sent back to the seat map with a plain explanation rather than a confusing card decline for seats they no longer hold.
 8. **Back/forward navigation** — the seat grid re-fetches live state on page show rather than trusting a cached view, so the browser's back button can never display an out-of-date "your seats" state.
 
+### 4.9 `staff`
+
+This app has no customer-facing models of its own. It owns the one genuinely new cross-cutting concern — accountability for staff actions — and otherwise only _reads_ data that already lives in the other apps, for reporting. Keeping it separate avoids scattering staff-only concerns across every domain app, and avoids duplicating booking/sales data into a second model just to report on it.
+
+- **AuditLogEntry** — `actor` (FK to `User`), `action_type` (choices: `manual_discount`, `refund`, `manual_voucher_issue`, `membership_verified`, `screening_cancelled`), `related_booking` (nullable FK), `related_voucher` (nullable FK), `reason` (text, required), `created_at`.
+
+**Design note — logging is automatic, not a separate step.** An `AuditLogEntry` is created by the same server-side action that performs the sensitive operation itself (applying a discount, issuing a refund, etc.) — not filled in by staff afterwards as an extra form. This means it can't be forgotten or skipped, and the "who and why" is guaranteed to exist for anything sensitive that happened.
+
+**Permission tiers.** Two Django Groups: `FrontOfHouse` and `Manager`. `FrontOfHouse` can apply a bounded discretionary discount (see 4.10) and verify a member's ID on the spot. `Manager` can additionally process refunds, manually issue vouchers, cancel a screening, and view the sales dashboard. The discount cap for `FrontOfHouse` is stored as a single configurable value (not hard-coded inline), consistent with the project's general principle of keeping configuration in one changeable place.
+
+**Business overview (Manager only).** Rather than a separate reporting model, this is a set of read-only views built on Django's aggregate queries over existing data — revenue by day/week/month, revenue and seat occupancy by screening, top-selling concessions, and total value of discounts/vouchers redeemed. Because it's computed live from `Booking`/`SeatBooking`/`OrderItem` rather than stored separately, the numbers can never drift out of sync with the underlying bookings.
+
+**Access.** The `staff` app's views (and the staff-only views in other apps) sit under their own `/staff/` URL path with their own login page, distinct from the customer-facing site. No customer-facing template links to it. This keeps everything reachable within a single deployment — important for assessment — while still giving staff tooling a separate identity from the public site. See [4.12](#architecture) for how this would evolve for a real venue.
+
+### 4.10 Business Rule: Discount & Voucher Order of Operations
+
+With membership discounts, staff discounts, and vouchers all potentially applying to the same booking, the order they're applied in has to be fixed and documented — otherwise it's easy for the same logic to be implemented two different ways in two different places. The order is:
+
+1. Start from the sum of the base ticket price(s) and any concessions.
+2. Apply the membership discount, if any (`discount_applied_percent`).
+3. Apply a staff discretionary discount, if any (`staff_discount_pence`) — applied as a flat amount off the post-membership-discount total.
+4. Deduct whatever's left from the customer's voucher balance, if a voucher code was entered, up to the voucher's remaining balance.
+5. Charge the remainder to Stripe. If the voucher fully covers the total, no Stripe charge is needed, but the `Booking` is still marked paid.
+
+A voucher can never take a booking below £0 — any unused voucher balance stays on the voucher for a future booking, it isn't paid out as cash or credit.
+
+### 4.11 Business Rule: Screening Cancellation
+
+If a screening has to be cancelled (e.g. a technical fault), a manager cancelling it triggers, for every existing `Booking` against that screening: the booking is marked `cancelled`, its seats are released, and the customer is automatically issued a `Voucher` (`source='loyalty_reward'` doesn't apply here — a distinct `source='screening_cancelled'` value) for the full amount they paid, rather than requiring an individual refund to be processed by hand for each customer. Each of these is logged as an `AuditLogEntry` with the manager as actor and "screening cancelled" as the reason, so there's a single, reviewable batch of entries rather than the cancellation being invisible.
+
+### 4.12 Note: Staff System Separation Beyond This Submission
+
+**This section describes a possible future direction and is explicitly out of scope for the submitted project.** For assessment purposes, the `staff` app runs in the same Django deployment as the public site, reachable at its own `/staff/` URL with its own login page and no link to it anywhere in the customer-facing templates. That's sufficient to demonstrate the intended separation of concerns and keeps the whole project reachable and testable through a single deployment, which matters for assessment.
+
+If this project were ever taken further — for a real, operating venue — the same logical separation (customer-facing vs staff-only) would be worth turning into an actual infrastructure boundary, not just a routing one:
+
+- **Network isolation:** the staff area restricted to the venue's own network or a VPN, rather than being reachable from the open internet at all — the public booking site stays internet-facing, the staff tooling doesn't need to be.
+- **Separate staff authentication:** rather than staff being Django `User` rows created ad hoc by a superuser, a proper provisioning and offboarding process (so a leaving staff member's access is reliably revoked), and additional protection — e.g. two-factor authentication — specifically for the `Manager` tier, given it can process refunds and issue vouchers.
+- **Device-level controls:** the venue's tablets/terminals running in a locked-down "kiosk mode" browser profile pointed only at the staff URL, with device-level passcodes and remote-wipe capability, since they're physical devices sitting in a publicly accessible venue.
+- **Shift-appropriate session handling:** a short auto-logout tuned to real usage patterns (so one staff member's session isn't still active for the next person on a shared tablet), which matters directly for the audit log's attribution to stay meaningful.
+- **Reporting load separation:** if real transaction volume made the sales dashboard's queries noticeably heavy, running those reports against a read replica of the database rather than the primary one, so staff pulling up a sales report can never slow down a customer mid-checkout.
+- **Dual authorisation for large refunds:** a common real-world control where a refund above a set threshold needs a second manager's sign-off — the audit log already captures who did what, so this would extend naturally on top of it rather than requiring new infrastructure.
+
+None of the above is needed to meet this project's assessment criteria, and building it now would add infrastructure complexity with no corresponding credit — but it's recorded here because the reasoning is worth keeping if this ever becomes more than a coursework submission.
+
 ## <p align="right">(<a href="#top">Back to top</a>)</p>
 
-## 5. <a name="features"></a>Core Features & UI Overhauls
+## 5. <a name="features"></a> Core Features
+
+Each app's user-facing and staff-facing features, building directly on the [data model](#architecture) and [user stories](#purpose) above.
+
+### Permission model
+
+Two kinds of user: registered customers, and staff. Staff status (`is_staff`) is granted by a superuser — there's no public "become staff" path. Staff are further split into two Django Groups: **Front of House** (bounded, day-to-day discretion) and **Manager** (everything Front of House can do, plus financial and administrative actions). See [4.9](#architecture) for the reasoning and the full permission breakdown.
+
+Deliberately, staff do not use Django's built-in `/admin` for day-to-day work. `/admin` exposes every field on every model, which is more power — and more room for accidental mistakes — than day-to-day duties call for, and it isn't designed to match the rest of the site or guide someone unfamiliar with Django through their actual tasks. Instead, staff get a small set of custom views, built with the same templates and design system as the public site, that expose exactly the actions listed below, gated by group-based permission checks rather than open `/admin` access. `/admin` still exists behind the scenes for genuine one-off data fixes, but it isn't part of the day-to-day handover.
+
+Anything financial or account-affecting (a discount, a refund, a manually issued voucher, a membership verification) is automatically recorded in the audit log with who did it and why — see [4.9](#architecture).
+
+### 5.1 `screenings`
+
+**Customer-facing**
+
+- Browse current/upcoming screenings, filterable by date
+- Film detail page (synopsis, trailer, age rating, captioned/audio-described indicator)
+- Seat selection on an interactive seating plan, by tier
+
+**Staff-facing**
+
+- _(Front of House)_ View a screening's current seat occupancy at a glance
+- _(Manager)_ Search TMDb and add a film to the local catalogue, rather than typing metadata by hand
+- _(Manager)_ Create, edit, or cancel a screening (film, screen, date/time, price) — the system prevents two screenings overlapping on the same screen; cancelling one triggers the [screening cancellation flow](#architecture)
+
+### 5.2 `bookings`
+
+**Customer-facing**
+
+- Seat selection with a short-lived hold (see [Core Flow](#architecture) above)
+- Checkout: seats + concessions + voucher/discount → Stripe payment
+- Order confirmation and booking history on their profile
+
+**Staff-facing**
+
+- _(Front of House)_ View bookings for a given screening, for door/headcount purposes
+- _(Front of House)_ View a single booking's full detail (seats, concessions ordered, payment status) — useful for resolving a customer query at the door or by phone
+- _(Front of House)_ Apply a discretionary discount to a booking, up to a configured cap, with a required reason
+- _(Manager)_ Apply a discount above the Front of House cap, or process a full refund/cancellation — both release the booking's seats and are logged
+
+### 5.3 `concessions`
+
+**Customer-facing**
+
+- Add drinks or snacks to a booking during checkout
+
+**Staff-facing**
+
+- _(Manager)_ Manage the product catalogue (add, edit, or retire items and prices)
+- _(Front of House)_ A simple prep list per screening — what's been ordered and needs to be ready
+
+### 5.4 `membership`
+
+**Customer-facing**
+
+- Self-select membership type on their profile
+- View loyalty points balance and progress toward a free ticket
+- Enter a gift voucher code at checkout
+
+**Staff-facing**
+
+- _(Front of House)_ Mark a member as verified — the in-person "can I see your student card" check
+- _(Manager)_ Manually issue a voucher (e.g. as a goodwill gesture for a complaint) — this reuses the same `Voucher` model and redemption logic as purchased or loyalty-earned vouchers, so no separate mechanism is needed
+- _(Front of House)_ View a member's loyalty transaction history if a query comes up
+
+### 5.5 `venue`
+
+**Customer-facing**
+
+- Static pages: About, Accessibility policy, Membership terms
+- Private hire / event enquiry form
+
+**Staff-facing**
+
+- _(Front of House)_ View and update the status of enquiries (new / contacted / booked / declined)
+
+### 5.6 `staff`
+
+**Staff-facing**
+
+- _(Manager)_ Sales/business overview: revenue by day/week/month, revenue and occupancy by screening, top-selling concessions, total discounts and vouchers redeemed
+- _(Manager)_ Audit log: a searchable/filterable list of every discount, refund, manual voucher, and verification action, with who did it and why
+- _(Front of House and Manager)_ Nothing customer-facing — this app exists purely to support the other apps
 
 ## <p align="right">(<a href="#top">Back to top</a>)</p>
 
-## 6. <a name="deployment"></a>Deployment Guide
+## 6. <a name="deployment"></a> Deployment Guide
 
 This project needs a hosting platform that can run a Python/Django application with a PostgreSQL database — a static host such as GitHub Pages isn't sufficient, since the app relies on server-side logic, a live database, and Stripe integration. Suitable platforms include **Render**, **Railway**, or **Heroku**.
 
@@ -266,7 +395,7 @@ _(To be completed with the actual local setup steps once the project is underway
 
 ## <p align="right">(<a href="#top">Back to top</a>)</p>
 
-## 7. <a name="credits"></a>Credits & Acknowledgements
+## 7. <a name="credits"></a> Credits & Acknowledgements
 
 ### AI Pair Programming & Academic Integrity
 
@@ -278,7 +407,7 @@ Artificial Intelligence (LLMs) was utilised strictly as a "Pair Programmer" and 
 
 ## <p align="right">(<a href="#top">Back to top</a>)</p>
 
-## 8. <a name="dev-log"></a>Development Log & Engineering Phases
+## 8. <a name="dev-log"></a> Development Log & Engineering Phases
 
 ### Phase 1:
 
@@ -356,7 +485,7 @@ Artificial Intelligence (LLMs) was utilised strictly as a "Pair Programmer" and 
 
 ## <p align="right">(<a href="#top">Back to top</a>)</p>
 
-## 9. <a name="testing"></a>Testing & Quality Assurance Portfolio
+## 9. <a name="testing"></a> Testing & Quality Assurance Portfolio
 
 This section outlines the holistic verification suite executed to guarantee the engineering integrity, mathematical precision, and cross-platform accessibility of…
 
