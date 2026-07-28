@@ -98,7 +98,14 @@ This section follows Jesse James Garrett's "five planes" model — Strategy, Sco
 
 #### Design principles
 
-- **No frontend framework.** The interface is built with plain, semantic HTML and CSS, using layout patterns from Andy Bell and Heydon Pickering's _Every Layout_ — for example, a "stack" pattern for consistent vertical spacing, and a "switcher" pattern for elements that sit side-by-side on desktop and stack on mobile without manual breakpoints. This keeps the build simple (no bundler/build step) and keeps JavaScript limited to the places it's actually needed, such as the seat-selection flow.
+- **No frontend framework, organised with CUBE CSS.** The interface is built with plain, semantic HTML and CSS — no React/Vue, no build step — using Andy Bell's **CUBE CSS** methodology to organise the CSS itself: **C**omposition, **U**tility, **B**lock, **E**xception. This isn't a separate decision from the "no framework" choice — CUBE CSS is specifically designed with _Every Layout_ as its Composition layer, so adopting it extends a decision already made rather than adding a competing one.
+  - **Composition** — the _Every Layout_ patterns already decided: a "stack" for consistent vertical spacing, a "switcher" for elements that sit side-by-side on desktop and stack on mobile without manual breakpoints, and similar layout-level primitives. These control arrangement, not appearance.
+  - **Utility** — small, single-purpose classes for common needs that don't deserve their own component: a `.visually-hidden` class for text that's read by a screen reader but not shown visually (used directly for the seat map's accessible seat names in [4.18](#architecture)), spacing utilities built on the same CSS custom properties already used for the design tokens (e.g. `var(--space-m)`).
+  - **Block** — the actual reusable components, each with its own scoped, sensibly-named styles: `.seat-map`, `.film-card`, `.nav`. This is where the "cards for film posters" idea from Surface (below) is actually implemented, as a named, self-contained block rather than a one-off set of styles.
+  - **Exception** — scoped, deliberate overrides for a component in an unusual state, applied via data attributes rather than piling on more classes. **This maps directly onto the seat map's states from [4.8](#architecture):** rather than four separate modifier classes for available/selected/held/booked, each seat carries a single `data-seat-status` attribute, and the exception layer defines what changes for each value. One attribute reflects the seat's actual state; the styling for every state lives in one predictable place rather than being scattered across conditional classes.
+
+  Beyond keeping the CSS itself organised, this gives the project a consistent, explainable naming convention throughout — directly relevant to the assessment's own emphasis on consistent naming and readable, well-organised code, since "why is this class named the way it is" now has a one-word answer (which of the four layers it belongs to) rather than being ad hoc.
+
 - **Dark, cinema-inspired palette:** dark background, light text, a warm accent colour for interactive states — meant to evoke a cinema auditorium rather than a typical light-mode web app.
 - **Consistent media framing:** posters and trailers are shown at fixed aspect ratios so the page layout doesn't jump as images load.
 
@@ -233,7 +240,7 @@ A gap exists between a user selecting seats and completing payment — without h
 
 **Sequence:**
 
-1. **Page load** — the seat grid is rendered server-side with each seat's live status (available / held / booked), so the user is never looking at stale information.
+1. **Page load** — the seat grid is rendered server-side with each seat's live status (available / held / booked), so the user is never looking at stale information. Each seat's status is expressed as a single `data-seat-status` attribute, styled via the CSS Exception layer (see [section 3](#ux-strategy)) rather than a pile of state-specific classes.
 2. **Selecting seats** — pure client-side toggling while browsing the grid; no server call yet.
 3. **Proceeding to checkout** — a single request sends the chosen seat IDs. The server, in one transaction, clears any expired holds for that screening, checks the requested seats are still free against both live holds and confirmed bookings, and if clear, creates fresh `SeatHold` rows with a short TTL (e.g. 10 minutes).
 4. **Conflict** — if a seat was taken in the gap between page load and this request, the server returns exactly which seat(s) failed. The page updates only those seats to "taken," deselects them, and shows an inline message — the user's other selections are preserved rather than the whole flow restarting.
@@ -392,6 +399,30 @@ Building on the `Film` model (4.1) and the hybrid approach decided earlier — r
 **Unsubscribe** works exactly like the email verification and password reset flows in 4.16: a signed token embedded in the email link, requiring no login, immediately setting `is_active = False` on click. Third reuse of the same mechanism rather than a fourth bespoke implementation.
 
 **Beyond this submission.** At real scale, bulk marketing email and transactional email (booking confirmations, password resets) are usually best sent through separate infrastructure — a spam-flagged newsletter can drag down deliverability for the transactional email that actually matters (a customer's booking confirmation reaching them reliably is more important than a digest). Not a concern at this project's scale, but worth recording as a known trade-off rather than solving now.
+
+### 4.18 Accessibility Implementation
+
+The captioned/audio-described flags on `Screening` (4.1) are about the film experience itself. This section is about the _website_ — making sure the interface is genuinely usable by someone using a keyboard alone, a screen reader, or with low vision — which is a separate concern the project hasn't pinned down yet.
+
+**Target:** WCAG 2.1 AA — the practical, widely used baseline, and a concrete way to make the "meets accessibility guidelines" pass criterion (1.2) checkable rather than aspirational.
+
+**Structure and semantics.** One `<h1>` per page, a logical heading order, and semantic landmarks (`<nav>`, `<main>`, `<footer>`) so a screen reader user can jump straight to a section rather than reading the whole page linearly. Anything clickable is a real `<button>` or `<a>`, never a `<div>` with a click handler bolted on — that's what gives keyboard and screen-reader support "for free" rather than needing to be rebuilt by hand.
+
+**Colour and contrast.** The dark palette chosen in [section 3 (Surface)](#ux-strategy) gets checked against WCAG's actual contrast ratios before being finalised, not just judged by eye — text needs a 4.5:1 ratio against its background, and the gold accent specifically needs checking wherever it's used for anything beyond large or purely decorative text, since a colour chosen for mood ("premium," "cinematic") isn't automatically legible. **Nothing is conveyed by colour alone**: the seat map's states (available / selected / held by someone else / booked) each get a second signal beyond colour — an icon or pattern, and a text label available to screen readers — so the map works for a colourblind customer, not only a sighted one.
+
+**The seat map specifically**, since it's the most complex interactive component in the project:
+
+- Every seat is a real, focusable `<button>` — reachable by Tab, activatable with Enter or Space — not a hover-only or click-only interaction.
+- Each seat's accessible name states what a screen reader user actually needs ("Row C, seat 4, sofa, available"), not just a grid coordinate.
+- When a seat-hold conflict happens (4.8) and the page updates inline rather than reloading, the change is announced through an ARIA live region. A sighted user sees the seat turn red; a screen reader user needs to be _told_ it just became unavailable, or the whole inline-update design from 4.8 quietly fails for them.
+
+**Forms** (registration, checkout, enquiries, staff tools): every input has a real, associated `<label>`; validation errors are stated in text, not colour alone, and tied to their field so a screen reader announces _which_ field the error belongs to, not just that something's wrong.
+
+**Focus and motion.** A visible, high-contrast focus style is defined explicitly for the dark theme, rather than relying on the browser default (which can be hard to see against a very dark background) or — a common and avoidable failure — removed outright for looking "cleaner." Transitions and layout shifts respect `prefers-reduced-motion`, and — as already decided in the UX strategy — trailers never autoplay, which is as much an accessibility decision as a stylistic one.
+
+**A design choice from earlier that helps here for free.** The fluid, no-fixed-breakpoint layout approach ([Every Layout](#ux-strategy)) chosen for its own reasons also happens to make the site more resilient to text zoom and browser large-text settings than a pixel-fixed layout would be — worth naming explicitly as a place two separate design decisions reinforce each other rather than being unrelated.
+
+**Verification.** Rather than assuming accessible markup is accessible in practice, this gets checked concretely: an automated pass (e.g. Lighthouse or axe) catches the mechanical issues — contrast, missing labels, landmark structure — and a manual keyboard-only pass through the booking flow, the highest-risk journey in the project, catches what automated tools can't, such as whether the live region actually announces a lost seat sensibly. See [Testing](#testing).
 
 ## <p align="right">(<a href="#top">Back to top</a>)</p>
 
