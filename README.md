@@ -166,19 +166,21 @@ The project is split into seven Django apps, each covering one distinct area of 
 
 ### 4.1 `screenings`
 
-- **Film** — `tmdb_id`, `title`, `synopsis`, `poster_url`, `trailer_key`, `age_rating`, `duration_minutes`. Populated from the TMDb API and cached locally rather than queried live on every page load.
+- **Film** — `tmdb_id` (nullable — see 4.15), `title`, `synopsis`, `poster_path`, `trailer_key`, `age_rating`, `duration_minutes`. Populated from the TMDb API and cached locally rather than queried live on every page load — see [4.15](#architecture) for the full mechanics.
 - **Screen** — `name`, `total_capacity`.
 - **Seat** — `screen` (FK), `row_label`, `seat_number`, `tier` (standard / sofa / box). The fixed physical seating plan for a screen; does not change per booking.
 - **Screening** — `film` (FK), `screen` (FK), `date_time`, `base_price`, `has_captions`, `has_audio_description`.
 
 ### 4.2 `bookings`
 
-- **Booking** — `user` (FK), `screening` (FK), `status` (pending / paid / cancelled / refunded), `stripe_payment_intent_id`, `voucher_used` (nullable FK to `Voucher`), `discount_applied_percent` (snapshot, see note below), `staff_discount_pence` (nullable, default 0 — see `staff` app note in 4.9), `created_at`.
+- **Booking** — `user` (nullable FK — see design note below), `screening` (FK), `status` (pending / paid / cancelled / refunded), `channel` (online / in_venue), `payment_method` (card / cash), `stripe_payment_intent_id` (nullable — only set for card payments), `created_by` (nullable FK to `User`, the staff member who took an in-venue booking), `voucher_used` (nullable FK to `Voucher`), `discount_applied_percent` (snapshot, see note below), `staff_discount_pence` (nullable, default 0 — see `staff` app note in 4.9), `created_at`.
 - **SeatBooking** — `booking` (FK), `seat` (FK), `screening` (FK, duplicated from `booking.screening` specifically so the database can enforce a `unique_together` constraint on `(screening, seat)`). This is what stops two people booking the same seat for the same screening.
 
 A booking can have several `SeatBooking` rows (a party booking four seats together is four rows against one `Booking`), which is why seats live on their own linking table rather than as a single field on `Booking`.
 
 **Design note — snapshotting the discount:** `Booking.discount_applied_percent` stores the discount rate that actually applied at the moment of purchase, rather than the app always looking up the user's _current_ membership type. This means if someone's membership type changes later, their historical bookings and receipts don't silently change with it — a small but realistic data-integrity decision worth explaining in this README rather than leaving implicit.
+
+**Design note — `user` is nullable.** A walk-up customer paying cash at the venue doesn't need an account, in the same way buying a ticket at a real box office doesn't. If they want their membership discount or loyalty points, staff look their account up (e.g. by email) and link the booking to it; otherwise it proceeds as a guest sale with no discount or points. See 4.14 for the full in-venue flow.
 
 ### 4.3 `concessions`
 
@@ -222,7 +224,7 @@ User ──1:N── LoyaltyTransaction ──FK (nullable)── Booking
 
 A gap exists between a user selecting seats and completing payment — without handling this deliberately, a user could pick seats, spend time in checkout, and then be told at the payment step that someone else got there first. To avoid that, seat selection uses a short-lived **hold**, separate from a confirmed booking.
 
-- **SeatHold** — `screening` (FK), `seat` (FK), `session_key`, `expires_at`. `unique_together = ('screening', 'seat')`.
+- **SeatHold** — `screening` (FK), `seat` (FK), `session_key`, `expires_at`, `extension_count` (default 0). `unique_together = ('screening', 'seat')`.
 
 `SeatHold` is deliberately a separate model from `SeatBooking` (4.2): a hold is provisional and expires if unused, whereas a `SeatBooking` means the seat has actually been paid for. Keeping them apart means an abandoned checkout can never permanently block a seat.
 
@@ -232,10 +234,12 @@ A gap exists between a user selecting seats and completing payment — without h
 2. **Selecting seats** — pure client-side toggling while browsing the grid; no server call yet.
 3. **Proceeding to checkout** — a single request sends the chosen seat IDs. The server, in one transaction, clears any expired holds for that screening, checks the requested seats are still free against both live holds and confirmed bookings, and if clear, creates fresh `SeatHold` rows with a short TTL (e.g. 10 minutes).
 4. **Conflict** — if a seat was taken in the gap between page load and this request, the server returns exactly which seat(s) failed. The page updates only those seats to "taken," deselects them, and shows an inline message — the user's other selections are preserved rather than the whole flow restarting.
-5. **Successful payment** — the hold converts into a permanent `Booking` and its `SeatBooking` rows.
-6. **Failed or abandoned payment** — nothing needs to actively release the seat; the hold simply expires and is swept up by the next hold-attempt's cleanup step (step 3).
-7. **Hold expires mid-checkout** — payment confirmation re-validates the hold still exists before accepting the charge. If it's expired, the user is sent back to the seat map with a plain explanation rather than a confusing card decline for seats they no longer hold.
-8. **Back/forward navigation** — the seat grid re-fetches live state on page show rather than trusting a cached view, so the browser's back button can never display an out-of-date "your seats" state.
+5. **A failed payment attempt** (declined card, insufficient funds, wrong details) does **not** release the hold. The customer sees the specific reason and can try again — a different card, or corrected details — as many times as they like within the hold window. Each failed attempt extends `expires_at` by a short amount (e.g. 5 minutes) and increments `extension_count`, up to a hard cap on total hold time (e.g. 30 minutes from the first hold), so a genuine retry isn't punished but a hold can't be kept alive indefinitely.
+6. **Explicit cancellation** — a "Cancel" button lets the customer release their hold immediately rather than waiting out the timer, freeing the seats for someone else sooner.
+7. **Successful payment** — the hold converts into a permanent `Booking` and its `SeatBooking` rows (see 4.13 for exactly when this happens relative to Stripe's confirmation).
+8. **True abandonment** (tab closed, no cancel, no retry) — nothing needs to actively release the seat; the hold simply expires once its TTL (as extended by any retries) runs out, and is swept up by the next hold-attempt's cleanup step (step 3).
+9. **Hold expires mid-checkout** — payment confirmation re-validates the hold still exists before accepting the charge. If it's expired, the user is sent back to the seat map with a plain explanation rather than a confusing card decline for seats they no longer hold.
+10. **Back/forward navigation** — the seat grid re-fetches live state on page show rather than trusting a cached view, so the browser's back button can never display an out-of-date "your seats" state.
 
 ### 4.9 `staff`
 
@@ -282,6 +286,69 @@ If this project were ever taken further — for a real, operating venue — the 
 
 None of the above is needed to meet this project's assessment criteria, and building it now would add infrastructure complexity with no corresponding credit — but it's recorded here because the reasoning is worth keeping if this ever becomes more than a coursework submission.
 
+### 4.13 Business Rule: Payment Lifecycle (Online)
+
+The core principle: **a Stripe webhook, not the customer's browser, is the source of truth for whether payment succeeded.** If the customer's connection drops, or they close the tab mid-payment, the app can't rely on them ever returning to a "success" page — the booking only becomes real when Stripe independently tells the server it's been paid.
+
+**Sequence:**
+
+1. Checkout is initiated (a `SeatHold` already exists — see 4.8). The server calculates the final total using the discount/voucher order from 4.10, and creates a Stripe PaymentIntent for that amount.
+2. **If the total is £0** (a voucher fully covers it), there's no Stripe interaction at all — the booking is marked paid immediately, server-side.
+3. Otherwise, the customer completes payment through Stripe's client-side card element; card details never touch this application's own server.
+4. The server's only immediate response to the browser is "payment submitted," not "payment succeeded."
+5. Stripe sends a `payment_intent.succeeded` webhook. **This** is what finalises everything: the seat hold converts to confirmed `SeatBooking` rows, the voucher balance is decremented (not before — see below), loyalty points are awarded, and a confirmation is sent.
+6. A genuinely declined/failed attempt (`payment_intent.payment_failed`) does not release the seat hold — see the retry behaviour in 4.8, step 5.
+7. **Uncertain outcomes** (e.g. the connection dropped after submission but before the browser heard back) are resolved by checking the PaymentIntent's actual status with Stripe before allowing a new attempt — never by assuming failure just because the client didn't get a response. This avoids ever double-charging a card that actually went through.
+
+Two implementation details worth being explicit about, since they're easy to get subtly wrong:
+
+- **Webhook signature verification.** Stripe signs every webhook payload; the endpoint must verify that signature before trusting it, or anyone could POST a fake "payment succeeded" event.
+- **Idempotency.** Stripe can and does redeliver the same webhook event more than once. Finalisation logic checks "is this booking already marked paid?" before acting, so a redelivered webhook can't double-award loyalty points or double-decrement a voucher.
+
+**Consequence for 4.10:** a voucher's balance is only decremented once payment is _confirmed_ by the webhook, not at checkout time — otherwise an abandoned or failed payment would have permanently spent someone's voucher for nothing. It's the same "provisional, not committed" pattern as the seat hold, applied a second time.
+
+**Refunds** (manager-initiated, from 4.9) call Stripe's refund API directly and get an immediate response, unlike the original payment — this doesn't need to wait on a webhook.
+
+**Known limitation, deliberately not solved:** a voucher's balance isn't "held" the way a seat is. If the same code were entered in two simultaneous checkouts, there's a narrow window where both could succeed against the same balance before either payment confirms. Given a voucher requires manually typing a code, this is a low-probability, low-severity edge case — solving it properly would mean a second holding mechanism mirroring `SeatHold`, which is disproportionate complexity for the risk involved. This is recorded as a known issue (see [Testing](#testing)) rather than engineered around.
+
+### 4.14 In-Venue Bookings (Staff-Assisted, Cash)
+
+A walk-up customer at the venue should be able to book largely the same way an online customer does — same seat map, same concessions, same membership/voucher discounts — with a member of staff completing it on their behalf and cash instead of Stripe as the payment method.
+
+This deliberately reuses the existing booking flow rather than being a separate code path: the same `SeatHold` → `SeatBooking` mechanics, the same discount stacking order (4.10), and the same audit logging if a staff discretionary discount is applied (4.9) all apply unchanged. The only real differences are in who initiates it and how payment is recorded:
+
+- `Booking.channel = 'in_venue'`, `Booking.payment_method = 'cash'`, `Booking.created_by` set to the staff member completing the sale.
+- No Stripe PaymentIntent is created; the booking is marked paid directly once staff confirm cash has been received. `stripe_payment_intent_id` stays null.
+- `Booking.user` is left blank for an anonymous walk-up sale — no account is required, mirroring a real box office. If the customer wants their membership discount or loyalty points, staff look their account up (e.g. by email) and attach it to the booking before completing the sale.
+- The customer doesn't need an email confirmation for a same-day in-person purchase, though staff can send one if the customer provides an address — the till/booking screen itself serves as the receipt.
+
+**Available to:** Front of House, as a routine day-to-day action — this is the standard box-office sale, not a discretionary override.
+
+### 4.15 TMDb Integration Mechanics
+
+Building on the `Film` model (4.1) and the hybrid approach decided earlier — real film data from TMDb, bespoke scheduling of our own — this section pins down exactly how and when TMDb is actually called, and what happens if it isn't available.
+
+**Where the live API is called, and where it deliberately isn't.** The only place this application ever calls TMDb live is the staff-only "add a film" flow. The public, customer-facing site never calls TMDb directly — customers only ever see the cached `Film` rows already saved locally. This matters for reliability: if TMDb is slow or briefly down, it only affects a staff member trying to add a brand-new film that day. It has zero effect on customers browsing listings or booking a seat, since that data comes entirely from the local database, not a live external call.
+
+**Adding a film (staff flow):**
+
+1. Staff search by title, hitting TMDb's search endpoint. Because titles aren't unique (sequels, remakes, foreign-language titles), results are shown as a short list — poster thumbnail, title, release year — so staff pick the correct match rather than the system guessing.
+2. On selecting a result, the app fetches the film's full detail (synopsis, runtime, genres), its available trailer videos, and its UK age certification (TMDb's release-dates data, filtered to the GB entry).
+3. **The API's results are pre-filled, not auto-committed.** Staff see the fetched synopsis, poster, a suggested trailer, and a suggested age rating on a review screen before anything is saved — the age rating specifically, since TMDb's certification coverage is inconsistent and getting this wrong has real consequences (age-restricted content shown with the wrong certificate). A human confirms before it goes live; the API just does the typing.
+4. Once confirmed, it's saved as a local `Film` row and isn't queried from TMDb again unless staff explicitly choose to refresh it.
+
+**Films with no TMDb entry.** Not everything a venue screens is a commercially released film with a TMDb page — event cinema (e.g. a National Theatre Live broadcast), a Q&A screening, or a private hire's own content wouldn't have one. Staff can add a `Film` manually instead of searching TMDb, leaving `tmdb_id` null and filling in the same fields by hand. `Screening` doesn't need to know or care which path a given `Film` came from.
+
+**Images.** Rather than downloading and re-hosting poster images, `Film.poster_path` stores TMDb's own relative image path, and the actual display URL is built by prefixing TMDb's image CDN address at render time. TMDb's images are explicitly served for this kind of use, so there's no reason to duplicate storage of something TMDb already hosts reliably.
+
+**Trailers.** A film can have several videos on TMDb (teasers, clips, trailers in different languages). The system suggests the most likely candidate (an official YouTube trailer, where that's identifiable) but — consistent with the age-rating decision above — staff confirm or choose a different one from the list rather than it being silently auto-selected. If no suitable video exists, the trailer embed is simply omitted rather than showing a broken player.
+
+**Failure handling.** If TMDb is unreachable or returns an error during the staff add-film flow, the failure surfaces as a plain, specific message ("Couldn't reach the film database — try again in a moment") with a retry option, rather than a generic crash. This is the one place in the project a genuine third-party API failure needs handling gracefully, and it's scoped narrowly enough — staff-only, not time-critical — that a clear error and a retry button is a proportionate response, rather than needing a queued background retry system.
+
+**Rate limits and the API key.** TMDb's rate limits are generous, and since calls only happen when staff actively add a film — not on every customer page view — this is never a practical concern here. The TMDb API key is a server-side environment variable, the same as the Stripe keys: the browser never sees it, since every TMDb call happens from the server during the staff flow, never from the customer's browser.
+
+**Optional refresh.** Because film data is cached rather than fetched live, a poster or synopsis TMDb later corrects won't automatically update locally. A "Refresh from TMDb" action on a `Film`'s staff edit page re-runs steps 2–3 above and overwrites the local record (again with staff review before saving), which covers this without needing a background sync job.
+
 ## <p align="right">(<a href="#top">Back to top</a>)</p>
 
 ## 5. <a name="features"></a> Core Features
@@ -307,7 +374,8 @@ Anything financial or account-affecting (a discount, a refund, a manually issued
 **Staff-facing**
 
 - _(Front of House)_ View a screening's current seat occupancy at a glance
-- _(Manager)_ Search TMDb and add a film to the local catalogue, rather than typing metadata by hand
+- _(Manager)_ Search TMDb and add a film to the local catalogue, reviewing and confirming the fetched details (including age rating) before saving — see [4.15](#architecture)
+- _(Manager)_ Add a film manually for anything without a TMDb entry (event cinema, private hire content), or refresh an existing film's cached details from TMDb
 - _(Manager)_ Create, edit, or cancel a screening (film, screen, date/time, price) — the system prevents two screenings overlapping on the same screen; cancelling one triggers the [screening cancellation flow](#architecture)
 
 ### 5.2 `bookings`
@@ -320,6 +388,7 @@ Anything financial or account-affecting (a discount, a refund, a manually issued
 
 **Staff-facing**
 
+- _(Front of House)_ Create a booking on behalf of a walk-up customer, taking cash — same seat map, concessions, and discount rules as the online flow (see [4.14](#architecture))
 - _(Front of House)_ View bookings for a given screening, for door/headcount purposes
 - _(Front of House)_ View a single booking's full detail (seats, concessions ordered, payment status) — useful for resolving a customer query at the door or by phone
 - _(Front of House)_ Apply a discretionary discount to a booking, up to a configured cap, with a required reason
