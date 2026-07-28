@@ -204,6 +204,9 @@ A booking can have several `SeatBooking` rows (a party booking four seats togeth
 ### 4.6 `venue`
 
 - **EnquiryRequest** — `name`, `email`, `event_type`, `preferred_date`, `party_size`, `message`, `status`. Handles private hire and event enquiries without needing a full booking/payment flow.
+- **NewsletterSubscriber** — `email` (unique), `user` (nullable FK — linked automatically if the email matches a registered account), `opt_in_deals`, `opt_in_digest` (both boolean, default `False`), `subscribed_at`, `is_active`. Deliberately not folded into `Profile`: anyone can subscribe from the site footer without an account, and subscribing is not the same thing as registering.
+- **NewsletterCampaign** — `subject`, `body`, `campaign_type` (`one_off_deal` / `monthly_digest`), `status` (`draft` / `sent`), `created_by` (FK staff), `sent_at`.
+- **PromoCode** — `code`, `discount_percent`, `valid_from`, `valid_until`, `max_total_redemptions` (nullable — unlimited if blank), `times_redeemed`, `is_active`. See [4.17](#architecture) for why this is a separate model from `Voucher` rather than a reuse of it.
 - Static content (About, Accessibility policy, Membership terms) — plain templates rather than models, unless there's a reason later to make them admin-editable.
 
 ### 4.7 Relationship overview
@@ -371,6 +374,25 @@ Building on the `Film` model (4.1) and the hybrid approach decided earlier — r
 
 **Staff logins are entirely separate** from all of the above — a different URL, a different login template (4.9/4.12), and unrelated to whether a given staff member also happens to hold their own personal customer account.
 
+### 4.17 Newsletter & Promotional Emails
+
+**Subscribing is separate from having an account.** Anyone can subscribe from the site footer — no registration required — because a newsletter subscriber and a registered customer are genuinely different things, even though the two overlap for many people. `NewsletterSubscriber.user` links automatically where the email matches an existing account (for personalisation), but stays null for a footer-only subscriber.
+
+**Consent is explicit and granular, not assumed.** Two separate opt-in checkboxes at subscribe time — deals and the monthly digest — both unticked by default. Having an account never implies consent to marketing email; the two are deliberately kept apart, in line with UK PECR rules on marketing communications.
+
+**Two campaign types:**
+
+- **Monthly digest** — auto-drafted rather than written from scratch each time: the system pulls newly added films and upcoming screenings since the last digest was sent (reusing data that already exists in `screenings`, not duplicating it into email-specific content) and composes a draft with a "Book Now" button under each item, linking straight to that film or screening's actual page. As with the TMDb integration (4.15), **the system drafts, a human confirms before it sends** — staff review the draft, can add their own commentary, and send when ready. Nothing is ever auto-sent.
+- **One-off deal** — fully staff-authored, since "£5 tickets this weekend" isn't something the system could sensibly invent. Optionally linked to a `PromoCode` (see below); its "Book Now" button can include the code as a URL parameter so it's pre-filled at checkout rather than needing to be copied in by hand.
+
+**Why `PromoCode` is a separate model from `Voucher`.** `Voucher` (4.4) represents a personal balance — a gift card or loyalty reward, spent down by one holder over time. A promotional deal code is a different shape of thing entirely: one shared code, redeemed by potentially hundreds of different subscribers, each getting the discount once, within a date window and possibly a total redemption cap. Forcing that into `Voucher`'s balance semantics would mean the first handful of customers could drain a "balance" meant to serve everyone. At checkout, the "enter a code" field checks both `Voucher` and `PromoCode` behind the scenes — one input field, two different things it might match, invisible to the customer either way.
+
+**The membership upsell.** Subscription confirmation and every digest email include a short block — "Members get an automatic discount, loyalty points toward a free ticket, and gift vouchers — create an account" — but only where `NewsletterSubscriber.user` is null. An existing member obviously doesn't need to be sold on joining.
+
+**Unsubscribe** works exactly like the email verification and password reset flows in 4.16: a signed token embedded in the email link, requiring no login, immediately setting `is_active = False` on click. Third reuse of the same mechanism rather than a fourth bespoke implementation.
+
+**Beyond this submission.** At real scale, bulk marketing email and transactional email (booking confirmations, password resets) are usually best sent through separate infrastructure — a spam-flagged newsletter can drag down deliverability for the transactional email that actually matters (a customer's booking confirmation reaching them reliably is more important than a digest). Not a concern at this project's scale, but worth recording as a known trade-off rather than solving now.
+
 ## <p align="right">(<a href="#top">Back to top</a>)</p>
 
 ## 5. <a name="features"></a> Core Features
@@ -447,10 +469,13 @@ Anything financial or account-affecting (a discount, a refund, a manually issued
 
 - Static pages: About, Accessibility policy, Membership terms
 - Private hire / event enquiry form
+- Subscribe to the newsletter (deals and/or monthly digest, independent opt-ins, no account required); one-click unsubscribe
 
 **Staff-facing**
 
 - _(Front of House)_ View and update the status of enquiries (new / contacted / booked / declined)
+- _(Manager)_ Review and send the auto-drafted monthly digest, or write and send a one-off deal campaign, optionally attached to a promo code — see [4.17](#architecture)
+- _(Manager)_ Create and manage promo codes (discount, validity window, redemption cap)
 
 ### 5.6 `staff`
 
