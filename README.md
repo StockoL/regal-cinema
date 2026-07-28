@@ -566,107 +566,145 @@ Artificial Intelligence (LLMs) was utilised strictly as a "Pair Programmer" and 
 
 ## 8. <a name="dev-log"></a> Development Log & Engineering Phases
 
-### Phase 1:
+The phases below are a **planned build order**, worked out from the dependencies between apps established across [section 4](#architecture) — not yet an actual commit history, since the build hasn't started. Each phase's `<details>` block will be filled in with real commit-by-commit narrative, decisions, and problems hit as development actually happens; the summary line is the plan those entries will be checked against.
+
+### Phase 1: Foundations — Auth & Screenings Catalogue
 
 <details>
 <summary><b>Expand Engineering Case Study: Phase 1</b></summary>
 
-####
+**Planned scope:** Project scaffolding; the `accounts` app and full auth/registration flow (4.16); the base `screenings` catalogue (`Film`, `Screen`, `Seat`, `TicketClass`, `Screening`) including the TMDb integration (4.15) for populating real film data. Public browsing of screenings only — no booking yet. This comes first because almost every other app depends on a logged-in user and a real catalogue to book against.
+
+#### To be completed during development
 
 </details>
 
-### Phase 2:
+### Phase 2: Core Booking Skeleton — Seats & Holds
 
 <details>
 <summary><b>Expand Engineering Case Study: Phase 2</b></summary>
 
-####
+**Planned scope:** The `bookings` app's transactional core: `SeatHold`, `Booking`, `SeatBooking`, the interactive seat map, and the double-booking protection at the database level (4.8). Payment is deliberately stubbed at this stage (bookings marked paid manually) so the seat-concurrency logic — the highest-risk part of the whole project — can be built and tested in isolation before Stripe's complexity is layered on top of it.
 
-####
+#### To be completed during development
 
 </details>
 
-### Phase 3:
+### Phase 3: Payment Integration
 
 <details>
 <summary><b>Expand Engineering Case Study: Phase 3</b></summary>
 
-####
+**Planned scope:** Stripe integration on top of the now-working booking skeleton — PaymentIntent creation, webhook handling and signature verification, idempotency, and the retry/hold-extension behaviour on a failed payment attempt (4.13). Building this after Phase 2 rather than alongside it means payment problems and seat-concurrency problems can be debugged one at a time, not tangled together.
 
-####
+#### To be completed during development
 
 </details>
 
-###
+### Phase 4: Concessions, Membership & Discounts
 
 <details>
 <summary><b>Expand Engineering Case Study: Phase 4</b></summary>
 
-####
+**Planned scope:** The `concessions` app (`Product`, `OrderItem`) integrated into checkout; the `membership` app (`MembershipTier`); and the discount/voucher stacking order (4.10). This comes after payment works, deliberately — there's no sensible way to test "does the discount apply correctly" until a real charge can already succeed without one.
 
-####
+#### To be completed during development
 
 </details>
 
-###
+### Phase 5: Priority Booking & Venue Features
 
 <details>
 <summary><b>Expand Engineering Case Study: Phase 5</b></summary>
 
-####
+**Planned scope:** Priority booking window logic (4.18); the `venue` app (`EnquiryRequest`, private hire and screening visibility per 4.19); static content pages (About, Accessibility policy, Membership terms).
 
-####
-
-###
+#### To be completed during development
 
 </details>
 
-###
+### Phase 6: In-Venue & Staff Tooling
 
-###
+<details>
+<summary><b>Expand Engineering Case Study: Phase 6</b></summary>
+
+**Planned scope:** Staff-assisted, card-in-person bookings (4.14); the `staff` app (audit log, refund handling, sales dashboard per 4.9); the two-tier `FrontOfHouse`/`Manager` permission model and the separate `/staff/` login (4.9/4.12). Deliberately last among the functional work, since it depends on bookings, payments, and discounts all already existing to have anything real to manage or report on.
+
+#### To be completed during development
+
+</details>
+
+### Phase 7: Accessibility, Cross-Browser & Testing Pass
 
 <details>
 <summary><b>Expand Engineering Case Study: Phase 7</b></summary>
 
-####
+**Planned scope:** The accessibility implementation (4.17) checked properly rather than assumed; cross-browser and responsiveness verification; and the structured testing pass described in [section 9](#testing) — validators, Lighthouse, and the manual/automated test matrix.
 
-####
-
-####
-
-####
+#### To be completed during development
 
 </details>
-
-###
 
 ## <p align="right">(<a href="#top">Back to top</a>)</p>
 
 ## 9. <a name="testing"></a> Testing & Quality Assurance Portfolio
 
-This section outlines the holistic verification suite executed to guarantee the engineering integrity, mathematical precision, and cross-platform accessibility of…
+This section is a **testing plan**, not yet a set of results — the actual pass/fail outcomes, screenshots, and bug log can only be filled in once the application exists. What follows is what will be tested and why, drawn directly from the edge cases and risks already identified while designing the project in [section 4](#architecture), so the testing effort isn't left to be improvised after the fact.
 
 ### 1. Manual Testing Matrix (Boundary Explorations)
 
+The specific edge cases already identified during design, to be manually verified once built:
+
+- **Seat concurrency (4.8):** two browser sessions selecting the same seat at nearly the same moment; a hold expiring mid-checkout; a failed payment attempt extending the hold rather than releasing it; the hard cap on total hold time after repeated retries.
+- **Payment (4.13):** a webhook with an invalid signature is rejected; the same webhook event delivered twice doesn't double-process; a booking whose total is fully covered by a voucher skips Stripe entirely; a connection dropping after submission but before confirmation doesn't result in a double charge.
+- **Vouchers (4.4, 4.13):** a voucher's balance spread correctly across two separate bookings; a voucher's balance is only decremented on confirmed payment, not at checkout; the documented known limitation of two simultaneous checkouts against the same voucher code (see Known Issues, below).
+- **Discounts (4.10):** the membership discount applies correctly and is snapshotted onto the booking rather than recalculated later; a booking's discount doesn't change if the member's tier later lapses.
+- **Screening cancellation (4.11):** cancelling a screening with several existing bookings correctly refunds/vouchers every one of them and produces one audit log entry per booking.
+- **Membership & priority booking (4.18):** a screening becomes publicly bookable at exactly its `public_onsale_at` time; a member whose `priority_booking_hours` doesn't yet cover the gap is correctly refused early access; a permanently members-only screening (`public_onsale_at` blank) never opens to the public.
+- **Private hire (4.19):** a private screening is absent from public listings and public booking is blocked for it; it still correctly blocks a public screening from being scheduled in the same slot.
+- **TMDb integration (4.15):** a search with no results; an API timeout or error during the add-film flow producing a clear message rather than a crash; the manual film-entry path for events with no TMDb page.
+- **Authentication (4.16):** a session's seat holds correctly reassign to the logged-in user despite Django's session-key rotation on login; two different emails that would derive the same username are both handled without collision; attempting to register an already-used email is rejected.
+- **Accessibility (4.17):** the seat map is fully operable by keyboard alone; a seat-hold conflict is announced through the live region, not just shown visually; seat states remain distinguishable without colour.
+
 ### 2. User Story Testing (Behavior-Driven Verification)
 
-Verification of core target audience features mapped back to the primary user requirements.
+Each user story in [section 1](#purpose) already has an explicit acceptance criterion written alongside it — this section's job, once the application exists, is to verify each one directly against the real behaviour, using the same Given/When/Then phrasing already used there rather than inventing a separate, parallel set of test cases.
 
 ### 3. Validator Testing
 
+- HTML validated against the W3C Markup Validator, with no errors.
+- CSS validated against the Jigsaw (W3C) CSS validator.
+- Python code checked against PEP 8 (via a linter such as `flake8`).
+- JavaScript checked against a linter (e.g. ESLint) for the small amount of hand-written JS (primarily the seat-map interaction, 4.8).
+
 ### 4. Lighthouse Testing
+
+Run against the highest-risk pages rather than every page equally: the home/listings page, a film detail page, and — most importantly — the seat selection and checkout flow, since that's where most of the project's complexity (and therefore most of the risk of a poor score) actually sits. Accessibility and performance are the two categories most worth tracking given [section 4.17](#architecture)'s commitments.
 
 ### 5. Browser Compatibility
 
-Cross-origin audio context rendering pipelines were explicitly verified across major rendering engines:
+Checked against the current versions of Chrome, Firefox, Safari, and Edge, plus mobile Safari and Chrome specifically — the seat map has to work on a phone-sized screen, per the acceptance criteria in section 1, not just on desktop.
 
 ### 6. Responsiveness Testing
 
+Checked at a handful of reference viewport widths rather than only at conventional breakpoints, consistent with the fluid, no-fixed-breakpoint layout approach decided in [section 3](#ux-strategy) — the point of that approach is that it shouldn't only work at the specific widths a media query happens to target. Also checked at 200% browser zoom and with the OS-level large-text setting enabled, per [4.17](#architecture)'s accessibility commitments.
+
 ### 7. Automated End-to-End Testing
+
+Priority order for automated coverage, highest-risk first: the seat hold → checkout → payment flow (4.8, 4.13), since it's the most complex and most failure-prone journey in the project; the authentication flow (4.16), including the session-rotation edge case; and the discount/voucher stacking order (4.10). Django's own test framework covers model and view-level logic; a browser-level tool (e.g. Playwright) would be needed for anything that has to exercise the seat-map JavaScript directly.
 
 ### 8. Bugs Fixed (Sprint Log)
 
+_(This section can only be populated once development is underway — it will log real bugs found and fixed, not a hypothetical list.)_
+
 ### 9. Known Issues
+
+Documented, deliberately-accepted limitations from the design process, rather than things yet to be discovered:
+
+- **Voucher race condition (4.13):** a voucher's balance isn't "held" the way a seat is, so two simultaneous checkouts against the same code have a narrow window in which both could succeed. Judged low-probability and low-severity given a voucher requires manually typing a code; solving it properly would need a second holding mechanism mirroring `SeatHold`, which isn't proportionate to the risk.
+- **No membership auto-renewal (4.18):** a lapsed membership must be manually repurchased; automatic recurring billing was deliberately out of scope.
+- **No dual-authorisation for large refunds (4.12):** a single manager can process a refund of any size; a second sign-off for large refunds is recorded as a future consideration, not built.
+- **Reporting queries run against the primary database (4.12):** at very high transaction volume, the sales dashboard's queries could theoretically compete with customer-facing traffic; a read replica is a documented future consideration, not needed at this project's scale.
 
 <p align="right">(<a href="#top">Back to top</a>)</p>
 
