@@ -173,7 +173,7 @@ The project is split into seven Django apps, each covering one distinct area of 
 
 ### 4.2 `bookings`
 
-- **Booking** — `user` (nullable FK — see design note below), `screening` (FK), `status` (pending / paid / cancelled / refunded), `channel` (online / in_venue), `payment_method` (card / cash), `stripe_payment_intent_id` (nullable — only set for card payments), `created_by` (nullable FK to `User`, the staff member who took an in-venue booking), `voucher_used` (nullable FK to `Voucher`), `discount_applied_percent` (snapshot, see note below), `staff_discount_pence` (nullable, default 0 — see `staff` app note in 4.9), `created_at`.
+- **Booking** — `user` (nullable FK — see design note below), `screening` (FK), `status` (pending / paid / cancelled / refunded), `channel` (online / in_venue), `payment_method` (`card_online` / `cash` / `card_in_person`), `stripe_payment_intent_id` (nullable — only set for `card_online`), `created_by` (nullable FK to `User`, the staff member who took an in-venue booking), `voucher_used` (nullable FK to `Voucher`), `discount_applied_percent` (snapshot, see note below), `staff_discount_pence` (nullable, default 0 — see `staff` app note in 4.9), `created_at`.
 - **SeatBooking** — `booking` (FK), `seat` (FK), `screening` (FK, duplicated from `booking.screening` specifically so the database can enforce a `unique_together` constraint on `(screening, seat)`). This is what stops two people booking the same seat for the same screening.
 
 A booking can have several `SeatBooking` rows (a party booking four seats together is four rows against one `Booking`), which is why seats live on their own linking table rather than as a single field on `Booking`.
@@ -224,7 +224,7 @@ User ──1:N── LoyaltyTransaction ──FK (nullable)── Booking
 
 A gap exists between a user selecting seats and completing payment — without handling this deliberately, a user could pick seats, spend time in checkout, and then be told at the payment step that someone else got there first. To avoid that, seat selection uses a short-lived **hold**, separate from a confirmed booking.
 
-- **SeatHold** — `screening` (FK), `seat` (FK), `session_key`, `expires_at`, `extension_count` (default 0). `unique_together = ('screening', 'seat')`.
+- **SeatHold** — `screening` (FK), `seat` (FK), `session_key`, `user` (nullable FK — see 4.16 for why), `expires_at`, `extension_count` (default 0). `unique_together = ('screening', 'seat')`.
 
 `SeatHold` is deliberately a separate model from `SeatBooking` (4.2): a hold is provisional and expires if unused, whereas a `SeatBooking` means the seat has actually been paid for. Keeping them apart means an abandoned checkout can never permanently block a seat.
 
@@ -311,16 +311,18 @@ Two implementation details worth being explicit about, since they're easy to get
 
 **Known limitation, deliberately not solved:** a voucher's balance isn't "held" the way a seat is. If the same code were entered in two simultaneous checkouts, there's a narrow window where both could succeed against the same balance before either payment confirms. Given a voucher requires manually typing a code, this is a low-probability, low-severity edge case — solving it properly would mean a second holding mechanism mirroring `SeatHold`, which is disproportionate complexity for the risk involved. This is recorded as a known issue (see [Testing](#testing)) rather than engineered around.
 
-### 4.14 In-Venue Bookings (Staff-Assisted, Cash)
+### 4.14 In-Venue Bookings (Staff-Assisted, Cash or Card)
 
-A walk-up customer at the venue should be able to book largely the same way an online customer does — same seat map, same concessions, same membership/voucher discounts — with a member of staff completing it on their behalf and cash instead of Stripe as the payment method.
+A walk-up customer at the venue should be able to book largely the same way an online customer does — same seat map, same concessions, same membership/voucher discounts — with a member of staff completing it on their behalf.
+
+Channel (online vs in-venue) and payment method (card vs cash) are two separate decisions, not one — a customer at the venue can pay by card without that meaning "online," and specifically without needing to give an email address or create an account. This matters for privacy-minded customers who'd rather not hand over an email just to pay by card at the counter.
 
 This deliberately reuses the existing booking flow rather than being a separate code path: the same `SeatHold` → `SeatBooking` mechanics, the same discount stacking order (4.10), and the same audit logging if a staff discretionary discount is applied (4.9) all apply unchanged. The only real differences are in who initiates it and how payment is recorded:
 
-- `Booking.channel = 'in_venue'`, `Booking.payment_method = 'cash'`, `Booking.created_by` set to the staff member completing the sale.
-- No Stripe PaymentIntent is created; the booking is marked paid directly once staff confirm cash has been received. `stripe_payment_intent_id` stays null.
-- `Booking.user` is left blank for an anonymous walk-up sale — no account is required, mirroring a real box office. If the customer wants their membership discount or loyalty points, staff look their account up (e.g. by email) and attach it to the booking before completing the sale.
-- The customer doesn't need an email confirmation for a same-day in-person purchase, though staff can send one if the customer provides an address — the till/booking screen itself serves as the receipt.
+- `Booking.channel = 'in_venue'`, `Booking.created_by` set to the staff member completing the sale.
+- `Booking.payment_method` is `cash` or `card_in_person` — the latter meaning the customer paid by card on the venue's own separate card machine, not through Stripe. That card terminal sits entirely outside this application, the same as a physical till would; staff simply mark the booking as paid once payment is taken, exactly as they would for cash. No Stripe PaymentIntent is created for either — `stripe_payment_intent_id` stays null regardless of which of the two tender types was used.
+- `Booking.user` is left blank by default for a walk-up sale — **no account or email is required for either cash or card-in-person**, mirroring a real box office and respecting a customer who'd rather not provide one. If the customer wants their membership discount or loyalty points, staff look their account up (e.g. by email) and attach it to the booking; otherwise it proceeds as a fully anonymous guest sale.
+- The customer doesn't need an email confirmation for a same-day in-person purchase, though staff can send one if the customer chooses to provide an address — the till/booking screen itself serves as the receipt.
 
 **Available to:** Front of House, as a routine day-to-day action — this is the standard box-office sale, not a discretionary override.
 
@@ -348,6 +350,26 @@ Building on the `Film` model (4.1) and the hybrid approach decided earlier — r
 **Rate limits and the API key.** TMDb's rate limits are generous, and since calls only happen when staff actively add a film — not on every customer page view — this is never a practical concern here. The TMDb API key is a server-side environment variable, the same as the Stripe keys: the browser never sees it, since every TMDb call happens from the server during the staff flow, never from the customer's browser.
 
 **Optional refresh.** Because film data is cached rather than fetched live, a poster or synopsis TMDb later corrects won't automatically update locally. A "Refresh from TMDb" action on a `Film`'s staff edit page re-runs steps 2–3 above and overwrites the local record (again with staff review before saving), which covers this without needing a background sync job.
+
+### 4.16 Authentication & Registration Flow
+
+**Signup is deliberately minimal:** email and password only. `Profile` (4.5) is created automatically via a signal the moment a `User` is created, rather than being a second form the customer has to fill in — date of birth and membership type are added afterwards, on the profile page, only if and when they're relevant.
+
+**Simplification, stated explicitly:** rather than building a fully custom Django user model with email as the username field (the more "correct" long-term approach), this project keeps Django's default `User` model and derives a username automatically from the email address behind the scenes. A custom user model has to be decided before the very first migration ever runs — a real risk for a project at this stage — so the registration _form_ only ever shows email and password, while the underlying model stays the simpler, lower-risk default.
+
+**Username derivation and collisions.** The username is built from the email's local part (the text before `@`), sanitised to characters Django's username field actually permits. Since two different email addresses can share the same local part (`j.smith@gmail.com` and `j.smith@yahoo.com` would both derive to `j.smith`), the derivation checks for an existing match and appends an incrementing number until it finds one that's free (`j.smith`, then `j.smith2`, `j.smith3`, and so on). This is purely internal — the customer logs in with their email, never sees or needs to know their generated username, so a collision here is invisible plumbing, not a real UX problem.
+
+**The uniqueness rule that actually matters is on email, not username.** Django's default `User` model does _not_ enforce email addresses to be unique out of the box — easy to assume it does, since it feels like it should. Because email is the real login identifier here, that constraint has to be added deliberately (a unique constraint on the field, or an equivalent check in the registration view); without it, nothing would stop the same email being used to create two separate accounts.
+
+**Login/registration pages are restricted to anonymous users only** (an already-logged-in user is redirected away from them rather than being shown a login form) — this is a pass-level requirement, not just a nice-to-have.
+
+**Email verification is sent, but non-blocking.** A verification email goes out on registration, but the account is usable immediately — someone registering specifically to book a seat in the next five minutes shouldn't be stuck waiting on an email that might take a few minutes to arrive. Verification is a gentle reminder (e.g. a banner), not a gate on using the site. Password reset reuses the same signed-token approach Django already provides for this, rather than needing a second, separate token-storage model for verification.
+
+**Registration is required to complete an online checkout, but not to browse or select seats, and not for an in-venue cash sale.** This is deliberately two different rules for two different real-world contexts, not an inconsistency: browsing and picking seats works anonymously, but finishing an _online_ purchase requires an account — which is exactly the "clear reason to register" the assessment criteria ask for, since booking history, loyalty points, and the membership discount all depend on having one. In-venue cash sales stay guest-friendly, as already decided in 4.14, because a walk-up customer at a real box office was never going to be asked to create an account first.
+
+**Design note — seat holds surviving a mid-checkout login.** Django deliberately rotates a user's session ID at the moment they log in, as a defence against session-fixation attacks. Since `SeatHold` (4.8) is tied to `session_key`, a customer who selects seats anonymously and then registers or logs in _mid-checkout_ — exactly the moment "continue to checkout" prompts them to, per the rule above — would otherwise silently lose their hold the instant login succeeds. To prevent that: `SeatHold` carries a nullable `user` FK alongside `session_key`, and on a successful login, any holds under the current session are reassigned to that user. A small addition, but it closes a gap that would otherwise cause a confusing, hard-to-reproduce failure at exactly the point a customer is trying to convert.
+
+**Staff logins are entirely separate** from all of the above — a different URL, a different login template (4.9/4.12), and unrelated to whether a given staff member also happens to hold their own personal customer account.
 
 ## <p align="right">(<a href="#top">Back to top</a>)</p>
 
@@ -388,7 +410,7 @@ Anything financial or account-affecting (a discount, a refund, a manually issued
 
 **Staff-facing**
 
-- _(Front of House)_ Create a booking on behalf of a walk-up customer, taking cash — same seat map, concessions, and discount rules as the online flow (see [4.14](#architecture))
+- _(Front of House)_ Create a booking on behalf of a walk-up customer, by cash or card, without requiring an email or account — same seat map, concessions, and discount rules as the online flow (see [4.14](#architecture))
 - _(Front of House)_ View bookings for a given screening, for door/headcount purposes
 - _(Front of House)_ View a single booking's full detail (seats, concessions ordered, payment status) — useful for resolving a customer query at the door or by phone
 - _(Front of House)_ Apply a discretionary discount to a booking, up to a configured cap, with a required reason
