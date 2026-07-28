@@ -70,6 +70,22 @@ _Focus: managing schedules and enquiries without needing developer help_
 - **What doesn't translate to this project:** As large chains, they run on enterprise ticketing platforms (e.g. Vista) built to serve many venues at once. That's more infrastructure than a single independent site needs, and makes it harder to support small-venue specifics — a local membership scheme, or one-off private hire.
 - **What this project takes from them:** the dark, premium visual language, and the idea of treating food/drink pre-ordering as a first-class part of checkout — built on a much simpler, single-venue Django backend rather than enterprise ticketing software.
 
+### Modern Cinema Booking Interfaces (Dribbble)
+
+Alongside the direct venue research above, a set of contemporary cinema/booking website concepts was reviewed for interaction and layout ideas — not for visual branding, since these all lean into a bold, corporate-multiplex colour language that doesn't suit a boutique, Art Deco venue. What's taken from them is patterns of _behaviour and structure_, translated into the project's own visual language rather than copied wholesale. See [3](#ux-strategy) for how each of these was actually formalised into a named design pattern.
+
+- **Horizontal, categorised browsing rows** (in the style of Netflix, and reflected in several of the reviewed concepts) — a genuinely well-suited pattern for grouping screenings by category (What's On, Coming Soon, discounted showings), built as a named Composition pattern (**"Reel"**, 3.II) rather than adopted as a generic carousel.
+- **A date-strip and grouped, pill-shaped showtime picker**, as opposed to a plain list of times — clearer at a glance, and equally at home in a dark, gold-accented palette as in whatever colour scheme it originated in.
+- **A persistent, live-updating order summary during booking**, rather than one that only reflects changes after a page turn — a real usability principle worth designing in deliberately from the start, not an incidental nicety (see 4.20).
+- **Letting the content — real film posters and stills — carry the visual weight**, with UI chrome kept deliberately minimal, which suits this project particularly well given it uses genuine TMDb imagery (4.15) rather than stock photography.
+- **Smooth transitions between pages**, achievable through the browser's native View Transitions API layered on top of ordinary server-rendered pages, rather than requiring a client-side framework.
+
+**Deliberately not adopted, and why:**
+
+- Hover-triggered autoplay video previews — conflicts directly with the no-autoplay accessibility commitment already made in 4.17.
+- A true single-page-app architecture — conflicts with the server-rendered Django templates decision in section 3; only the _transition feel_ is worth keeping, not the underlying architecture.
+- Large-catalogue visual density — several of the reviewed concepts are built for chains with dozens of screens and large release slates. A single-screen venue showing a handful of films a week would look sparse trying to match that density; a smaller number of richer, more generously-spaced rows suits the actual scale of the content here.
+
 ## <p align="right">(<a href="#top">Back to top</a>)</p>
 
 ## 3. <a name="ux-strategy"></a> UX Design Strategy (The Five Planes)
@@ -100,12 +116,14 @@ This section follows Jesse James Garrett's "five planes" model — Strategy, Sco
 #### Design principles
 
 - **No frontend framework, organised with CUBE CSS.** The interface is built with plain, semantic HTML and CSS — no React/Vue, no build step — using Andy Bell's **CUBE CSS** methodology to organise the CSS itself: **C**omposition, **U**tility, **B**lock, **E**xception. This isn't a separate decision from the "no framework" choice — CUBE CSS is specifically designed with _Every Layout_ as its Composition layer, so adopting it extends a decision already made rather than adding a competing one.
-  - **Composition** — the _Every Layout_ patterns already decided: a "stack" for consistent vertical spacing, a "switcher" for elements that sit side-by-side on desktop and stack on mobile without manual breakpoints, and similar layout-level primitives. These control arrangement, not appearance.
+  - **Composition** — the _Every Layout_ patterns already decided (a "stack" for consistent vertical spacing, a "switcher" for elements that sit side-by-side on desktop and stack on mobile without manual breakpoints), plus one addition of the project's own: a **"Reel"** — a horizontally scrolling, snap-aligned row for browsing screenings by category (What's On, Coming Soon, discounted showings — see [2](#research) for where this came from), built with native `overflow-x` and `scroll-snap` rather than a JavaScript carousel library, so it inherits real touch scrolling and keyboard accessibility for free. These patterns all control arrangement, not appearance.
   - **Utility** — small, single-purpose classes for common needs that don't deserve their own component: a `.visually-hidden` class for text that's read by a screen reader but not shown visually (used directly for the seat map's accessible seat names in [4.17](#architecture)), spacing utilities built on the same CSS custom properties already used for the design tokens (e.g. `var(--space-m)`).
-  - **Block** — the actual reusable components, each with its own scoped, sensibly-named styles: `.seat-map`, `.film-card`, `.nav`. This is where the "cards for film posters" idea from Surface (below) is actually implemented, as a named, self-contained block rather than a one-off set of styles.
+  - **Block** — the actual reusable components, each with its own scoped, sensibly-named styles: `.seat-map`, `.film-card`, `.nav`, and a grouped, pill-shaped showtime picker sitting alongside a date strip (2) rather than a plain list of times. This is where the "cards for film posters" idea from Surface (below) is actually implemented, as a named, self-contained block rather than a one-off set of styles.
   - **Exception** — scoped, deliberate overrides for a component in an unusual state, applied via data attributes rather than piling on more classes. **This maps directly onto the seat map's states from [4.8](#architecture):** rather than four separate modifier classes for available/selected/held/booked, each seat carries a single `data-seat-status` attribute, and the exception layer defines what changes for each value. One attribute reflects the seat's actual state; the styling for every state lives in one predictable place rather than being scattered across conditional classes.
 
   Beyond keeping the CSS itself organised, this gives the project a consistent, explainable naming convention throughout — directly relevant to the assessment's own emphasis on consistent naming and readable, well-organised code, since "why is this class named the way it is" now has a one-word answer (which of the four layers it belongs to) rather than being ad hoc.
+
+  Navigation between pages uses the browser's native View Transitions API to soften the change between server-rendered pages into a brief crossfade, rather than a hard reload — a small touch that borrows the _feel_ of a single-page app without adopting its architecture, which would conflict with the server-rendered template approach this whole section commits to.
 
 - **Dark, cinema-inspired palette:** dark background, light text, a warm accent colour for interactive states — meant to evoke a cinema auditorium rather than a typical light-mode web app.
 - **Consistent media framing:** posters and trailers are shown at fixed aspect ratios so the page layout doesn't jump as images load.
@@ -437,6 +455,17 @@ This section replaces an earlier draft of the membership design, after checking 
 - If the hirer wants named individual seats tracked (rather than a single flat-fee block booking), staff create those bookings through the existing in-venue flow (4.14) — no new booking mechanism needed, since a private hire's seats are conceptually no different from a staff-assisted walk-up sale, just arranged in advance.
 
 **Payment for the hire itself stays outside this system.** The actual private-hire fee is negotiated and settled through the `EnquiryRequest` conversation (an invoice, a bank transfer, whatever the venue's existing process is) rather than through Stripe — building a quoting/invoicing flow is out of scope here, and real private hire agreements are usually bespoke enough (catering add-ons, differing durations, negotiated rates) that forcing them through a fixed per-seat checkout wouldn't actually fit. `is_private` exists to reserve the slot and control visibility, not to process the hire's payment.
+
+### 4.20 Live Booking Summary ("Ledger")
+
+A booking touches several things that can each change independently as a customer moves through it — seats selected, concessions added, a voucher entered, a membership discount applied. A summary that only reflects these changes after a page turn is a common but avoidable weak point in booking flows generally, worth designing out from the start rather than treating as a detail to fix later.
+
+**The pattern:** a persistent, sticky summary panel, visible throughout seat selection and checkout, that updates the instant something changes — a seat selected, a concession quantity adjusted, a code entered — not on the next page load. Two things make this work correctly rather than just look responsive:
+
+- **Optimistic client-side updates, reconciled server-side.** The displayed total recalculates immediately in the browser the moment something changes, using the same prices already rendered on the page — so it feels instant. At each real step transition (moving from seat selection to checkout, for instance), the server recalculates the actual total from scratch (following the discount/voucher order in 4.10) and that figure is what's actually charged. The client-side number is a responsive preview; the server-side number is the source of truth. This matters because a customer should never see a total that later turns out to have been wrong — the two calculations use the same logic, just at different points, so they should never actually disagree in practice.
+- **It's a Block, not a Composition pattern**, in the CUBE CSS sense (3.II) — `.booking-summary` is a specific, scoped component with its own behaviour, built using a Stack internally for its own vertical rhythm, rather than a general-purpose layout primitive reused elsewhere.
+
+This directly supports the "user is shown progress indicators and feedback on transactions" principle already stated in the project's design scope (3.II), and gives concrete shape to what would otherwise be an implicit expectation.
 
 ## <p align="right">(<a href="#top">Back to top</a>)</p>
 
