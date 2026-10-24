@@ -39,6 +39,7 @@ Within each app, logic goes in one place per kind. Models hold the data rules an
 - [4.21 Data integrity and deletion policy](#421-data-integrity-and-deletion-policy)
 - [4.22 Customer cancellations and refunds](#422-customer-cancellations-and-refunds)
 - [4.23 Venue settings, and what is law versus policy](#423-venue-settings-and-what-is-law-versus-policy)
+- [4.24 Project structure](#424-project-structure)
 
 ## 4.1 `screenings`
 
@@ -393,6 +394,33 @@ The system provides mechanisms and the venue owns the policy. A made-up cinema's
 Membership tiers, prices, ticket classes and permission groups are already data, so they need no special handling. The numbers quoted elsewhere in this document (24 hours, 10 minutes and so on) are shipped defaults, not rules. If time gets tight, a plain settings file is an acceptable first version of this record, and I'd describe the settings model as the next step.
 
 Some behaviours stay fixed because they bind a venue whatever its preferences: the refund owed when the venue cancels a showing (4.11), the required reason and named actor on every sensitive action (4.9), and the cancellation-right position in 4.22. Everything else is a default the venue can change.
+
+## 4.24 Project structure
+
+Every app follows the same layout, so finding a file never depends on which app it's in.
+
+```text
+regal-cinema/
+├── regal/                  project package: settings.py, urls.py, wsgi.py
+├── accounts/ screenings/ bookings/ concessions/ membership/ venue/ staff/
+│   ├── models.py           data and the rules that must always hold
+│   ├── services.py         business logic (only where an app has any)
+│   ├── views.py  forms.py  admin.py
+│   ├── urls.py             customer routes
+│   ├── staff_urls.py       staff routes, mounted under /staff/ (only where needed)
+│   ├── templates/<app>/    the app's own templates
+│   └── tests/              test_models.py, test_services.py, test_views.py
+├── templates/              base.html, shared partials, error pages
+├── static/
+│   ├── css/                one folder per CUBE CSS layer: composition, utility, block, exception
+│   └── js/                 hand-written scripts, one file per feature (seat-map.js)
+├── docs/
+├── manage.py  requirements.txt  .env.example
+```
+
+There's one settings module. Anything that differs between my machine and Render (the database URL, secret key, Stripe and TMDb keys, `DEBUG`) comes from environment variables, and `DEBUG` defaults to off, so a missing variable fails safe. `.env.example` lists every variable with a dummy value. The real `.env` is never committed.
+
+Third-party code stays out of these folders. Python libraries come in through `requirements.txt`, and if I ever include anything vendored by hand it goes in `static/vendor/`, credited in the README.
 
 ---
 
