@@ -9,7 +9,13 @@ The phases below are the planned build order, worked out from the dependencies b
 
 Planned scope: project scaffolding; the `accounts` app and the auth and registration flow (4.16); the `screenings` catalogue (`Film`, `Screen`, `Seat`, `TicketClass`, `TicketType`, `Screening`, `ScreeningPrice`) including the TMDb integration (4.15); and the deployment skeleton, so there's a live site from the start. Public browsing only, with no booking yet. This comes first because almost every other app depends on a logged-in user and a real catalogue to book against.
 
-### To be completed during development
+### 24 October 2026: local PostgreSQL
+
+I develop against PostgreSQL, not Django's default SQLite, because production on Render is PostgreSQL and the riskiest part of the design depends on how the database handles concurrent writes. The seat hold transaction (4.8) locks rows with `select_for_update()`. SQLite ignores that and locks the whole database on every write instead, so a double-booking test that passes on SQLite would tell me nothing about the live site.
+
+I considered three ways to run it: a native install, Docker, or a hosted development database. I chose the native install. It runs as a Windows service, works offline, and has no network delay, which matters for a concurrency test that fires requests at nearly the same moment. Docker Desktop would have meant setting up WSL2 for a single service. A hosted database stops working whenever I'm offline, and Render's free databases expire.
+
+I installed PostgreSQL 17 with `winget install PostgreSQL.PostgreSQL.17`, and I'll pick the same major version for the Render database so the two environments behave the same. I then created a `regal` role and a `regal_cinema` database owned by it. The role has `CREATEDB` because Django's test runner creates and drops its own test database. The connection string lives in an uncommitted `.env` file. The steps are in the README under Local deployment.
 
 </details>
 
