@@ -33,6 +33,21 @@ ALLOWED_HOSTS = [
     host for host in os.environ.get('ALLOWED_HOSTS', '').split(',') if host
 ]
 
+# Render sets this to the service's own hostname.
+RENDER_EXTERNAL_HOSTNAME = os.environ.get('RENDER_EXTERNAL_HOSTNAME')
+if RENDER_EXTERNAL_HOSTNAME:
+    ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
+
+if not DEBUG:
+    # Render ends HTTPS at its proxy and passes the original scheme on in
+    # this header. It also redirects plain HTTP itself, so Django doesn't
+    # need to (see SILENCED_SYSTEM_CHECKS).
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_HSTS_SECONDS = 3600
+    SILENCED_SYSTEM_CHECKS = ['security.W008']
+
 
 # Application definition
 
