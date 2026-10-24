@@ -40,6 +40,7 @@ Within each app, logic goes in one place per kind. Models hold the data rules an
 - [4.22 Customer cancellations and refunds](#422-customer-cancellations-and-refunds)
 - [4.23 Venue settings, and what is law versus policy](#423-venue-settings-and-what-is-law-versus-policy)
 - [4.24 Project structure](#424-project-structure)
+- [4.25 URL conventions](#425-url-conventions)
 
 ## 4.1 `screenings`
 
@@ -421,6 +422,24 @@ regal-cinema/
 There's one settings module. Anything that differs between my machine and Render (the database URL, secret key, Stripe and TMDb keys, `DEBUG`) comes from environment variables, and `DEBUG` defaults to off, so a missing variable fails safe. `.env.example` lists every variable with a dummy value. The real `.env` is never committed.
 
 Third-party code stays out of these folders. Python libraries come in through `requirements.txt`, and if I ever include anything vendored by hand it goes in `static/vendor/`, credited in the README.
+
+## 4.25 URL conventions
+
+Paths are lowercase, use hyphens between words, end with a slash, and name things in the plural for a list (`/films/`) and by key for one item (`/films/<slug>/`). Films use a slug because their pages are public and worth reading. Screenings and bookings use their primary key, or the booking reference where a customer might read it out. Each app's `urls.py` sets an `app_name`, and every route has a name in the form `<app>:<thing>_<action>`, such as `screenings:screening_detail` or `bookings:checkout_pay`. Templates and redirects always use `{% url %}` or `reverse()` with that name, never a typed path.
+
+| Path                         | App                    | What it is                                                     |
+| :--------------------------- | :--------------------- | :------------------------------------------------------------- |
+| `/`                          | `screenings`           | What's on, in Reel rows                                        |
+| `/films/<slug>/`             | `screenings`           | Film detail and showtimes                                      |
+| `/screenings/<id>/`          | `bookings`             | Seat map and ticket types for one screening                    |
+| `/booking/...`               | `bookings`             | Checkout steps, confirmation and the Stripe webhook            |
+| `/account/...`               | `accounts`, `bookings` | Register, log in, log out, profile, My Bookings                |
+| `/membership/`               | `membership`           | Tiers and buying a membership                                  |
+| `/hire/`                     | `venue`                | Private hire enquiry form                                      |
+| `/about/`, `/accessibility/` | `venue`                | Static pages                                                   |
+| `/staff/<app>/...`           | each app               | Staff routes from each app's `staff_urls.py` (4.9)             |
+
+Staff URLs are mounted under `/staff/` in the project's `urls.py`, one prefix per app (`/staff/screenings/`, `/staff/bookings/`), so the staff area has a single entry point while each view still lives in the app that owns its data.
 
 ---
 
