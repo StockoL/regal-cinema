@@ -92,7 +92,7 @@ Success: no customer loses a seat hold by registering or logging in during check
 | Anonymous browsing   | Given no account, when a customer browses or selects seats, then nothing requires login yet.                                    | Must   |
 | Gate at checkout     | Given an anonymous customer reaches online checkout, when they try to pay, then they are asked to register or log in.           | Must   |
 | Anonymous-only pages | Given a logged-in customer, when they visit login or registration, then they are redirected away.                               | Must   |
-| Email case           | Given an email is registered, when it is reused with different capitals, then it is rejected as a duplicate.                     | Should |
+| Email case           | Given an email is registered, when it is reused with different capitals, then it is rejected as a duplicate.                    | Should |
 | Duplicate email      | Given an email is already registered, when someone reuses it, then registration is rejected with a clear message.               | Must   |
 | Hold survives login  | Given holds exist under an anonymous session, when the customer logs in mid-checkout, then the holds reassign to their account. | Must   |
 | Verification         | Given a new account, when registration completes, then a verification email is sent but the account works immediately.          | Should |
