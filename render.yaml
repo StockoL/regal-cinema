@@ -1,0 +1,20 @@
+# Render blueprint: the web service only. The database is on Neon, and
+# its connection string is entered in the Render dashboard.
+services:
+  - type: web
+    name: regal-cinema
+    runtime: python
+    plan: free
+    region: frankfurt
+    buildCommand: ./build.sh
+    startCommand: gunicorn regal.wsgi:application
+    healthCheckPath: /health/
+    envVars:
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DEBUG
+        value: "False"
+      - key: DATABASE_URL
+        sync: false
+      - key: WEB_CONCURRENCY
+        value: "2"
