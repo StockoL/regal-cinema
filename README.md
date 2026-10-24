@@ -69,7 +69,26 @@ This section will be filled in with the exact steps once the project is deployed
 
 ### Local deployment
 
-To be completed with the real local setup steps once the project is underway.
+The project runs on PostgreSQL locally as well as in production, never SQLite. The reasons are in the [development log](docs/development_log.md#24-october-2026-local-postgresql). On Windows:
+
+1. Install PostgreSQL 17 with `winget install PostgreSQL.PostgreSQL.17`. The installer asks you to set a password for the `postgres` superuser.
+2. Create a role and a database for the project. `psql` is in `C:\Program Files\PostgreSQL\17\bin` if it isn't on your PATH.
+
+   ```text
+   psql -U postgres -c "CREATE ROLE regal WITH LOGIN PASSWORD 'choose-a-password' CREATEDB;"
+   psql -U postgres -c "CREATE DATABASE regal_cinema OWNER regal;"
+   ```
+
+   The role needs `CREATEDB` so Django's test runner can create and drop its own test database.
+3. Add the connection string to a `.env` file in the project root. This file is never committed.
+
+   ```text
+   DATABASE_URL=postgres://regal:choose-a-password@localhost:5432/regal_cinema
+   ```
+
+On macOS or Linux, install PostgreSQL 17 with your package manager (Homebrew, apt) and run the same two `psql` commands.
+
+The remaining steps (clone, virtual environment, install requirements, migrate, run the server) will be added once the project skeleton exists.
 
 ### Quick local spin-up alternatives
 
