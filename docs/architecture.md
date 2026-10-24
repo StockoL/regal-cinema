@@ -2,6 +2,8 @@
 
 I've split the project into seven Django apps, each covering one area of the domain. That keeps each app's models and logic focused on one job, and means some of them (`concessions`, `membership`) could be reused on another project with little change.
 
+Within each app, logic goes in one place per kind. Models hold the data rules and validation that must always be true, such as the no-overlap check on a screening or the unique seat constraint. A `services.py` module holds business logic that touches more than one model or app, such as creating holds, pricing a booking in the order from 4.10, or finalising a booking from a Stripe webhook. Views handle the request, call a service and choose a response, and templates only present what they're given. That makes a rule like the discount order something I can test directly, without going through a page.
+
 | App           | Responsibility                                                                                                     |
 | :------------ | :----------------------------------------------------------------------------------------------------------------- |
 | `accounts`    | User profile data: membership tier and expiry                                                                      |
