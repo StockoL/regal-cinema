@@ -86,6 +86,11 @@ DATABASES = {
 }
 
 
+# Custom user with email as the login, set before the first migration
+# (architecture 4.16).
+AUTH_USER_MODEL = 'accounts.User'
+
+
 # Password validation
 # https://docs.djangoproject.com/en/6.1/ref/settings/#auth-password-validators
 
