@@ -1,0 +1,20 @@
+# Environment and secrets
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+
+# Django
+staticfiles/
+media/
+
+# Test and coverage output
+.coverage
+htmlcov/
+
+# Editors and OS
+.vscode/
+Thumbs.db
+.DS_Store
