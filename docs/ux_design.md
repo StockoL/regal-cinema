@@ -79,8 +79,21 @@ Home (what's on)
 ## IV. Skeleton
 
 - Booking page layout: the seating plan and order summary sit side by side on wide screens and stack on narrow ones, using the switcher pattern instead of a breakpoint for each screen size.
-- Navigation: a simple top nav bar (the cluster pattern) that wraps onto a second line on small screens instead of switching to a separate mobile menu.
+- Navigation: a simple top nav bar (the cluster pattern) that wraps onto a second line on small screens instead of switching to a separate mobile menu. The full design is below.
 - Content spacing: long text such as synopses and policies uses consistent vertical spacing from CSS custom properties, so I don't repeat one-off margin values.
+
+### Main navigation
+
+The site name links home, followed by the same short menu on every customer page, defined once in `base.html`:
+
+- Logged out: What's on, Membership, Private hire, About, Log in, Register.
+- Logged in: What's on, Membership, Private hire, About, My bookings, Account, Log out.
+
+Six or seven links fit on one line at desktop width and wrap cleanly on a phone, which is why I don't need a hamburger menu. Log out is a small form with a button, since logging out changes state and shouldn't happen from a plain link. The current page's link carries `aria-current="page"`, styled so it's visible without relying on colour. A "Skip to main content" link comes first on every page and appears when focused.
+
+The footer holds the venue's phone number and opening hours, the accessibility policy and the membership terms. The phone number is there because it's the route for a cancellation inside the cutoff (4.22).
+
+The staff area has its own navigation in its own base template: Screenings, Films, Bookings, Enquiries, Sales, Audit log and Settings. A link only appears if the staff member holds the permission that area needs, but hiding it is a convenience. The view still checks the permission on the server (4.9). Nothing in the customer navigation links to `/staff/`.
 
 ## V. Surface
 
