@@ -15,7 +15,17 @@ I develop against PostgreSQL, not Django's default SQLite, because production on
 
 I considered three ways to run it: a native install, Docker, or a hosted development database. I chose the native install. It runs as a Windows service, works offline, and has no network delay, which matters for a concurrency test that fires requests at nearly the same moment. Docker Desktop would have meant setting up WSL2 for a single service. A hosted database stops working whenever I'm offline, and Render's free databases expire.
 
-I installed PostgreSQL 17 with `winget install PostgreSQL.PostgreSQL.17`, and I'll pick the same major version for the Render database so the two environments behave the same. I then created a `regal` role and a `regal_cinema` database owned by it. The role has `CREATEDB` because Django's test runner creates and drops its own test database. The connection string lives in an uncommitted `.env` file. The steps are in the README under Local deployment.
+I installed PostgreSQL 17 with `winget install PostgreSQL.PostgreSQL.17`, and I'll pick the same major version for the production database so the two environments behave the same. I then created a `regal` role and a `regal_cinema` database owned by it. The role has `CREATEDB` because Django's test runner creates and drops its own test database. The connection string lives in an uncommitted `.env` file. The steps are in the README under Local deployment.
+
+### 24 October 2026: production database on Neon
+
+The plan was Render for both the web service and the database. Render's free PostgreSQL databases expire 30 days after they're created, which would be long before the 22 January deadline, and marking may run past that date. An assessor opening a site whose database has gone is the outcome I most need to avoid.
+
+I looked at three options: Render's paid database (about $6 a month), recreating Render's free database every month, or a free database from another provider with the web service still on Render. Recreating monthly loses all data each time, so I ruled it out. I chose Neon's free tier, which doesn't expire, over paying Render. The cost is one extra account, and a short delay on the first query after a quiet spell while Neon's compute starts up again.
+
+Both sit in Frankfurt, so requests between Render and Neon don't cross Europe. I use Neon's direct connection string rather than its pooled one, because the pooler runs in transaction mode, which doesn't suit Django's persistent connections and server-side cursors. The string is entered once in the Render dashboard and never committed.
+
+This also shaped the `/health/` page that cron-job.org requests to keep Render's free web service awake. It answers without a database query. Neon's free plan has a monthly compute allowance, and a ping that touched the database every few minutes would keep its compute running all month.
 
 </details>
 
