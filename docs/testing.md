@@ -2,6 +2,8 @@
 
 This section is a testing plan, not yet a set of results. The pass and fail outcomes, screenshots and bug log can only be filled in once the application exists. It lists what I'll test and why, drawn from the edge cases and risks I found while designing the project in [section 4](architecture.md), so the testing isn't improvised afterwards.
 
+I'm building test-first. For each journey step I write a test from its Given/When/Then scenario, watch it fail, then write the smallest code that makes it pass. The test and the code go into the same commit, so the history shows each behaviour arriving with its test. Where it's useful as evidence, a failing test is committed on its own first on the feature branch. Automated tests can't cover everything, which is why the manual checks below sit alongside them.
+
 ## 1. Manual testing matrix (boundary explorations)
 
 The edge cases identified during design, to be checked by hand once built:
