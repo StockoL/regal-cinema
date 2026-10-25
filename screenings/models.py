@@ -49,3 +49,34 @@ class Seat(models.Model):
             f'Row {self.row_label}, seat {self.seat_number}, '
             f'{self.get_area_display().lower()}'
         )
+
+
+class TicketClass(models.Model):
+    """How a whole showing is priced, such as Silver Screen. Its default
+    price is a suggestion staff can change per screening (4.1, 4.18)."""
+
+    name = models.CharField(max_length=50, unique=True)
+    description = models.TextField(blank=True)
+    default_price_pence = models.PositiveIntegerField(null=True, blank=True)
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ['name']
+        verbose_name_plural = 'ticket classes'
+
+    def __str__(self):
+        return self.name
+
+
+class TicketType(models.Model):
+    """Who a seated ticket is for: adult, student, OAP or child. Infants
+    are a headcount on the booking, not a ticket type (4.2)."""
+
+    name = models.CharField(max_length=30, unique=True)
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ['name']
+
+    def __str__(self):
+        return self.name
