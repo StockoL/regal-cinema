@@ -211,3 +211,29 @@ class Screening(models.Model):
     def save(self, *args, **kwargs):
         self.ends_at = self.calculate_ends_at()
         super().save(*args, **kwargs)
+
+
+class ScreeningPrice(models.Model):
+    """What one ticket type costs at one screening. Staff start from the
+    ticket class's default and can change any line (4.1)."""
+
+    screening = models.ForeignKey(
+        Screening, on_delete=models.CASCADE, related_name='prices'
+    )
+    ticket_type = models.ForeignKey(
+        TicketType, on_delete=models.PROTECT, related_name='prices'
+    )
+    price_pence = models.PositiveIntegerField()
+
+    class Meta:
+        ordering = ['screening', 'ticket_type']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['screening', 'ticket_type'],
+                name='one_price_per_ticket_type',
+            ),
+        ]
+
+    def __str__(self):
+        pounds, pence = divmod(self.price_pence, 100)
+        return f'{self.ticket_type}: £{pounds}.{pence:02d}'
