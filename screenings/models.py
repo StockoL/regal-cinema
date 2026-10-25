@@ -1,5 +1,15 @@
+from datetime import timedelta
+
+from django.conf import settings
+from django.contrib.postgres.constraints import ExclusionConstraint
+from django.contrib.postgres.fields import (
+    DateTimeRangeField,
+    RangeBoundary,
+    RangeOperators,
+)
 from django.core.validators import MinValueValidator
 from django.db import models
+from django.utils import timezone
 from django.utils.text import slugify
 
 
@@ -129,3 +139,75 @@ class TicketType(models.Model):
 
     def __str__(self):
         return self.name
+
+
+class TsTzRange(models.Func):
+    """PostgreSQL's timestamp range, built from two datetime columns."""
+
+    function = 'TSTZRANGE'
+    output_field = DateTimeRangeField()
+
+
+class Screening(models.Model):
+    """A film on a screen at a time. It holds the screen from date_time to
+    ends_at, and no two screenings on a screen may overlap (4.1)."""
+
+    film = models.ForeignKey(
+        Film, on_delete=models.PROTECT, related_name='screenings'
+    )
+    screen = models.ForeignKey(
+        Screen, on_delete=models.PROTECT, related_name='screenings'
+    )
+    ticket_class = models.ForeignKey(
+        TicketClass, on_delete=models.PROTECT, related_name='screenings'
+    )
+    date_time = models.DateTimeField()
+    ends_at = models.DateTimeField(blank=True, editable=False)
+    public_onsale_at = models.DateTimeField(null=True, blank=True)
+    is_private = models.BooleanField(default=False)
+    has_captions = models.BooleanField(default=False)
+    has_audio_description = models.BooleanField(default=False)
+
+    class Meta:
+        ordering = ['date_time']
+        constraints = [
+            # Half-open ranges, so one screening may start at the moment
+            # the previous one ends.
+            ExclusionConstraint(
+                name='no_overlapping_screenings',
+                expressions=[
+                    (
+                        TsTzRange('date_time', 'ends_at', RangeBoundary()),
+                        RangeOperators.OVERLAPS,
+                    ),
+                    ('screen', RangeOperators.EQUAL),
+                ],
+                violation_error_message=(
+                    'This screening overlaps another screening on the same '
+                    'screen, including trailer and turnaround time.'
+                ),
+            ),
+        ]
+
+    def __str__(self):
+        when = timezone.localtime(self.date_time)
+        return f'{self.film}, {when:%a %d %b %Y %H:%M}, {self.screen}'
+
+    def calculate_ends_at(self):
+        minutes = (
+            settings.SCREENING_TRAILER_MINUTES
+            + self.film.duration_minutes
+            + settings.SCREENING_TURNAROUND_MINUTES
+        )
+        return self.date_time + timedelta(minutes=minutes)
+
+    def clean(self):
+        # Set before Django validates the constraint, so a staff form
+        # gets the overlap message instead of a database error.
+        if self.film_id and self.date_time:
+            self.ends_at = self.calculate_ends_at()
+        super().clean()
+
+    def save(self, *args, **kwargs):
+        self.ends_at = self.calculate_ends_at()
+        super().save(*args, **kwargs)
