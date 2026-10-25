@@ -191,6 +191,7 @@ Success: the no-overlap rule holds on every save, not only on creation, and edit
 | Step               | Scenario                                                                                                                                                    | MoSCoW |
 | ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ |
 | Overlap rejected   | Given a screening overlaps another on the same screen, when it is saved, then it is rejected with a clear message.                                          | Must   |
+| Runtime changed    | Given a film's runtime changes so an upcoming screening would overlap, when staff save, then each clash is listed with a link to move it.                   | Should |
 | Valid save         | Given no overlap, when it is saved, then it appears immediately in staff and (if public) customer listings.                                                 | Must   |
 | Price table        | Given staff choose a ticket class, when the form loads, then a price for each ticket type is pre-filled from the class default and each line can be edited. | Must   |
 | Price edited later | Given a paid booking exists, when a ticket price on that screening is later edited, then the booking still shows the amount charged at the time.            | Must   |
@@ -242,6 +243,7 @@ Success: the number of customer outcomes (voucher or refund) always equals the n
 | Customer's choice  | Given the batch has run, when each customer is contacted, then a voucher is issued by default and a card refund is available. | Must   |
 | One log entry each | Given the batch completes, when it is reviewed, then one audit entry exists per affected booking.                             | Must   |
 | No bookings        | Given a screening has none, when it is cancelled, then it simply cancels.                                                     | Should |
+| Still listed       | Given a screening is cancelled, when the public browses before its date, then it shows greyed out and labelled Cancelled.     | Should |
 
 ## Journey 17: View the sales dashboard
 
