@@ -27,6 +27,14 @@ Both sit in Frankfurt, so requests between Render and Neon don't cross Europe. I
 
 This also shaped the `/health/` page that cron-job.org requests to keep Render's free web service awake. It answers without a database query. Neon's free plan has a monthly compute allowance, and a ping that touched the database every few minutes would keep its compute running all month.
 
+### 25 October 2026: first deploy
+
+The project skeleton went live: the Django project with settings read from environment variables, the email-login user model (4.16) with its admin, WhiteNoise for static files, and the `/health/` page. Each piece was built on its own branch and merged into `main` with a merge commit, and the first deploy came from that merge.
+
+I checked the live site against the production settings rather than assuming them. `/health/` and the admin login return 200 from gunicorn. A plain HTTP request gets a 301 to HTTPS from Render, which is why Django's own HTTPS redirect is switched off. Responses carry an HSTS header and `X-Frame-Options: DENY`, the CSRF cookie is marked `Secure`, the admin's hashed CSS files load through WhiteNoise, and an unknown URL gets a plain 404 with no debug page, so `DEBUG` is off.
+
+Django's deployment check (`check --deploy`) still reports one error: Django 6.1 won't accept the console email backend in production. No email is sent yet, so this waits until I choose an email provider for verification emails (journey 4).
+
 </details>
 
 ## Phase 2: Core booking skeleton, seats and holds
