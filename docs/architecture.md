@@ -44,17 +44,17 @@ Within each app, logic goes in one place per kind. Models hold the data rules an
 
 ## 4.1 `screenings`
 
-- `Film`: `tmdb_id` (nullable, see 4.15), `title`, `synopsis`, `poster_path`, `trailer_key`, `age_rating`, `duration_minutes`. It's filled from the TMDb API and cached locally instead of being queried on every page load. See [4.15](#415-tmdb-integration).
-- `Screen`: `name`, `total_capacity`.
-- `Seat`: `screen` (FK), `row_label`, `seat_number`, `area` (stalls or circle). This is the fixed physical plan for a screen and doesn't change per booking. Area says where a seat is, for the seat map and for a screen reader's description of it. It doesn't affect price: the real venue charges the same wherever you sit, and so does this project. If a venue did price areas differently, `ScreeningPrice` could take an area column later without disturbing anything else.
-- `TicketClass`: `name` (for example Standard, Silver Screen, Summer Saver, Family Super Saver, Subtitled, Live Event), `description`, `default_price_pence` (nullable, a suggestion and not an enforced price). This is modelled on how the real Regal prices things: a discounted showing such as a Silver Screen screening is a property of that showing, not a discount worked out from who is booking. See [4.18](#418-ticket-classes-membership-tiers-and-priority-booking).
+- `Film`: `tmdb_id` (nullable, see 4.15), `title`, `slug` (unique, for the film's public URL, see 4.25), `synopsis`, `poster_path`, `trailer_key`, `age_rating`, `duration_minutes`, `is_active`. It's filled from the TMDb API and cached locally instead of being queried on every page load. See [4.15](#415-tmdb-integration).
+- `Screen`: `name`, `is_active`. Its capacity is the number of its seats, counted when needed rather than stored, so it can never disagree with the seat plan.
+- `Seat`: `screen` (FK), `row_label`, `seat_number`, `area` (stalls or circle). Unique on `(screen, row_label, seat_number)`. This is the fixed physical plan for a screen and doesn't change per booking. Area says where a seat is, for the seat map and for a screen reader's description of it. It doesn't affect price: the real venue charges the same wherever you sit, and so does this project. If a venue did price areas differently, `ScreeningPrice` could take an area column later without disturbing anything else.
+- `TicketClass`: `name` (for example Standard, Silver Screen, Summer Saver, Family Super Saver, Subtitled, Live Event), `description`, `default_price_pence` (nullable, a suggestion and not an enforced price), `is_active`. This is modelled on how the real Regal prices things: a discounted showing such as a Silver Screen screening is a property of that showing, not a discount worked out from who is booking. See [4.18](#418-ticket-classes-membership-tiers-and-priority-booking).
 - `TicketType`: `name` (Adult, Student, OAP, Child), `is_active`. The kind of person a seated ticket is for. Infants are handled separately, see `Booking.infant_count` in 4.2.
-- `Screening`: `film` (FK), `screen` (FK), `ticket_class` (FK), `date_time`, `public_onsale_at` (nullable, see 4.18), `is_private` (default `False`, see [4.19](#419-private-hire-and-screening-visibility)), `has_captions`, `has_audio_description`.
+- `Screening`: `film` (FK), `screen` (FK), `ticket_class` (FK), `date_time`, `ends_at` (worked out on save, see below), `public_onsale_at` (nullable, see 4.18), `is_private` (default `False`, see [4.19](#419-private-hire-and-screening-visibility)), `has_captions`, `has_audio_description`.
 - `ScreeningPrice`: `screening` (FK), `ticket_type` (FK), `price_pence`. One row per ticket type per screening, unique together on `(screening, ticket_type)`. When staff create a screening, the form pre-fills a price for each ticket type from the chosen class's default, and staff adjust any line. A flat-priced showing such as a Silver Screen screening carries the same price on every row.
 
 There are two layers of pricing. `TicketClass` describes the showing and sets its starting prices. `TicketType` describes the person each seated ticket is for. A family booking two adults and two children has four seats at two different prices, which a single price per screening couldn't represent. The system doesn't verify eligibility for a ticket type. The customer chooses it when buying and it is checked at the door, as at a box office. That is why the `date_of_birth` and `membership_verified` fields from an earlier draft stay removed (see 4.5).
 
-A screening cannot overlap another on the same screen. That is enforced when a screening is saved, not just when it is created.
+A screening cannot overlap another on the same screen. That is enforced when a screening is saved, not just when it is created, and by the database itself, so two members of staff saving at the same moment can't both get through. A screening occupies its screen from `date_time` until `ends_at`, which is `date_time` plus the trailer time, the film's runtime and the turnaround time for clearing the room. The trailer and turnaround times are the venue's to set (4.23), and either can be zero. A PostgreSQL exclusion constraint on the screen and that time range rejects any overlap, including with a private screening (4.19). A change to the venue's times applies to screenings saved after it.
 
 ## 4.2 `bookings`
 
@@ -393,6 +393,7 @@ The system provides mechanisms and the venue owns the policy. A made-up cinema's
 - the cancellation cutoff, in hours (default 24)
 - the venue's phone number and opening hours, shown on the cancellation page
 - the seat-hold length, the extension per failed payment, and the hard cap (defaults 10, 5 and 30 minutes, see 4.8)
+- the trailer time before a film and the turnaround time after it, used for the no-overlap rule (defaults 20 and 15 minutes, see 4.1)
 
 Membership tiers, prices, ticket classes and permission groups are already data, so they need no special handling. The numbers quoted elsewhere in this document (24 hours, 10 minutes and so on) are shipped defaults, not rules. If time gets tight, a plain settings file is an acceptable first version of this record, and I'd describe the settings model as the next step.
 
