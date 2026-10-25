@@ -2,6 +2,8 @@
 
 I've split the project into seven Django apps, each covering one area of the domain. That keeps each app's models and logic focused on one job, and means some of them (`concessions`, `membership`) could be reused on another project with little change.
 
+Within each app, logic goes in one place per kind. Models hold the data rules and validation that must always be true, such as the no-overlap check on a screening or the unique seat constraint. A `services.py` module holds business logic that touches more than one model or app, such as creating holds, pricing a booking in the order from 4.10, or finalising a booking from a Stripe webhook. Views handle the request, call a service and choose a response, and templates only present what they're given. That makes a rule like the discount order something I can test directly, without going through a page.
+
 | App           | Responsibility                                                                                                     |
 | :------------ | :----------------------------------------------------------------------------------------------------------------- |
 | `accounts`    | The email-login user model, and profile data: membership tier and expiry                                           |
@@ -37,6 +39,8 @@ I've split the project into seven Django apps, each covering one area of the dom
 - [4.21 Data integrity and deletion policy](#421-data-integrity-and-deletion-policy)
 - [4.22 Customer cancellations and refunds](#422-customer-cancellations-and-refunds)
 - [4.23 Venue settings, and what is law versus policy](#423-venue-settings-and-what-is-law-versus-policy)
+- [4.24 Project structure](#424-project-structure)
+- [4.25 URL conventions](#425-url-conventions)
 
 ## 4.1 `screenings`
 
@@ -393,6 +397,51 @@ The system provides mechanisms and the venue owns the policy. A made-up cinema's
 Membership tiers, prices, ticket classes and permission groups are already data, so they need no special handling. The numbers quoted elsewhere in this document (24 hours, 10 minutes and so on) are shipped defaults, not rules. If time gets tight, a plain settings file is an acceptable first version of this record, and I'd describe the settings model as the next step.
 
 Some behaviours stay fixed because they bind a venue whatever its preferences: the refund owed when the venue cancels a showing (4.11), the required reason and named actor on every sensitive action (4.9), and the cancellation-right position in 4.22. Everything else is a default the venue can change.
+
+## 4.24 Project structure
+
+Every app follows the same layout, so finding a file never depends on which app it's in.
+
+```text
+regal-cinema/
+├── regal/                  project package: settings.py, urls.py, wsgi.py
+├── accounts/ screenings/ bookings/ concessions/ membership/ venue/ staff/
+│   ├── models.py           data and the rules that must always hold
+│   ├── services.py         business logic (only where an app has any)
+│   ├── views.py  forms.py  admin.py
+│   ├── urls.py             customer routes
+│   ├── staff_urls.py       staff routes, mounted under /staff/ (only where needed)
+│   ├── templates/<app>/    the app's own templates
+│   └── tests/              test_models.py, test_services.py, test_views.py
+├── templates/              base.html, shared partials, error pages
+├── static/
+│   ├── css/                one folder per CUBE CSS layer: composition, utility, block, exception
+│   └── js/                 hand-written scripts, one file per feature (seat-map.js)
+├── docs/
+├── manage.py  requirements.txt  .env.example
+```
+
+There's one settings module. Anything that differs between my machine and Render (the database URL, secret key, Stripe and TMDb keys, `DEBUG`) comes from environment variables, and `DEBUG` defaults to off, so a missing variable fails safe. `.env.example` lists every variable with a dummy value. The real `.env` is never committed.
+
+Third-party code stays out of these folders. Python libraries come in through `requirements.txt`, and if I ever include anything vendored by hand it goes in `static/vendor/`, credited in the README.
+
+## 4.25 URL conventions
+
+Paths are lowercase, use hyphens between words, end with a slash, and name things in the plural for a list (`/films/`) and by key for one item (`/films/<slug>/`). Films use a slug because their pages are public and worth reading. Screenings and bookings use their primary key, or the booking reference where a customer might read it out. Each app's `urls.py` sets an `app_name`, and every route has a name in the form `<app>:<thing>_<action>`, such as `screenings:screening_detail` or `bookings:checkout_pay`. Templates and redirects always use `{% url %}` or `reverse()` with that name, never a typed path.
+
+| Path                         | App                    | What it is                                                     |
+| :--------------------------- | :--------------------- | :------------------------------------------------------------- |
+| `/`                          | `screenings`           | What's on, in Reel rows                                        |
+| `/films/<slug>/`             | `screenings`           | Film detail and showtimes                                      |
+| `/screenings/<id>/`          | `bookings`             | Seat map and ticket types for one screening                    |
+| `/booking/...`               | `bookings`             | Checkout steps, confirmation and the Stripe webhook            |
+| `/account/...`               | `accounts`, `bookings` | Register, log in, log out, profile, My Bookings                |
+| `/membership/`               | `membership`           | Tiers and buying a membership                                  |
+| `/hire/`                     | `venue`                | Private hire enquiry form                                      |
+| `/about/`, `/accessibility/` | `venue`                | Static pages                                                   |
+| `/staff/<app>/...`           | each app               | Staff routes from each app's `staff_urls.py` (4.9)             |
+
+Staff URLs are mounted under `/staff/` in the project's `urls.py`, one prefix per app (`/staff/screenings/`, `/staff/bookings/`), so the staff area has a single entry point while each view still lives in the app that owns its data.
 
 ---
 
