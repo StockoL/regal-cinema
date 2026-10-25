@@ -17,7 +17,7 @@ The edge cases identified during design, to be checked by hand once built:
 - Membership and priority booking (4.18): a screening becomes publicly bookable at exactly its `public_onsale_at`; a member whose `priority_booking_hours` doesn't yet cover the gap is refused; a members-only screening (blank `public_onsale_at`) never opens to the public; a priority screening shows greyed out with the right label.
 - Private hire (4.19): a private screening is absent from public listings and public booking is blocked; it still blocks a public screening from being scheduled in the same slot.
 - TMDb integration (4.15): a search with no results; a timeout or error during the add-film flow giving a clear message; the manual path for events with no TMDb page.
-- Authentication (4.16): a session's seat holds reassign to the logged-in user despite Django's session rotation on login; two emails that derive the same username are both handled; registering an already-used email is rejected.
+- Authentication (4.16): a session's seat holds reassign to the logged-in user despite Django's session rotation on login; registering an already-used email is rejected, including the same address with different capitals; `createsuperuser` asks for an email and not a username.
 - Accessibility (4.17): the seat map is fully operable by keyboard alone; a seat-hold conflict is announced by the live region; seat states are distinguishable without colour.
 
 ## 2. User story testing (behaviour-driven verification)

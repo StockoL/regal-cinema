@@ -4,7 +4,7 @@ I've split the project into seven Django apps, each covering one area of the dom
 
 | App           | Responsibility                                                                                                     |
 | :------------ | :----------------------------------------------------------------------------------------------------------------- |
-| `accounts`    | User profile data: membership tier and expiry                                                                      |
+| `accounts`    | The email-login user model, and profile data: membership tier and expiry                                           |
 | `screenings`  | The venue's catalogue: films, screens, seats, ticket classes and types, and scheduled screenings with their prices |
 | `bookings`    | The transactional core: bookings, the seats attached to them, and seat holds                                       |
 | `concessions` | Bar and snack products, and the items attached to a booking                                                        |
@@ -81,7 +81,7 @@ Food and drink pre-orders ride along with the ticket purchase through the same c
 
 ## 4.5 `accounts`
 
-- `Profile`: `user` (1:1 with Django's built-in `User`), `membership_tier` (nullable FK to `MembershipTier`), `membership_expires_at` (nullable, see 4.18).
+- `Profile`: `user` (1:1 with the custom `User`, see 4.16), `membership_tier` (nullable FK to `MembershipTier`), `membership_expires_at` (nullable, see 4.18).
 
 An earlier draft had `date_of_birth` and `membership_verified` to support demographic discounts, such as confirming someone really was a senior or a student. Discounted showings are now priced per screening through `TicketClass`, and ticket types are checked at the door, so neither field has a purpose. Instead of leaving dead columns in the schema I removed them. A paid membership is valid if `membership_expires_at` is in the future, which is a database check and not a staff judgement.
 
@@ -268,11 +268,13 @@ Refresh. Cached film data won't pick up a poster or synopsis that TMDb later cor
 
 Signup asks for an email and password only. `Profile` (4.5) is created automatically by a signal when a `User` is created, so there's no second form. A membership tier is added later, on the profile page, if the customer chooses to become a Friend (see 4.18).
 
-I'm keeping Django's default `User` model and deriving a username from the email address behind the scenes, instead of building a custom user model with email as the username field (the more correct long-term approach). A custom user model has to be decided before the first migration ever runs, which is a real risk at this stage. The registration form only shows email and password, and the underlying model stays the simpler, lower-risk default.
+I'm using a custom user model, `accounts.User`, with email as the login field and no username. It subclasses Django's `AbstractUser`, removes `username`, sets `USERNAME_FIELD = 'email'`, and has its own manager so `createsuperuser` asks for an email. A custom user model has to exist before the first migration runs, because swapping one in later means rebuilding every table that points at `User`. So it goes in at the very start of the `accounts` app, before anything else is migrated. Django's own documentation recommends this for any new project, and doing it now costs almost nothing.
 
-Username derivation and collisions. The username comes from the email's local part (the text before `@`), cleaned to characters Django allows. Two different addresses can share a local part (`j.smith@gmail.com` and `j.smith@yahoo.com` both give `j.smith`), so the derivation checks for an existing match and adds an incrementing number until it finds a free one (`j.smith`, `j.smith2`, `j.smith3`). This is internal. The customer logs in with their email and never sees the generated username, so a collision is invisible plumbing and not a UX problem.
+Email is unique in the database. Django's default `User` doesn't enforce unique email addresses, which is easy to forget because it feels like it should. Here the email field has `unique=True`, so one address can't create two accounts, and with no username there's nothing generated behind the scenes that could collide.
 
-The uniqueness rule that matters is on email, not username. Django's default `User` doesn't enforce unique email addresses, which is easy to forget because it feels like it should. Email is the real login identifier here, so the constraint has to be added on purpose (a unique constraint on the field, or an equivalent check in the registration view). Without it nothing would stop one email creating two accounts.
+Emails are lowercased before they're saved or looked up, so `J.Smith@example.com` and `j.smith@example.com` are the same account. Strictly, the part before `@` can be case-sensitive, but mainstream providers don't treat it that way, and keeping them separate would let one person register twice by accident.
+
+`Profile` stays separate from `User`. The user model holds only what's needed to log in, and membership data lives on the profile, so the auth model stays small.
 
 Login and registration pages are for anonymous users only. A logged-in user who visits them is redirected away. This is a pass-level requirement, not a nicety.
 
