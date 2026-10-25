@@ -51,7 +51,19 @@ Priority order, highest risk first: the seat hold, checkout and payment flow (4.
 
 ## 8. Bugs fixed (sprint log)
 
-This can only be filled in once development is underway. It will log real bugs found and fixed, not a hypothetical list.
+Real bugs found and fixed during development, newest last. Each one names the test that now guards against it coming back.
+
+### Bug 1: overlapping screenings got past forms (25 October 2026)
+
+What happened: a form for creating or editing a screening accepted one that overlapped another on the same screen. The database constraint would then have rejected the save with an error page, instead of the form showing the overlap message from journey 12, "Overlap rejected".
+
+How I found it: while planning the admin for screenings. The model tests passed because they call `full_clean()` with nothing left out, which isn't how a form calls it.
+
+Cause: a form leaves out every field it doesn't show, and Django skips any constraint that refers to a left-out field. The overlap constraint (4.1) refers to `ends_at`, which is worked out on save and never typed in, and to `cancelled_at` in its "not cancelled" condition. Staff never type either in, so the check never ran.
+
+Fix: `Screening.validate_constraints()` keeps both fields in the check. That's safe because `clean()` sets `ends_at` just before it, and `cancelled_at` holds its saved value. My first fix only kept `ends_at`, so the condition was still skipped and the test still failed. I'd committed it before noticing, so the history shows both commits: [`d9afab8`](https://github.com/StockoL/regal-cinema/commit/d9afab898280d0a0859e85cc7a591315fda77185) (incomplete) and [`b761b6c`](https://github.com/StockoL/regal-cinema/commit/b761b6cf4c5d262fe4c4f1e58430a9dbe265be2d) (the working fix). Since then I only commit once the test runner's exit code says the whole suite passed.
+
+Test: `test_a_form_reports_an_overlap_instead_of_crashing` in `screenings/tests/test_screenings.py` submits an overlapping screening through a form and checks the form is invalid with the overlap message.
 
 ## 9. Known issues
 
