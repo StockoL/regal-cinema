@@ -163,6 +163,7 @@ class Screening(models.Model):
     )
     date_time = models.DateTimeField()
     ends_at = models.DateTimeField(blank=True, editable=False)
+    cancelled_at = models.DateTimeField(null=True, blank=True)
     public_onsale_at = models.DateTimeField(null=True, blank=True)
     is_private = models.BooleanField(default=False)
     has_captions = models.BooleanField(default=False)
@@ -172,7 +173,8 @@ class Screening(models.Model):
         ordering = ['date_time']
         constraints = [
             # Half-open ranges, so one screening may start at the moment
-            # the previous one ends.
+            # the previous one ends. Cancelled screenings stay listed but
+            # no longer hold the screen (4.11).
             ExclusionConstraint(
                 name='no_overlapping_screenings',
                 expressions=[
@@ -182,6 +184,7 @@ class Screening(models.Model):
                     ),
                     ('screen', RangeOperators.EQUAL),
                 ],
+                condition=models.Q(cancelled_at__isnull=True),
                 violation_error_message=(
                     'This screening overlaps another screening on the same '
                     'screen, including trailer and turnaround time.'
@@ -192,6 +195,10 @@ class Screening(models.Model):
     def __str__(self):
         when = timezone.localtime(self.date_time)
         return f'{self.film}, {when:%a %d %b %Y %H:%M}, {self.screen}'
+
+    @property
+    def is_cancelled(self):
+        return self.cancelled_at is not None
 
     def calculate_ends_at(self):
         minutes = (

@@ -107,6 +107,33 @@ class ScreeningTests(TestCase):
             screening.ends_at, self.start + timedelta(minutes=135)
         )
 
+    def test_a_cancelled_screening_frees_its_slot(self):
+        """Architecture 4.11: staff can schedule a replacement."""
+        cancelled = self.schedule(self.start)
+        cancelled.cancelled_at = self.start - timedelta(days=1)
+        cancelled.save()
+        self.schedule(self.start)
+        self.assertEqual(Screening.objects.count(), 2)
+
+    def test_a_replacement_in_a_cancelled_slot_passes_validation(self):
+        cancelled = self.schedule(self.start)
+        cancelled.cancelled_at = self.start - timedelta(days=1)
+        cancelled.save()
+        replacement = Screening(
+            film=self.film, screen=self.screen,
+            ticket_class=self.ticket_class, date_time=self.start,
+        )
+        replacement.full_clean()
+
+    def test_cancelling_keeps_the_screening(self):
+        """It stays listed, greyed out, so it never just disappears."""
+        screening = self.schedule(self.start)
+        self.assertFalse(screening.is_cancelled)
+        screening.cancelled_at = self.start - timedelta(days=1)
+        screening.save()
+        screening.refresh_from_db()
+        self.assertTrue(screening.is_cancelled)
+
     def test_defaults(self):
         screening = self.schedule(self.start)
         self.assertIsNone(screening.public_onsale_at)
