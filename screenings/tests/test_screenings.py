@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
+from django import forms
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
 from django.db.models import ProtectedError
@@ -98,6 +99,25 @@ class ScreeningTests(TestCase):
         with self.assertRaises(ValidationError) as caught:
             clash.full_clean()
         self.assertIn('overlaps another screening', str(caught.exception))
+
+    def test_a_form_reports_an_overlap_instead_of_crashing(self):
+        """ends_at is never on a form, so Django would otherwise skip the
+        constraint and the save would fail in the database."""
+
+        class ScreeningForm(forms.ModelForm):
+            class Meta:
+                model = Screening
+                fields = ['film', 'screen', 'ticket_class', 'date_time']
+
+        self.schedule(self.start)
+        form = ScreeningForm(data={
+            'film': self.film.pk,
+            'screen': self.screen.pk,
+            'ticket_class': self.ticket_class.pk,
+            'date_time': '2026-11-14 19:30',
+        })
+        self.assertFalse(form.is_valid())
+        self.assertIn('overlaps another screening', str(form.errors))
 
     def test_changing_the_venue_times_leaves_saved_screenings_alone(self):
         screening = self.schedule(self.start)

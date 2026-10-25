@@ -215,6 +215,15 @@ class Screening(models.Model):
             self.ends_at = self.calculate_ends_at()
         super().clean()
 
+    def validate_constraints(self, exclude=None):
+        # Forms leave out fields they don't show, and Django skips any
+        # constraint that uses a left-out field. The overlap check uses
+        # ends_at, which clean() has just set, and cancelled_at, which
+        # holds its saved value, so both are safe to keep in.
+        if exclude:
+            exclude = set(exclude) - {'ends_at', 'cancelled_at'}
+        super().validate_constraints(exclude=exclude)
+
     def save(self, *args, **kwargs):
         self.ends_at = self.calculate_ends_at()
         super().save(*args, **kwargs)
