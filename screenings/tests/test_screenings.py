@@ -17,7 +17,9 @@ class ScreeningTests(TestCase):
     """Scheduling and the no-overlap rule (architecture 4.1, 4.21)."""
 
     def setUp(self):
-        self.film = Film.objects.create(title='Nosferatu', duration_minutes=100)
+        self.film = Film.objects.create(
+            title='Nosferatu', duration_minutes=100
+        )
         self.screen = Screen.objects.create(name='Screen 1')
         self.ticket_class = TicketClass.objects.create(name='Standard')
         self.start = datetime(2026, 11, 14, 19, 0, tzinfo=LONDON)
