@@ -58,7 +58,9 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django.contrib.postgres',
     'accounts',
+    'screenings',
 ]
 
 MIDDLEWARE = [
@@ -105,6 +107,13 @@ DATABASES = {
 # Custom user with email as the login, set before the first migration
 # (architecture 4.16).
 AUTH_USER_MODEL = 'accounts.User'
+
+
+# How long a screening holds its screen beyond the film itself: trailers
+# before, clearing the room after (architecture 4.1). Defaults until the
+# venue settings record (4.23) exists.
+SCREENING_TRAILER_MINUTES = 20
+SCREENING_TURNAROUND_MINUTES = 15
 
 
 # Password validation
