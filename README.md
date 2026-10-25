@@ -53,19 +53,31 @@ I've kept the design and planning detail in [`docs/`](docs/) so this README stay
 
 ## <a name="deployment"></a> Deployment guide
 
-The project needs a host that can run a Python and Django application with a PostgreSQL database. A static host such as GitHub Pages isn't enough, since the app relies on server-side logic, a live database and Stripe. I'm deploying to Render. Its free web service stops after a period without traffic, so a scheduled request from cron-job.org keeps the site responsive.
+The live site is at [regal-cinema.onrender.com](https://regal-cinema.onrender.com).
 
-This section will be filled in with the exact steps once the project is deployed. The plan:
+The project needs a host that can run a Python and Django application with a PostgreSQL database. A static host such as GitHub Pages isn't enough, since the app relies on server-side logic, a live database and Stripe. The web service runs on Render's free plan, and the database is on Neon's free plan, because Render's free databases expire after 30 days. Both are in Frankfurt. The reasons are in the [development log](docs/development_log.md#24-october-2026-production-database-on-neon).
 
-1. Push the project to GitHub, including a `requirements.txt`.
-2. Create a web service on Render connected to the GitHub repository, with the build and start commands for Django and gunicorn.
-3. Add a managed PostgreSQL database and connect it with an environment variable such as `DATABASE_URL`.
-4. Set environment variables for `SECRET_KEY`, the Stripe keys and webhook secret, and the TMDb API key. None of these are committed to the repository.
-5. Set `DEBUG = False` for production.
-6. Run migrations against the production database.
-7. Point the Stripe webhook (in test mode) at the deployed endpoint.
-8. Check that the live site matches the development version and that static files are served correctly.
-9. Set up the cron-job.org request to the site.
+The service is defined in [`render.yaml`](render.yaml). On each deploy Render runs [`build.sh`](build.sh), which installs the requirements, collects static files and applies migrations, then starts gunicorn. WhiteNoise serves the static files from the same process.
+
+To deploy your own copy:
+
+1. Create a project on [Neon](https://neon.tech) with PostgreSQL 17 in AWS Europe Central (Frankfurt). Under Connect, turn connection pooling off and copy the connection string. Django needs the direct connection, not the pooled one.
+2. Fork or clone this repository to your own GitHub account.
+3. In Render, choose New, then Blueprint, and connect the repository on the `main` branch. Render reads `render.yaml`.
+4. When Render asks for `DATABASE_URL`, paste the Neon connection string. Render generates `SECRET_KEY` itself, and `render.yaml` sets `DEBUG` to `False`.
+5. Apply the blueprint and wait for the first build. The build log shows the migrations running against Neon.
+6. Open `/health/` on the new site. It should return `ok`.
+7. Create an admin account. The free plan has no shell on Render, so run `createsuperuser` from your own machine with `DATABASE_URL` set to the Neon string for that terminal session only. Real environment variables take priority over `.env`.
+
+   ```powershell
+   $env:DATABASE_URL = "your-neon-connection-string"
+   .venv\Scripts\python manage.py createsuperuser
+   Remove-Item Env:DATABASE_URL
+   ```
+
+8. On [cron-job.org](https://cron-job.org), create a job that requests `/health/` every 10 minutes. Render's free service sleeps after 15 minutes without traffic, and `/health/` makes no database query, so the ping doesn't use Neon's compute allowance.
+
+Every push to `main` deploys automatically. The Stripe keys, webhook secret and TMDb API key will be added to Render's environment settings when those features are built. None of them are committed.
 
 ### Local deployment
 
