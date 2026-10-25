@@ -33,6 +33,8 @@ The project skeleton went live: the Django project with settings read from envir
 
 I checked the live site against the production settings rather than assuming them. `/health/` and the admin login return 200 from gunicorn. A plain HTTP request gets a 301 to HTTPS from Render, which is why Django's own HTTPS redirect is switched off. Responses carry an HSTS header and `X-Frame-Options: DENY`, the CSRF cookie is marked `Secure`, the admin's hashed CSS files load through WhiteNoise, and an unknown URL gets a plain 404 with no debug page, so `DEBUG` is off.
 
+I created the production superuser from my own machine, pointed at Neon for that one terminal session, since the free plan has no Render shell, and logged in to the live admin with it. A cron-job.org job now requests `/health/` every 10 minutes so the free service doesn't sleep between visits.
+
 Django's deployment check (`check --deploy`) still reports one error: Django 6.1 won't accept the console email backend in production. No email is sent yet, so this waits until I choose an email provider for verification emails (journey 4).
 
 </details>
