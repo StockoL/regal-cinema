@@ -1,4 +1,53 @@
+from django.core.validators import MinValueValidator
 from django.db import models
+from django.utils.text import slugify
+
+
+class Film(models.Model):
+    """A film or event in the local catalogue, filled from TMDb or by hand
+    (architecture 4.1, 4.15)."""
+
+    class AgeRating(models.TextChoices):
+        U = 'U', 'U'
+        PG = 'PG', 'PG'
+        TWELVE_A = '12A', '12A'
+        TWELVE = '12', '12'
+        FIFTEEN = '15', '15'
+        EIGHTEEN = '18', '18'
+
+    tmdb_id = models.PositiveIntegerField(null=True, blank=True, unique=True)
+    title = models.CharField(max_length=200)
+    slug = models.SlugField(max_length=220, unique=True, blank=True)
+    synopsis = models.TextField(blank=True)
+    poster_path = models.CharField(max_length=200, blank=True)
+    trailer_key = models.CharField(max_length=50, blank=True)
+    age_rating = models.CharField(
+        max_length=3, choices=AgeRating.choices, blank=True
+    )
+    duration_minutes = models.PositiveSmallIntegerField(
+        validators=[MinValueValidator(1)]
+    )
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ['title']
+
+    def __str__(self):
+        return self.title
+
+    def save(self, *args, **kwargs):
+        # Set once, so the film's address doesn't change if the title does.
+        if not self.slug:
+            self.slug = self._unique_slug()
+        super().save(*args, **kwargs)
+
+    def _unique_slug(self):
+        base = slugify(self.title) or 'film'
+        slug, number = base, 2
+        while Film.objects.filter(slug=slug).exists():
+            slug = f'{base}-{number}'
+            number += 1
+        return slug
 
 
 class Screen(models.Model):
