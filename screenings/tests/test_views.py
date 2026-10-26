@@ -38,6 +38,22 @@ class WhatsOnPageTests(TestCase):
             self.response, 'href="/" aria-current="page"'
         )
 
+    def test_footer_says_the_venue_is_fictional(self):
+        self.assertContains(
+            self.response,
+            'Regal Cinema is a fictional venue created for a course '
+            'project.',
+        )
+
+    def test_footer_gives_the_placeholder_phone_number_as_a_link(self):
+        """01632 960 123 is in the range Ofcom keeps for drama."""
+        self.assertContains(
+            self.response, '<a href="tel:+441632960123">01632 960 123</a>'
+        )
+
+    def test_footer_gives_the_town(self):
+        self.assertContains(self.response, 'Evesham')
+
     def test_title_names_the_page_and_the_cinema(self):
         self.assertContains(
             self.response, "<title>What's on | Regal Cinema</title>"
