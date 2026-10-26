@@ -173,8 +173,8 @@ class Screening(models.Model):
         ordering = ['date_time']
         constraints = [
             # Half-open ranges, so one screening may start at the moment
-            # the previous one ends. Cancelled screenings stay listed but
-            # no longer hold the screen (4.11).
+            # the previous one ends. Cancelled screenings are kept, hidden
+            # from public listings, and no longer hold the screen (4.11).
             ExclusionConstraint(
                 name='no_overlapping_screenings',
                 expressions=[
