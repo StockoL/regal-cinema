@@ -122,6 +122,10 @@ This product uses the TMDB API but is not endorsed or certified by TMDB.
 - Jesse James Garrett, _The Elements of User Experience_
 - The three Dribbble concepts linked in [Research](docs/research.md#modern-cinema-booking-interfaces-dribbble)
 
+### Code from other sources
+
+- The fluid type and space scales in [`static/css/global/tokens.css`](static/css/global/tokens.css) were generated with [Utopia](https://utopia.fyi), by James Gilyead and Trys Mudford, using its default settings. The file notes the settings and links to the calculator that regenerates them.
+
 ### Repository layout
 
 To be completed once the structure settles.
