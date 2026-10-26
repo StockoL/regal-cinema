@@ -55,7 +55,7 @@ Planned scope: the transactional core of `bookings`: `SeatHold`, `Booking`, `Sea
 <details>
 <summary>Phase 3</summary>
 
-Planned scope: Stripe on top of the working booking skeleton: Checkout session creation and the hand-off to Stripe's hosted page, webhook handling and signature verification, idempotency, and keeping the hold while the customer is on Stripe's page (4.13). Building this after Phase 2 means payment problems and seat concurrency problems get debugged one at a time.
+Planned scope: Stripe on top of the working booking skeleton: Checkout session creation from the pending booking and the hand-off to Stripe's hosted page, extending the holds when the customer chooses Pay, the return pages (confirming and not completed), webhook signature verification, idempotency through `StripeEvent`, and the automatic refund when a payment lands after the seats have gone (4.13). Building this after Phase 2 means payment problems and seat concurrency problems get debugged one at a time.
 
 ### To be completed during development
 
@@ -66,7 +66,7 @@ Planned scope: Stripe on top of the working booking skeleton: Checkout session c
 <details>
 <summary>Phase 4</summary>
 
-Planned scope: the `concessions` app (`Product`, `OrderItem`) in checkout; the `membership` app (`MembershipTier`, `Voucher`); and the discount and voucher order (4.10). This comes after payment works because there's no sensible way to test whether a discount applies correctly until a charge can already succeed without one.
+Planned scope: the `concessions` app (`Product`, `OrderItem`) in checkout; the `membership` app (`MembershipTier`, `MembershipPurchase`, `Voucher`), including buying a gift voucher (4.26); and the discount and voucher order (4.10). This comes after payment works because there's no sensible way to test whether a discount applies correctly until a charge can already succeed without one.
 
 ### To be completed during development
 
