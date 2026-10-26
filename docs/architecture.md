@@ -41,6 +41,7 @@ Within each app, logic goes in one place per kind. Models hold the data rules an
 - [4.23 Venue settings, and what is law versus policy](#423-venue-settings-and-what-is-law-versus-policy)
 - [4.24 Project structure](#424-project-structure)
 - [4.25 URL conventions](#425-url-conventions)
+- [4.26 Gift vouchers](#426-gift-vouchers)
 
 ## 4.1 `screenings`
 
@@ -496,6 +497,14 @@ Paths are lowercase, use hyphens between words, end with a slash, and name thing
 | `/staff/<app>/...`           | each app               | Staff routes from each app's `staff_urls.py` (4.9)             |
 
 Staff URLs are mounted under `/staff/` in the project's `urls.py`, one prefix per app (`/staff/screenings/`, `/staff/bookings/`), so the staff area has a single entry point while each view still lives in the app that owns its data.
+
+## 4.26 Gift vouchers
+
+A customer buys a gift voucher the same way they buy anything else online. The page offers buttons for £10, £20, £50 and £100, and an "other amount" field for any whole number of pounds between the smallest and largest values set in the venue settings (4.23). The system then creates a `Voucher` with `source='purchased'`, `purchased_by` set to the customer, the amount as both `initial_value_pence` and `remaining_value_pence`, `is_active` false, and the Stripe Checkout session ID. At that point the voucher can't be redeemed.
+
+When Stripe's success webhook arrives (4.13), the voucher is activated, and the purchaser sees the code on screen and receives it by email. A repeated webhook neither activates it nor sends it twice. If the purchaser leaves Stripe without paying, the voucher stays inactive and unusable, and they can try again. The code is random and unguessable, and it's the only thing needed to spend the balance, like a physical gift card. Redemption follows the order in 4.10. Like every voucher, it expires a year after it was bought (4.4).
+
+Buying needs an account, as any online purchase does (4.16). The purchase page states the 14-day refund rule from 4.22 in one sentence, and whether the legal 14-day cancellation right applies to gift vouchers is one of the questions in 4.22 I haven't checked yet.
 
 ---
 
