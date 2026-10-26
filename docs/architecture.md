@@ -60,7 +60,7 @@ A film's runtime can change after it's been scheduled, for example when staff co
 
 ## 4.2 `bookings`
 
-- `Booking`: `user` (nullable FK, see the note below), `screening` (FK), `status` (pending, paid, cancellation_requested, cancelled, refunded), `channel` (online or in_venue), `payment_method` (`card_online` or `card_in_person`), `stripe_payment_intent_id` (nullable, only set for `card_online`), `created_by` (nullable FK to `User`, the staff member who took an in-venue booking), `voucher_used` (nullable FK to `Voucher`), `membership_tier_at_booking` (nullable FK to `MembershipTier`, a snapshot), `discount_applied_percent` (snapshot), `amount_charged_pence` (snapshot, set once when payment is confirmed), `infant_count` (free infant tickets with no seat, default 0), `created_at`.
+- `Booking`: `user` (nullable FK, see the note below), `screening` (FK), `status` (pending, paid, cancellation_requested, cancelled, refunded), `channel` (online or in_venue), `payment_method` (`card_online` or `card_in_person`), `stripe_checkout_session_id` (nullable and unique, only set for `card_online`, see 4.13), `stripe_payment_intent_id` (nullable, copied from the Checkout session and used for refunds), `created_by` (nullable FK to `User`, the staff member who took an in-venue booking), `voucher_used` (nullable FK to `Voucher`), `membership_tier_at_booking` (nullable FK to `MembershipTier`, a snapshot), `discount_applied_percent` (snapshot), `amount_charged_pence` (snapshot, set once when payment is confirmed), `infant_count` (free infant tickets with no seat, default 0), `created_at`.
 - `SeatBooking`: `booking` (FK), `seat` (FK), `ticket_type` (FK), `price_pence` (a snapshot of what this seat's ticket cost when sold), `released_at` (nullable), and `screening` (FK, copied from `booking.screening` so the database can enforce uniqueness on `(screening, seat)`). That constraint is what stops two people booking the same seat for the same screening.
 
 A booking can have several `SeatBooking` rows. A party booking four seats is four rows against one `Booking`, which is why seats live on their own linking table and not in a single field on `Booking`.
@@ -132,21 +132,21 @@ This is the one place every relationship in the schema appears together.
 
 There's a gap between a customer selecting seats and completing payment. Without handling it, someone could pick seats, spend time in checkout, and be told at the payment step that somebody else got there first. So seat selection uses a short-lived hold, separate from a confirmed booking.
 
-`SeatHold`: `screening` (FK), `seat` (FK), `session_key`, `user` (nullable FK, see 4.16), `expires_at`, `extension_count` (default 0). `unique_together = ('screening', 'seat')`.
+`SeatHold`: `screening` (FK), `seat` (FK), `session_key`, `user` (nullable FK, see 4.16), `expires_at`. `unique_together = ('screening', 'seat')`.
 
 `SeatHold` is a separate model from `SeatBooking` (4.2) because a hold is provisional and expires if unused, whereas a `SeatBooking` means the seat has been paid for. Keeping them apart means an abandoned checkout can never permanently block a seat.
 
-The hold times below are defaults (10 minutes, 5 minutes per extension, 30 minutes in total). The venue can change them, see 4.23.
+The hold times below are defaults (10 minutes, and 30 minutes in total). The venue can change them, see 4.23.
 
 1. Page load. The seat grid is rendered on the server with each seat's live status (available, held or booked), so the customer is never looking at stale information. Each status is a single `data-seat-status` attribute, styled through the CSS exception layer (see [section 3](ux_design.md)).
 2. Selecting seats. This is client-side toggling while browsing the grid, with no server call yet.
 3. Proceeding to checkout. One request sends the chosen seat IDs and a ticket type for each. In a single transaction the server clears any expired holds for that screening, checks the requested seats are still free against both live holds and confirmed bookings, and if they are, creates fresh `SeatHold` rows.
 4. Conflict. If a seat was taken between page load and this request, the server returns exactly which seats failed. The page marks only those as taken, deselects them, and shows an inline message. The customer's other selections are kept.
-5. A failed payment attempt (declined card, insufficient funds, wrong details) does not release the hold. The customer sees the specific reason and can try again, with a different card or corrected details, as many times as they like within the hold window. Each failure extends `expires_at` by a short amount and increments `extension_count`, up to a hard cap on total hold time. A real retry isn't punished, but a hold can't be kept alive forever.
+5. Paying on Stripe's page. The customer leaves the site for Stripe's hosted Checkout page to pay (4.13). Card entry, declined cards and retries with another card all happen there, so this application never sees a decline and has nothing to handle for one. The hold stays in place while the customer is on Stripe's page, and 4.13 sets out how long it lasts.
 6. Explicit cancellation. A Cancel button releases the hold immediately instead of waiting out the timer.
 7. Successful payment. In the same transaction that creates the `Booking` and its `SeatBooking` rows, the originating `SeatHold` rows are deleted instead of being left to expire (4.13 covers exactly when this happens relative to Stripe's confirmation). That keeps `SeatHold` meaning one thing at all times, a seat still in progress, with no stale rows for seats that were paid for long ago.
-8. True abandonment (tab closed, no cancel, no retry). Nothing needs to release the seat. The hold expires when its time runs out, and the next hold attempt's cleanup step (step 3) removes it.
-9. Hold expires mid-checkout. Payment confirmation checks the hold still exists before accepting the charge. If it has expired, the customer returns to the seat map with a plain explanation, not a confusing card decline for seats they no longer hold.
+8. True abandonment (tab closed, no cancel, never reaches Stripe). Nothing needs to release the seat. The hold expires when its time runs out, and the next hold attempt's cleanup step (step 3) removes it.
+9. Hold expires before paying. Before sending the customer to Stripe, the server checks the hold still exists. If it has expired, the customer returns to the seat map with a plain explanation. What happens if the hold runs out while they're on Stripe's page is in 4.13.
 10. Back and forward navigation. The seat grid re-fetches live state when the page is shown, so the back button can never display an out-of-date "your seats" view.
 11. Going back and amending. Until payment is submitted, the customer can go back and change anything without starting again: add or remove seats, change a seat's ticket type, change the infant count, or edit food and drink. The hold, not the browser, is the source of truth for what the customer has selected, and each step is an ordinary server-rendered page reachable with the back button. Changing seats releases the holds on the seats removed and creates holds on the seats added in one transaction, so the customer never ends up holding nothing, or holding both. Each change restarts the hold timer, within the hard cap.
 12. Cancelling releases seats at once. Choosing Cancel, or switching to a different set of seats, releases the old holds immediately. A seat is never left unavailable to other customers because someone changed their mind.
@@ -213,18 +213,20 @@ None of this is needed to meet the assessment criteria, and building it now woul
 
 The main principle is that a Stripe webhook, not the customer's browser, is the source of truth for whether payment succeeded. If the connection drops or the customer closes the tab mid-payment, the app can't rely on them ever reaching a success page. The booking only becomes real when Stripe tells the server it has been paid.
 
-1. Checkout starts, and a `SeatHold` already exists (see 4.8). The server calculates the final total using the order in 4.10 and creates a Stripe PaymentIntent for that amount. Stripe runs in test mode throughout.
+Payment uses Stripe Checkout, Stripe's hosted payment page, rather than a card field built into this site. Card details, declined cards, retries and any extra card checks all happen on Stripe's page, so there's much less payment code here to get wrong, and card details never reach this application at all.
+
+1. Checkout starts, and a `SeatHold` already exists (see 4.8). The server calculates the final total using the order in 4.10. The breakdown (each ticket type, concessions, the membership discount and any voucher) is shown on this site's checkout page, and Stripe receives the total as a single line for the booking. Stripe runs in test mode throughout.
 2. If the total is £0 (a voucher covers it), there's no Stripe interaction. The booking is marked paid on the server straight away.
-3. Otherwise the customer pays through Stripe's client-side card element. Card details never touch this application's server.
-4. The server's only immediate response to the browser is "payment submitted", not "payment succeeded".
-5. Stripe sends a `payment_intent.succeeded` webhook, and this is what finalises everything. The hold converts to confirmed `SeatBooking` rows, the voucher balance is reduced (not before, see below), and a confirmation is sent.
-6. A declined or failed attempt (`payment_intent.payment_failed`) does not release the hold. See the retry behaviour in 4.8, step 5.
-7. Uncertain outcomes, such as the connection dropping after submission but before the browser heard back, are resolved by checking the PaymentIntent's real status with Stripe before allowing a new attempt, never by assuming failure because the client got no response. That avoids charging a card twice when the first payment did go through.
+3. Otherwise the server creates a Checkout session for the total, recording the screening, the held seats and the customer in the session's metadata, and sends the customer to Stripe's page.
+4. When the customer finishes on Stripe's page, Stripe sends them back to a success page on this site. Arriving there doesn't confirm anything. Until the webhook in step 5 has been processed, the page says the payment is being confirmed.
+5. Stripe sends a `checkout.session.completed` webhook, and this is what finalises everything. The booking is created from the hold with its `SeatBooking` rows, the session and payment IDs are stored on it, the voucher balance is reduced (not before, see below), and a confirmation is sent.
+6. If the customer backs out of Stripe's page, they come back to this site, are told no payment was taken, and still hold their seats, so they can try again. When a session expires unpaid, Stripe sends `checkout.session.expired`, and nothing is booked.
+7. Uncertain outcomes, such as the connection dropping after paying but before the customer got back, are resolved by asking Stripe for the session's real status, never by assuming failure because the browser didn't return. If the customer comes back while their session is still open, they're sent back to that same session instead of a new one, so a card can't be charged twice for the same seats.
 
 Two implementation details are easy to get subtly wrong:
 
 - Webhook signature verification. Stripe signs every webhook payload. The endpoint must verify the signature before trusting it, or anyone could post a fake "payment succeeded" event.
-- Idempotency. Stripe can deliver the same webhook event more than once. The finalising logic checks whether the booking is already marked paid before acting, so a redelivered webhook can't reduce a voucher twice.
+- Idempotency. Stripe can deliver the same webhook event more than once. `Booking.stripe_checkout_session_id` is unique, and the finalising logic checks for a booking from that session before acting, so a redelivered webhook can't create a second booking or reduce a voucher twice.
 
 A voucher's balance is only reduced once the webhook confirms payment, not at checkout. Otherwise an abandoned or failed payment would have spent someone's voucher for nothing. It's the same provisional-then-committed pattern as the seat hold, applied again.
 
@@ -396,7 +398,7 @@ The system provides mechanisms and the venue owns the policy. A made-up cinema's
 
 - the cancellation cutoff, in hours (default 24)
 - the venue's phone number and opening hours, shown on the cancellation page
-- the seat-hold length, the extension per failed payment, and the hard cap (defaults 10, 5 and 30 minutes, see 4.8)
+- the seat-hold length and the hard cap on total hold time (defaults 10 and 30 minutes, see 4.8)
 - the trailer time before a film and the turnaround time after it, used for the no-overlap rule (defaults 20 and 15 minutes, see 4.1)
 
 Membership tiers, prices, ticket classes and permission groups are already data, so they need no special handling. The numbers quoted elsewhere in this document (24 hours, 10 minutes and so on) are shipped defaults, not rules. If time gets tight, a plain settings file is an acceptable first version of this record, and I'd describe the settings model as the next step.
