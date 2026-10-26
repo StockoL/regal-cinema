@@ -152,6 +152,7 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
+STATICFILES_DIRS = [BASE_DIR / 'static']
 
 # WhiteNoise serves compressed copies with hashed names, so browsers can
 # cache them for a long time and still pick up changes.
@@ -163,6 +164,14 @@ STORAGES = {
         'BACKEND': 'whitenoise.storage.CompressedManifestStaticFilesStorage',
     },
 }
+
+# The hashed names come from collectstatic, which only runs on deploy.
+# Locally, and in tests run from a local .env, plain names are used so
+# a new stylesheet works without collecting first.
+if DEBUG:
+    STORAGES['staticfiles'] = {
+        'BACKEND': 'django.contrib.staticfiles.storage.StaticFilesStorage',
+    }
 
 
 # Email
