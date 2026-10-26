@@ -2,27 +2,26 @@
 
 This is the brief I'm drawing the wireframes against, and where they'll sit once they're done. It belongs to the skeleton plane of the [UX design strategy](ux_design.md). Each screen lists what has to be on it, taken from the [user journeys](user_stories.md) and the [architecture](architecture.md), the questions only a drawing will answer, and the wording I still need to write.
 
-I'm drawing them in Excalidraw, low fidelity: grey boxes, real labels, a crossed box for each image, and notes in the margin wherever behaviour isn't visible. Every screen gets two frames, phone (375px) and desktop (1280px). The exports go in `docs/wireframes/`, named by number and width, such as `01-home-mobile.png` and `01-home-desktop.png`, and get added under their screen below.
+I'm drawing them in Excalidraw, low fidelity: grey boxes, real labels, a crossed box for each image, and notes in the margin wherever behaviour isn't visible. Every screen gets two frames, phone (375px) and desktop (1280px). The exports and the `.excalidraw` source files both go in `docs/wireframes/`, named by number and width, such as `01-home-mobile.png`, `01-home-desktop.png` and `01-home.excalidraw`, and the exports get added under their screen below.
 
-The order follows the build plan's scope cut. Group A is the five screens the plan names, all part of the spine. Group B is the rest of the spine. Group C is stretch work, drawn before its build week and not before.
+The order follows when each screen is needed. Screens 1 to 8 are this week's. The membership page comes before 7 December, and the gift voucher page, the TMDb review screen and the private hire form before 21 December. I'm not wireframing the Django admin or the sales dashboard's layout.
 
 ## Status
 
-| #   | Screen                                   | Group | Journeys     | Phone | Desktop |
-| :-- | :--------------------------------------- | :---- | :----------- | :---- | :------ |
-| 1   | Home: the Reel and greyed-out listings   | A     | 1, 9, 16     | To do | To do   |
-| 2   | Screening page: seat map, ticket types   | A     | 2            | To do | To do   |
-| 3   | Booking summary, step by step and live   | A     | 2, 3, 6      | To do | To do   |
-| 4   | Checkout hand-off and Stripe return      | A     | 6            | To do | To do   |
-| 5   | Film detail and showtimes by date        | B     | 1            | To do | To do   |
-| 6   | Log in and register                      | B     | 4            | To do | To do   |
-| 7   | My bookings                              | B     | 7            | To do | To do   |
-| 8   | Staff: screenings                        | B     | 11, 12       | To do | To do   |
-| 9   | Membership page                          | C     | 8, 9         | To do | To do   |
-| 10  | Gift voucher page                        | C     | 5            | To do | To do   |
-| 11  | Staff: cancellation queue                | C     | 7, 15        | To do | To do   |
-| 12  | Staff: TMDb review screen                | C     | 13           | To do | To do   |
-| 13  | Private hire enquiry form                | C     | 10           | To do | To do   |
+| #   | Screen                                             | Due       | Journeys      | Phone | Desktop |
+| :-- | :------------------------------------------------- | :-------- | :------------ | :---- | :------ |
+| 1   | Home: the Reel and the discounted row              | 1 Nov     | 1, 9          | To do | To do   |
+| 2   | Film page and showtimes by date                    | 1 Nov     | 1             | To do | To do   |
+| 3   | Seat map with ticket types and the live summary    | 1 Nov     | 2             | To do | To do   |
+| 4   | Basket and checkout                                | 1 Nov     | 3, 5, 6       | To do | To do   |
+| 5   | Return pages: confirming, not completed, outcomes  | 1 Nov     | 6             | To do | To do   |
+| 6   | Customer cancellation request and decline message  | 1 Nov     | 7             | To do | To do   |
+| 7   | Staff: the till                                    | 1 Nov     | 14            | To do | To do   |
+| 8   | Staff: the cancellation queue                      | 1 Nov     | 7, 15         | To do | To do   |
+| 9   | Membership page                                    | 7 Dec     | 8, 9          | To do | To do   |
+| 10  | Gift voucher page                                  | 21 Dec    | 18            | To do | To do   |
+| 11  | Staff: TMDb review screen                          | 21 Dec    | 13            | To do | To do   |
+| 12  | Private hire enquiry form                          | 21 Dec    | 10            | To do | To do   |
 
 ## Shared layout
 
@@ -30,130 +29,142 @@ Every customer page uses the same header, menu and footer, so I'll draw these on
 
 - Header with the site name linking home.
 - Main menu. Logged out: What's on, Membership, Private hire, About, Log in, Register. Logged in: What's on, Membership, Private hire, About, My bookings, Account, Log out. It wraps onto a second line on a phone instead of hiding behind a menu button.
-- Footer with the venue's phone number and opening hours, the accessibility policy and the membership terms.
+- Footer with the venue's phone number, address and opening hours, the accessibility policy, the membership terms, and the line "Regal Cinema is a fictional venue created for a course project."
 - A "Skip to main content" link, shown when it has keyboard focus.
 
-## Group A: the screens the build plan names
+The staff pages (screens 7, 8 and 11) have their own header and menu, clearly different from the customer site, showing only the items a staff member's permissions allow.
 
-### 1. Home: the Reel and greyed-out listings
+## This week
 
-- Named rows that scroll sideways (the Reel, 3.II): What's On, Coming Soon, and a discounted class such as Silver Screen.
+### 1. Home: the Reel and the discounted row
+
+- Named rows that scroll sideways (the Reel, 3.II): What's On, Coming Soon, and the discounted row, which holds screenings whose ticket class is marked as discounted, such as Silver Screen (4.1).
 - Each film card: poster, title, age rating, and the captions and audio description flags, visible without opening the film.
 - A priority screening shown greyed out with its text label, linking to the membership page (4.18).
-- A cancelled screening shown greyed out and labelled "Cancelled" until its date (4.11).
-- A showing whose online sales have closed, labelled with the phone number. When sales close is still to decide.
-- An empty row or date.
+- A showing whose online sales have closed, labelled with the phone number. By default sales close at the listed start time (4.23).
+- An empty row.
 
-Questions to answer: does a card stand for a film or a single screening? Where do the priority, cancelled and sales-closed labels sit on a card? How does a row show that it scrolls?
+Cancelled screenings don't appear at all (4.11), so there's nothing to draw for them here.
 
-Wording to write: the priority label with dates, the "Friends only" label, the cancelled label, the sales-closed label and the empty-row message.
+Questions to answer: does a card stand for a film or a single screening? Where do the priority and sales-closed labels sit on a card? How does a row show that it scrolls?
 
-### 2. Screening page: seat map and ticket types
+Wording to write: the priority label with dates, the "Friends only" label, the sales-closed label and the empty-row message.
 
-- Stalls and circle, labelled, with the screen's position marked.
-- The seat key: available, selected, held by someone else and booked, each with a shape or pattern as well as a colour (4.17). Also wheelchair spaces, seats out of use and aisle gaps. The data model can't hold those three yet, so whether and how they're stored is still to decide.
-- After choosing seats, a ticket type and its price for each seat, and a counter for free infant tickets with no seat.
-- A seat taken by someone else in the meantime: that seat marked, the other selections kept.
-- Once seats are held, the hold timer and a Cancel button.
-- The sales-closed state, with the phone number instead of a seat map.
+### 2. Film page and showtimes by date
 
-Questions to answer: how do long rows fit a phone, by scrolling sideways or by shrinking? How does the keyboard move around the map? I'm leaning towards one tab stop with arrow keys between seats rather than tabbing through every seat, which would change 4.17, so that's still to decide.
-
-Wording to write: the seat-taken message, the hold timer text, the screen reader name for each seat state, and the sales-closed message.
-
-### 3. Booking summary, step by step and live
-
-- The spine version: the summary on each step, updated when the customer moves on. One line per ticket type, the infants, the total and a Continue button.
-- The stretch version, the live summary (4.20): the same panel kept in view, updating the moment seats, ticket types or food and drink change.
-
-Questions to answer: where does the live summary sit on a phone, and what changes in it as the customer works through the booking? One frame each, or one frame with notes, is enough.
-
-### 4. Checkout hand-off and Stripe return
-
-Payment happens on Stripe's hosted Checkout page (4.13), so there's no card field on this site.
-
-- The checkout page: the summary and total, the cancellation policy next to the total, Back and Change links, the hold timer, and a button that goes to Stripe.
-- A box in the flow standing for Stripe's page, to show that card entry and declined cards are handled there.
-- The success page: a prominent booking reference, the film, date, time and screen, the seats and ticket types, the infant count, the amount paid by card and any voucher amount applied, what to do on arrival, the cancellation policy, and links to My bookings and What's on.
-- The "confirming your payment" state, for when the customer is back before Stripe's webhook has arrived.
-- Payment not completed: the customer backed out of Stripe's page, no payment was taken, the seats are still held with the time left, and they can try again.
-- Hold expired: back to the seat map with a plain explanation.
-
-Wording to write: the confirming, success, not completed and hold expired messages.
-
-## Group B: the rest of the spine
-
-### 5. Film detail and showtimes by date
-
-- Poster, title, age rating, runtime and synopsis.
+- Poster, title, the age rating shown prominently, runtime and synopsis.
+- The line asking customers to bring photo ID showing their date of birth (4.1).
 - The trailer, played only when clicked and never automatically. With no trailer, the space isn't shown at all.
-- A date strip, and that date's showtimes as pill buttons. Each pill shows the time, the ticket class, the captions and audio description flags, and its state: available, priority, cancelled or sales closed. Private screenings never appear.
+- A date strip, and that date's showtimes as pill buttons. Each pill shows the time, the ticket class, the captions and audio description flags, and its state: available, priority or sales closed. Cancelled and private screenings never appear.
+- "The circle is reached by stairs only. The stalls are step-free." (4.17)
 - A date with nothing showing.
+- The separate page for an old link to a cancelled screening: "This screening has been cancelled", with a link back to the listings.
 
 Question to answer: on a phone, does the synopsis come before or after the showtimes?
 
-Wording to write: the message for a date with nothing showing.
+Wording to write: the photo ID line, the message for a date with nothing showing, and the cancelled screening page.
 
-### 6. Log in and register
+### 3. Seat map with ticket types and the live summary
 
-- Email and password only. Register asks for the password twice.
-- Errors written out next to the field they belong to.
-- The mid-checkout version, with a note that the seats are held while the customer logs in, and the timer.
-- The verification banner after registering. The account works straight away, so this is a reminder, not a block.
+- Stalls and circle, labelled, with the screen's position marked. Rows and seats sit on a grid, with empty columns for aisles and gaps (4.1).
+- The key has four states: available, selected, sold (crossed out) and outside section, for an area closed for this screening. Wheelchair spaces and seats out of use have their own marks. No state relies on colour alone (4.17).
+- A sofa drawn as one shape holding two separately numbered seats, and the circle boxes labelled "Box C" and "Box D".
+- The stairs line from screen 2, next to the key.
+- After choosing seats, a ticket type and its price for each seat. Only the types the film's rating allows are offered, and each shows its age band from its description.
+- The infant counter, with "Under 2s sit on a lap. If they need their own seat, add a Child ticket." It isn't offered on 15 and 18 films.
+- The message for a booking that has infants or Child tickets but no ticket that doesn't need an adult.
+- A seat taken by someone else in the meantime: that seat marked, the other selections kept.
+- Once seats are held, the hold timer and a Cancel button.
+- The sales-closed state, with the phone number instead of a seat map.
+- The live summary (4.20): kept in view, with a line per ticket type, the infants and the total, updating the moment anything changes.
 
-Wording to write: the duplicate email error, the mid-checkout note and the verification banner.
+The map is one tab stop with arrow keys between seats (4.17), which doesn't need drawing, but the frame should show where focus would start.
 
-### 7. My bookings
+Questions to answer: how do long rows fit a phone, by scrolling sideways or by shrinking? Where does the live summary sit on a phone, and what changes in it?
 
-- The list of bookings with status and reference, upcoming and past separated.
-- A booking's detail: seats, ticket types, infants, amount charged and reference.
-- A marked space for the cancellation request, which is stretch. It gets drawn properly with screen 11.
+Wording to write: the seat-taken message, the hold timer text, the screen reader name for each seat state, the accompanying-ticket message and the sales-closed message.
 
-### 8. Staff: screenings
+### 4. Basket and checkout
 
-- The staff area's own header and menu (Screenings, Films, Bookings, Enquiries, Sales, Audit log, Settings), clearly different from the customer site, showing only the items a staff member's permissions allow.
-- The screening list.
-- The create and edit form: film, screen, date and time, ticket class, the price table filled from the class's default with every line editable, the public on-sale time (blank means Friends only), and the private, captions and audio description tick boxes. "Ends at" shown, so staff can see why a clash happens.
-- The overlap message next to the time field.
-- On the film edit page, the runtime-change version: the new runtime kept on the form, and a list of the screenings it would make overlap, each with a link to move it (4.1).
+Payment happens on Stripe's hosted Checkout page (4.13), so there's no card field on this site.
 
-Wording to write: the overlap message and the heading for the runtime clash list.
+- The basket from the pending booking: seats and ticket types, infants, food and drink with plus and minus buttons, the voucher field, and the membership discounts.
+- The total, with the cancellation policy next to it.
+- "Bring proof of age or status", for any ticket type that needs it.
+- The test-mode warning: never enter a real card, use Stripe's test cards.
+- Back and Change links, the hold timer, and a button that goes to Stripe.
+- A box in the flow standing for Stripe's page, where card entry and declined cards are handled.
 
-## Group C: stretch, drawn before each one's build week
+Wording to write: the test card warning and the proof reminder.
 
-These follow the build plan's stretch order. Each needs a wireframe before its build week, which for most of them is December.
+### 5. Return pages: confirming, not completed, outcomes
+
+- Confirming: the customer is back before Stripe's webhook has arrived. The page says the payment is being confirmed and updates itself.
+- Success: a prominent booking reference that works as a ticket on a phone, the film, date, time and screen, the seats and ticket types, the infant count, the amount paid by card and any voucher amount applied, the proof reminder if it applies, what to do on arrival, the cancellation policy, and links to My bookings and What's on.
+- Not completed: the customer backed out of Stripe's page, no payment was taken, the seats are still held with the time left, and they can try again.
+- Hold expired: back to the seat map with a plain explanation.
+- Refunded: a payment landed after the seats had gone, and it's been refunded automatically.
+
+Wording to write: all five messages.
+
+### 6. Customer cancellation request and decline message
+
+- My bookings, with each booking's status and reference, upcoming and past separated, and a booking's detail.
+- Outside the cutoff: the request form, with an optional reason, and what the customer will get back (a voucher for the booking's value minus any cancellation fee, 4.22).
+- Inside the cutoff: no form, and the venue's phone number and opening hours instead.
+- The confirmation after a request, saying staff will look at it.
+- The decline message, with the staff member's note, and the booking back to paid.
+- A booking for a cancelled screening, showing as cancelled with its voucher or refund.
+
+Wording to write: the request confirmation, the inside-the-cutoff text and the decline message.
+
+### 7. Staff: the till
+
+- Choosing a screening, then the same seat map and ticket type choices as screen 3.
+- Looking up a member by email to apply their discount, or carrying on as an anonymous sale.
+- Food and drink, and the total.
+- Marking the booking paid once the venue's card machine has taken payment (4.14).
+- The proof reminder for concessionary tickets, and the booking reference to give the customer.
+- Finding an existing booking by its reference.
+
+### 8. Staff: the cancellation queue
+
+- The queue of customer cancellation requests, oldest first, with each booking's details.
+- Approving with a voucher (the booking's value minus any fee) or declining, with a note required either way (4.22).
+- The Manager's version, which also offers a card refund as an exception, with a reason.
+
+Wording to write: the headings and the confirmation messages for approving and declining.
+
+## Before 7 December
 
 ### 9. Membership page
 
 - The tiers, each with its price and benefits: priority booking hours, ticket discount, and the food and drink discount for the higher tier (4.4, 4.18).
 - Buying a tier, through the same Stripe hand-off as a booking.
+- The 14-day refund rule in one sentence (4.22).
 - A lapsed member's renewal prompt.
-- A space for the 14-day cancellation path, if the withdrawal right turns out to apply (4.22).
+
+## Before 21 December
 
 ### 10. Gift voucher page
 
-- Buying a voucher, and entering a code at checkout.
-- The remaining balance after a part-covered booking.
-- A used-up code's rejection message.
+- Buttons for £10, £20, £50 and £100, and an "other amount" field for whole pounds within the venue's limits (4.26).
+- The 14-day refund rule in one sentence (4.22).
+- The note that buying needs an account.
+- The code shown on screen after payment, and the optional gift message (a Could).
+- The remaining balance after a part-covered booking, and a used-up code's message.
 
-### 11. Staff: cancellation queue
-
-- The queue of customer cancellation requests, oldest first.
-- The approve or decline screen: the booking's details, the choice of voucher or card refund (each behind its own permission), and the required reason (4.22).
-- The customer's side: the request form outside the cutoff, and the phone number and opening hours inside it.
-
-### 12. Staff: TMDb review screen
+### 11. Staff: TMDb review screen
 
 - Search results as a list with poster, title and year.
 - The review screen: synopsis, poster, the suggested trailer with alternatives, and the suggested UK age rating, nothing saved until staff confirm (4.15).
 - The message and retry button for when TMDb can't be reached.
 - Adding a film by hand, for events with no TMDb entry.
 
-### 13. Private hire enquiry form
+### 12. Private hire enquiry form
 
 - The enquiry form: name, email, event type, preferred date, party size and message (4.6).
 - The confirmation after sending.
-- The staff list of enquiries with their status, and the screening an enquiry became (4.19).
 
 ---
 
