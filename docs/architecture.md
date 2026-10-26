@@ -127,24 +127,37 @@ User ──FK (nullable, as customer)── Booking
 User ──FK (nullable, as staff)──── Booking.created_by
 User ──FK (nullable)────────────── SeatHold.user
 User ──FK──────────────────────── AuditLogEntry.actor
+User ──FK (nullable)────────────── Cancellation.decided_by
+User ──FK (nullable)────────────── Voucher.purchased_by
+User ──1:N── MembershipPurchase ──FK── MembershipTier
 
 Booking ──FK── Screening ──FK── Film
    │              │          └──FK── TicketClass
-   │              └──FK── Screen ──1:N── Seat
+   │              ├──FK── SeatingLayout
+   │              ├──1:N── ScreeningClosedArea
+   │              └──FK── Screen ──1:N── Seat ──FK (nullable)── SeatingLayout
+   │                      └──1:N── SeatingLayout
    │
    ├──1:N── SeatBooking ──FK── Seat, TicketType, Screening (duplicated, partial unique constraint)
+   ├──1:N── SeatHold                      [while the booking is pending, see 4.8]
    ├──1:N── OrderItem ──FK── Product
+   ├──1:N── Cancellation                  [one row per cancellation, see 4.2]
    ├──FK (nullable)── Voucher            [1 Voucher : N Bookings, balance drawn down over time]
    └──FK (nullable)── MembershipTier     [snapshot at time of booking, see 4.2]
 
+Voucher ──FK (nullable)── Booking   (source_booking, the cancelled booking it replaced)
+
 Screening ──1:N── ScreeningPrice ──FK── TicketType   (unique on screening + ticket type)
 
-SeatHold ──FK── Screening, Seat (unique_together)
+SeatHold ──FK── Screening, Seat (unique_together), TicketType
+         ──FK (nullable)── Booking   (the pending booking)
 
 AuditLogEntry ──FK (nullable)── Booking   (related_booking)
               ──FK (nullable)── Voucher   (related_voucher)
 
 EnquiryRequest ──FK (nullable)── Screening  (resulting_screening)
+
+StripeEvent   (stands alone: the IDs of Stripe events already handled)
 ```
 
 This is the one place every relationship in the schema appears together.
