@@ -4,7 +4,7 @@ This section follows Jesse James Garrett's five planes (strategy, scope, structu
 
 ## Wireframes
 
-Wireframes will be added here as images from `docs/wireframes/`.
+The brief for each wireframe, and the wireframes themselves once they're drawn, are in [Wireframes](wireframes.md). It lists the screens in build order, what each has to show, and the questions each drawing has to answer.
 
 ## I. Strategy
 
