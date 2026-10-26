@@ -189,9 +189,9 @@ A hold lasts 10 minutes, and each amendment restarts it, up to 30 minutes in tot
 
 This app has no customer-facing models. It owns the one new cross-cutting concern, accountability for staff actions, and otherwise only reads data that lives in the other apps, for reporting. Keeping it separate avoids scattering staff-only concerns across every domain app, and avoids copying booking and sales data into a second model just to report on it.
 
-`AuditLogEntry`: `actor` (FK to `User`), `action_type` (refund, screening_cancelled, booking_cancelled, voucher_issued), `related_booking` (nullable FK), `related_voucher` (nullable FK), `reason` (text, required), `created_at`.
+`AuditLogEntry`: `actor` (FK to `User`), `action_type` (refund, screening_cancelled, booking_cancelled, voucher_issued, cancellation_declined, voucher_deactivated, setting_changed), `related_booking` (nullable FK), `related_voucher` (nullable FK), `reason` (text, required), `created_at`.
 
-Logging is automatic. An `AuditLogEntry` is created by the same server-side action that performs the sensitive operation, not filled in by staff afterwards on a separate form. It can't be forgotten or skipped, so the who and why exist for anything sensitive that happened.
+Logging is automatic. An `AuditLogEntry` is created by the same server-side action that performs the sensitive operation, not filled in by staff afterwards on a separate form. It can't be forgotten or skipped, so the who and why exist for anything sensitive that happened. Refunding a membership or a gift voucher is logged as `refund`, with its reason. Staff can also do some of these things in the Django admin, so the admin's actions call the same service functions as the staff pages, and the log is written whichever way the change was made.
 
 Permissions, not fixed roles. What a staff member can do is controlled by Django's permission system. Each sensitive action has its own small permission, for example `cancel_booking`, `issue_voucher`, `refund_booking`, `cancel_screening`, `create_in_venue_booking`, `manage_screenings`, `manage_films`, `manage_enquiries`, `manage_venue_settings` and `view_sales_dashboard`. Groups are named bundles of these permissions. Application code never asks whether someone is a Manager. It asks whether the user holds the specific permission the action needs.
 
