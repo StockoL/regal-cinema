@@ -110,7 +110,16 @@ To be completed.
 
 ### Technologies used
 
-Django, PostgreSQL, Stripe (test mode), The Movie Database (TMDb) API, Render and cron-job.org. The design system draws on CUBE CSS, _Every Layout_ and the View Transitions API. To be completed with versions as the build goes on.
+- Python 3.14 and Django 6.1
+- PostgreSQL 17, locally and on Neon in production
+- psycopg 3, which connects Django to PostgreSQL
+- dj-database-url and python-dotenv, which read the database URL and other settings from the environment
+- gunicorn, which runs the app on Render, and WhiteNoise, which serves its static files
+- Render for hosting, and cron-job.org to keep the free web service awake
+- CUBE CSS, _Every Layout_ patterns and Utopia fluid scales for the design system
+- Planned: Stripe in test mode for payments, The Movie Database (TMDb) API for film details, and the View Transitions API between pages
+
+Exact versions are pinned in [`requirements.txt`](requirements.txt).
 
 This product uses the TMDB API but is not endorsed or certified by TMDB.
 
