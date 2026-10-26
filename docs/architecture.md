@@ -340,12 +340,14 @@ The target is WCAG 2.1 AA, the practical, widely used baseline, which makes the 
 
 Structure and semantics. One `<h1>` per page, a logical heading order, and semantic landmarks (`<nav>`, `<main>`, `<footer>`) so a screen reader user can jump to a section instead of reading the page from the top. Anything clickable is a real `<button>` or `<a>`, never a `<div>` with a click handler, which gives keyboard and screen reader support without extra work.
 
-Colour and contrast. The dark palette from [section 3 (Surface)](ux_design.md#v-surface) gets checked against WCAG's contrast ratios before I finalise it, not judged by eye. Text needs 4.5:1 against its background, and the gold accent needs checking wherever it's used for anything beyond large or decorative text, since a colour chosen for mood isn't automatically legible. Nothing is conveyed by colour alone. The seat map's states (available, selected, held by someone else, booked) each get a second signal, an icon or pattern plus a text label for screen readers. A greyed-out priority screening (4.18) is conveyed by its text label and an accessible description, not just its dimmed colour.
+Colour and contrast. The dark palette from [section 3 (Surface)](ux_design.md#v-surface) gets checked against WCAG's contrast ratios before I finalise it, not judged by eye. Text needs 4.5:1 against its background, and the gold accent needs checking wherever it's used for anything beyond large or decorative text, since a colour chosen for mood isn't automatically legible. Nothing is conveyed by colour alone. The seat map's key has four states: available, selected, sold, and outside section (an area closed for this screening, 4.1). A seat held by someone else shows as sold, since to anyone else it's simply unavailable. Wheelchair spaces and seats out of use have their own marks too. Each state gets a second signal as well as its colour, an icon or pattern plus a text label for screen readers, and sold seats are crossed out. A greyed-out priority screening (4.18) is conveyed by its text label and an accessible description, not just its dimmed colour.
 
 The seat map is the most complex interactive component, so it gets specific treatment:
 
-- Every seat is a real, focusable `<button>`, reachable by Tab and activated with Enter or Space. Nothing is hover-only or click-only.
-- Each seat's accessible name says what a screen reader user needs ("Row C, seat 4, circle, available"), not just a grid coordinate.
+- Every seat is a real `<button>`, activated with Enter or Space. Nothing is hover-only or click-only.
+- The whole map is a single tab stop. Arrow keys move between seats along the grid from 4.1, skipping aisles and gaps, using a roving `tabindex`: only the seat that has focus is in the tab order. Tabbing through every seat in a full auditorium would take hundreds of key presses, and Tab leaves the map in one press instead.
+- Each seat's accessible name says what a screen reader user needs ("Circle, row C, seat 4, available"), built from the same fields as its label (4.1), not just a grid coordinate.
+- The key and the film page both say "The circle is reached by stairs only. The stalls are step-free."
 - When a seat-hold conflict happens (4.8) and the page updates inline, the change is announced through an ARIA live region. A sighted user sees the seat change. A screen reader user has to be told it became unavailable, or the inline-update design from 4.8 fails for them.
 
 Forms (registration, checkout, enquiries, staff tools). Every input has a real, associated `<label>`. Validation errors are stated in text, not colour alone, and tied to their field so a screen reader announces which field the error belongs to.
@@ -354,7 +356,7 @@ Focus and motion. I'm defining a visible, high-contrast focus style for the dark
 
 The fluid layout approach from _Every Layout_, chosen for its own reasons, also makes the site more resilient to text zoom and large-text browser settings than a pixel-fixed layout would be. Two separate decisions help each other here.
 
-Verification. I won't assume accessible markup is accessible in practice. An automated pass (Lighthouse or axe) catches the mechanical issues: contrast, missing labels, landmark structure. A manual keyboard-only pass through the booking flow, the highest-risk journey, catches what tools can't, such as whether the live region announces a lost seat sensibly. See [Testing](testing.md).
+Verification. I won't assume accessible markup is accessible in practice. An automated pass (Lighthouse or axe) catches the mechanical issues: contrast, missing labels, landmark structure. A manual keyboard-only pass through the booking flow, the highest-risk journey, catches what tools can't, such as whether the arrow keys move around the seat map sensibly and whether the live region announces a lost seat. See [Testing](testing.md).
 
 ## 4.18 Ticket classes, membership tiers and priority booking
 
