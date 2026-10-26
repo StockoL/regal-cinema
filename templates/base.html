@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}{% endblock %} | Regal Cinema</title>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to main content</a>
+
+  <header class="site-header">
+    <a class="site-name" href="{% url 'screenings:screening_list' %}">Regal Cinema</a>
+    {% with current=request.resolver_match.view_name %}
+    <nav aria-label="Main">
+      <ul role="list">
+        <li><a href="{% url 'screenings:screening_list' %}"{% if current == 'screenings:screening_list' %} aria-current="page"{% endif %}>What's on</a></li>
+      </ul>
+    </nav>
+    {% endwith %}
+  </header>
+
+  <main id="main" tabindex="-1">
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="site-footer">
+    <p>Regal Cinema</p>
+  </footer>
+</body>
+</html>
