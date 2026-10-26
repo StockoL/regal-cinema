@@ -443,7 +443,7 @@ The system provides mechanisms and the venue owns the policy. A made-up cinema's
 - how many minutes before the start online sales close (default 0, so sales close at the listed start time, matching the real venue's terms, which admit no one after the film starts)
 - the trailer time before a film and the turnaround time after it, used for the no-overlap rule (defaults 20 and 15 minutes, see 4.1)
 - the smallest and largest gift voucher a customer can buy, in whole pounds (defaults £10 and £100, see 4.26)
-- the venue's phone number, address and opening hours, shown in the footer and on the cancellation page. Opening hours are one plain-text field. The defaults are placeholders, since the venue is fictional: the phone number is 01632 960 123, from the range Ofcom keeps for drama and fiction, and the address is just "Evesham".
+- the venue's phone number, address and opening hours, shown in the footer and on the cancellation page. Opening hours are one plain-text field. The defaults are placeholders, since the venue is fictional: the phone number is 01632 960 123, from the range Ofcom keeps for drama and fiction, and the address is left blank. The real Regal is in Evesham, and its town next to the name would read as if this site were that cinema, so the footer only shows an address when one has been set, and it always says the venue is fictional and not connected to any real cinema.
 
 The 30-minute cap on total hold time isn't a setting. It matches the shortest session Stripe Checkout allows, so the extension at Pay can always cover a whole session (4.8, 4.13), and making it smaller would break that.
 

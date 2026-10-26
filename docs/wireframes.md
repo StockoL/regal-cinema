@@ -30,7 +30,7 @@ Every customer page uses the same header, menu and footer, so I'll draw these on
 
 - Header with the site name linking home.
 - Main menu. Logged out: What's on, Membership, Private hire, About, Log in, Register. Logged in: What's on, Membership, Private hire, About, My bookings, Account, Log out. It wraps onto a second line on a phone instead of hiding behind a menu button.
-- Footer with the venue's phone number, address and opening hours, the accessibility policy, the membership terms, and the line "Regal Cinema is a fictional venue created for a course project."
+- Footer with the venue's phone number and opening hours, the accessibility policy, the membership terms, and the line "Regal Cinema is a fictional venue created for a course project. It isn't connected to any real cinema." There's no address, because the venue is fictional and the real Regal's town would suggest otherwise.
 - A "Skip to main content" link, shown when it has keyboard focus.
 
 The staff pages (screens 8, 9 and 12) have their own header and menu, clearly different from the customer site, showing only the items a staff member's permissions allow.
