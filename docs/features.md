@@ -25,9 +25,9 @@ Staff-facing:
 - Front of House: see a screening's current seat occupancy at a glance
 - Manager: search TMDb and add a film to the local catalogue, reviewing and confirming the fetched details (including age rating) before saving. See [4.15](architecture.md#415-tmdb-integration)
 - Manager: add a film by hand for anything without a TMDb entry, or refresh an existing film's cached details
-- Manager: create, edit or cancel a screening (film, screen, date and time, prices by ticket type, ticket class, priority booking window, private or public). The system prevents overlapping screenings on a screen, and cancelling one starts the [screening cancellation flow](architecture.md#411-business-rule-screening-cancellation)
-- Manager: mark a screening private for a confirmed private hire, which hides it from public listings and blocks public online booking ([4.19](architecture.md#419-private-hire-and-screening-visibility))
-- Manager: choose a screening's seating layout, and close an area such as the circle for a quiet screening ([4.1](architecture.md#41-screenings))
+- Manager, in the admin: create, edit or cancel a screening (film, screen, date and time, prices by ticket type, ticket class, priority booking window, private or public). The prices and any closed areas are edited on the screening's own page. The model's validation prevents overlapping screenings on a screen, and shows the clash as an error on the form. Cancelling one goes through the same service as a staff page would, so it starts the [screening cancellation flow](architecture.md#411-business-rule-screening-cancellation)
+- Manager, in the admin: mark a screening private for a confirmed private hire, which hides it from public listings and blocks public online booking ([4.19](architecture.md#419-private-hire-and-screening-visibility))
+- Manager, in the admin: choose a screening's seating layout, and close an area such as the circle for a quiet screening ([4.1](architecture.md#41-screenings))
 - Manager, in the admin: manage ticket classes, their default prices, the ticket types and the seating layouts ([4.18](architecture.md#418-ticket-classes-membership-tiers-and-priority-booking))
 
 ## 5.2 `bookings`
