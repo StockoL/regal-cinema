@@ -434,14 +434,19 @@ Sources for the legal background: [NI Business Info, exemptions from the right t
 
 ## 4.23 Venue settings, and what is law versus policy
 
-The system provides mechanisms and the venue owns the policy. A made-up cinema's choices shouldn't be baked into a booking platform that any venue could use. A single `VenueSettings` record in the `venue` app, editable by staff holding `manage_venue_settings`, holds the values a venue is most likely to want to change:
+The system provides mechanisms and the venue owns the policy. A made-up cinema's choices shouldn't be baked into a booking platform that any venue could use. `VenueSettings` is a model in the `venue` app with a single row, holding the values a venue is most likely to want to change. Staff holding `manage_venue_settings` edit it in the Django admin. Its defaults are set in the migration that creates it, so a fresh deployment works before anyone has opened the admin. Code never reads the row directly. It calls one accessor, `get_settings()`, so there's one place that knows where settings come from.
 
 - the cancellation cutoff, in hours (default 24)
-- the venue's phone number and opening hours, shown on the cancellation page
-- the seat-hold length and the hard cap on total hold time (defaults 10 and 30 minutes, see 4.8)
+- the cancellation fee taken off the voucher when a customer cancels, `cancellation_fee_pence` (default 0). It's never charged when the venue cancels (4.22).
+- the seat-hold length (default 10 minutes, see 4.8)
+- how many minutes before the start online sales close (default 0, so sales close at the listed start time, matching the real venue's terms, which admit no one after the film starts)
 - the trailer time before a film and the turnaround time after it, used for the no-overlap rule (defaults 20 and 15 minutes, see 4.1)
+- the smallest and largest gift voucher a customer can buy, in whole pounds (defaults £10 and £100, see 4.26)
+- the venue's phone number, address and opening hours, shown in the footer and on the cancellation page. Opening hours are one plain-text field. The defaults are placeholders, since the venue is fictional: the phone number is 01632 960 123, from the range Ofcom keeps for drama and fiction, and the address is just "Evesham".
 
-Membership tiers, prices, ticket classes and permission groups are already data, so they need no special handling. The numbers quoted elsewhere in this document (24 hours, 10 minutes and so on) are shipped defaults, not rules. If time gets tight, a plain settings file is an acceptable first version of this record, and I'd describe the settings model as the next step.
+The 30-minute cap on total hold time isn't a setting. It matches the shortest session Stripe Checkout allows, so the extension at Pay can always cover a whole session (4.8, 4.13), and making it smaller would break that.
+
+Changes to the cancellation cutoff and the voucher limits write an `AuditLogEntry` (`setting_changed`). That's a Could. Membership tiers, prices, ticket classes, ticket types and permission groups are already data, so they need no special handling. The numbers quoted elsewhere in this document (24 hours, 10 minutes and so on) are shipped defaults, not rules.
 
 Some behaviours stay fixed because they bind a venue whatever its preferences: the refund owed when the venue cancels a showing (4.11), the required reason and named actor on every sensitive action (4.9), and the cancellation-right position in 4.22. Everything else is a default the venue can change.
 
