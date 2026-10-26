@@ -213,7 +213,7 @@ Ticket-class pricing isn't part of this stack. A screening's `ScreeningPrice` ro
 The order is:
 
 1. Start from the sum of each seated ticket's own price (the `ScreeningPrice` for its ticket type, stored on its `SeatBooking`) and any concessions. Infant tickets are free and add nothing.
-2. Apply the customer's membership tier discounts, if any: the tier's ticket discount to the tickets, and its food and drink discount to the concessions. Snapshot both percentages onto the booking as `ticket_discount_percent` and `food_drink_discount_percent` (4.2).
+2. Apply the customer's membership tier discounts, if any: the tier's ticket discount to the tickets, and its food and drink discount to the concessions. Snapshot both percentages onto the booking as `ticket_discount_percent` and `food_drink_discount_percent` (4.2). A discount is worked out per ticket and per item, not on the total, and rounded to the nearest penny with halves going up, using Python's `Decimal` with `ROUND_HALF_UP`, so each `SeatBooking` stores exactly what its ticket cost and a refund for one seat matches what was paid for it.
 3. Deduct what's left from the customer's voucher balance, if a code was entered, up to the voucher's remaining balance. The amount taken is stored on the booking as `voucher_applied_pence`.
 4. Charge the remainder to Stripe. If the voucher covers the whole total, no Stripe charge is needed, but the `Booking` is still marked paid.
 
