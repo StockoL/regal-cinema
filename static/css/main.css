@@ -1,0 +1,8 @@
+/* The only stylesheet a page links (architecture 4.24). Layers are in
+   CUBE CSS order, and a later layer always wins over an earlier one. */
+@layer global, composition, utility, block, exception;
+
+@import url("global/tokens.css") layer(global);
+@import url("global/base.css") layer(global);
+
+@import url("block/skip-link.css") layer(block);

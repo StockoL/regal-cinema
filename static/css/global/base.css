@@ -1,0 +1,67 @@
+/* Plain elements, before any composition or block styles them. */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  color-scheme: dark;
+}
+
+body {
+  margin: 0;
+  min-block-size: 100vh;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-body);
+  font-size: var(--step-0);
+  line-height: var(--line-height);
+}
+
+h1 {
+  font-size: var(--step-4);
+  line-height: 1.15;
+}
+
+p {
+  max-inline-size: var(--measure);
+}
+
+img,
+video {
+  display: block;
+  max-inline-size: 100%;
+  block-size: auto;
+}
+
+a {
+  color: var(--color-accent);
+  text-underline-offset: 0.15em;
+}
+
+/* A clear focus style for the dark theme, instead of the browser's,
+   which is hard to see on a near-black background (4.17). */
+:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+/* main takes focus from the skip link, but it isn't a control, so it
+   doesn't need a ring. */
+[tabindex="-1"]:focus {
+  outline: none;
+}
+
+/* Respect the reduced motion setting everywhere (4.17). !important is
+   the point here: no component's animation should override it. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
