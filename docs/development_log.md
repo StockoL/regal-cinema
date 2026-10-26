@@ -55,7 +55,7 @@ Planned scope: the transactional core of `bookings`: `SeatHold`, `Booking`, `Sea
 <details>
 <summary>Phase 3</summary>
 
-Planned scope: Stripe on top of the working booking skeleton: Checkout session creation from the pending booking and the hand-off to Stripe's hosted page, extending the holds when the customer chooses Pay, the return pages (confirming and not completed), webhook signature verification, idempotency through `StripeEvent`, and the automatic refund when a payment lands after the seats have gone (4.13). Building this after Phase 2 means payment problems and seat concurrency problems get debugged one at a time.
+Planned scope: Stripe on top of the working booking skeleton: Checkout Session creation from the pending booking and the hand-off to Stripe's hosted page, extending the holds when the customer chooses Pay, the return pages (confirming and not completed), webhook signature verification, idempotency through `StripeEvent`, and the automatic refund when a payment lands after the seats have gone (4.13). Building this after Phase 2 means payment problems and seat concurrency problems get debugged one at a time.
 
 ### To be completed during development
 
