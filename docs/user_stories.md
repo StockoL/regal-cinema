@@ -37,6 +37,7 @@ For staff:
 15. [Cancel or refund a booking](#journey-15-cancel-or-refund-a-booking)
 16. [Cancel a screening](#journey-16-cancel-a-screening)
 17. [View the sales dashboard](#journey-17-view-the-sales-dashboard)
+18. [Buy a gift voucher](#journey-18-buy-a-gift-voucher) (also for the cinema-goer)
 
 In the staff journeys, "a staff member" means anyone who holds the permission that action needs (see [4.9](architecture.md#49-staff)).
 
@@ -271,6 +272,20 @@ Success: figures can never drift from the underlying data, because nothing is st
 | Discounts         | Given discounts and vouchers redeemed are shown, when they are computed, then they match the paid bookings.                        | Should |
 | Sold and released | Given a seat was sold then released, when sell-through is analysed, then the original demand can still be seen.                    | Could  |
 | Ticket mix        | Given the dashboard loads, when sales are broken down, then tickets sold by type (adult, student, OAP, child, infant) can be seen. | Could  |
+
+## Journey 18: Buy a gift voucher
+
+Success: a voucher only becomes usable after Stripe confirms payment, and its balance always matches what was paid.
+
+| Step                  | Scenario                                                                                                                                                                                                                               | MoSCoW            |
+| --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------- |
+| Choose an amount      | Given a logged-in customer opens the gift voucher page, when they choose a button amount or enter another whole-pound amount, then it must be within the smallest and largest values the venue sets (£10 and £100 to start).           | Must              |
+| Pay                   | Given an amount is chosen, when the customer chooses Pay, then an inactive voucher is created and payment follows the same pattern as journey 6.                                                                                       | Must              |
+| Activated once        | Given the success webhook arrives, when it is processed, then the voucher is activated, the code is shown and emailed to the purchaser, and a repeated event changes nothing.                                                          | Must              |
+| Payment not completed | Given the customer returns from Stripe without paying, when they come back, then no usable voucher exists and they can try again. A declined card is handled on Stripe's page and this site never sees it (same pattern as journey 6). | Must              |
+| Spend it              | Given an active purchased voucher, when anyone enters the code at checkout, then it behaves as in journey 5.                                                                                                                           | Must              |
+| Gift message          | Given the purchaser is giving it away, when they add a short message, then a printable voucher page shows it.                                                                                                                          | Could             |
+| Guest purchase        | Given no account, when someone wants to buy a voucher, then they are asked to register first.                                                                                                                                          | Won't (this time) |
 
 ---
 
