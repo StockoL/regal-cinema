@@ -12,6 +12,8 @@ To avoid inventing a second redemption mechanism, when a member's balance crosse
 
 A proposed rate, illustrative and not checked against anything real. Unlike the ticket classes and membership tiers, there's no evidence the real Regal runs a loyalty scheme, so any numbers here are a starting proposal. A simple, easily explained rate would be 1 point per £1 spent (tickets and concessions) with 100 points earning a free standard ticket, roughly a "buy nine, get the tenth free" card, which most customers recognise. Both values would be stored as single configurable settings instead of hard-coded, so they could be tuned once real spending data showed whether it's sustainable for the venue's margins. That is a business decision I shouldn't guess at permanently.
 
+Points would also need an expiry rule, so that a balance from years ago doesn't sit on the books indefinitely. The simplest version expires points a set time after they were earned, recorded as a negative `LoyaltyTransaction` so the ledger still adds up.
+
 ## 8.2 Newsletter and promotional emails
 
 - `NewsletterSubscriber`: `email` (unique), `user` (nullable FK, linked automatically if the email matches a registered account), `opt_in_deals`, `opt_in_digest` (both boolean, default `False`), `subscribed_at`, `is_active`. It isn't part of `Profile`, because anyone could subscribe from the site footer without an account.
@@ -42,6 +44,14 @@ Part of this is now in the core build. Staff with the right permission can issue
 - Every use logged to `AuditLogEntry` (`action_type='manual_discount'`) with a required reason.
 
 I moved this out because there's no evidence the real Regal operates this way. Its site shows fixed ticket classes and a structured membership scheme, not visible discretionary pricing. Keeping the first build close to what I can verify took priority over a plausible feature with no real-world counterpart. The mechanism (bounded discretion, mandatory logging) would be a reasonable addition if a venue wanted it.
+
+## 8.4 A per-ticket booking fee
+
+The real Regal adds a booking fee of £3.75 to each ticket, and doesn't refund it. I've left it out. Customers see the ticket price they pay, the totals in 4.10 stay simple, and a refund or voucher covers the whole amount paid. If a venue wanted one, it would be a venue setting (4.23), shown as its own line in the booking summary and kept out of the refundable amount, with the rule stated before payment.
+
+## 8.5 Notice for cancelling a membership
+
+The real Regal asks for 30 days' notice to cancel a membership. That kind of rule belongs with a membership that renews and charges automatically. Mine doesn't renew (4.18), so there's nothing to give notice about, and the 14-day refund in 4.22 covers changing your mind just after buying. If recurring billing were ever added, a notice period would come with it.
 
 ---
 
