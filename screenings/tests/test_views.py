@@ -42,7 +42,7 @@ class WhatsOnPageTests(TestCase):
         self.assertContains(
             self.response,
             'Regal Cinema is a fictional venue created for a course '
-            'project.',
+            "project. It isn't connected to any real cinema.",
         )
 
     def test_footer_gives_the_placeholder_phone_number_as_a_link(self):
@@ -51,8 +51,10 @@ class WhatsOnPageTests(TestCase):
             self.response, '<a href="tel:+441632960123">01632 960 123</a>'
         )
 
-    def test_footer_gives_the_town(self):
-        self.assertContains(self.response, 'Evesham')
+    def test_page_doesnt_name_the_real_cinemas_town(self):
+        """The real Regal is in Evesham. Naming the town beside the
+        name would read as if this were that cinema."""
+        self.assertNotContains(self.response, 'Evesham')
 
     def test_title_names_the_page_and_the_cinema(self):
         self.assertContains(
