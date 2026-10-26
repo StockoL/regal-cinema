@@ -37,6 +37,7 @@ For staff:
 15. [Cancel or refund a booking](#journey-15-cancel-or-refund-a-booking)
 16. [Cancel a screening](#journey-16-cancel-a-screening)
 17. [View the sales dashboard](#journey-17-view-the-sales-dashboard)
+18. [Buy a gift voucher](#journey-18-buy-a-gift-voucher) (also for the cinema-goer)
 
 In the staff journeys, "a staff member" means anyone who holds the permission that action needs (see [4.9](architecture.md#49-staff)).
 
@@ -51,6 +52,7 @@ Success: a customer can get from the landing page to a specific screening's seat
 | Access flags                | Given a screening has captions or audio description, when it appears in a listing, then that is visible without opening the detail page.                                               | Must   |
 | Date and showtime picker    | Given a film's screenings span several dates, when the customer picks a date, then only that date's showtimes appear in the pill picker.                                               | Should |
 | Private screenings hidden   | Given a screening is private, when the public browses, then it never appears.                                                                                                          | Must   |
+| Cancelled screening hidden  | Given a screening is cancelled, when the public browses before its date, then it is absent from every listing and can't be booked.                                                     | Must   |
 | Priority screenings visible | Given a screening isn't yet open to the public, when it appears in a listing, then it is greyed out with a text label saying who can book it and when, linking to the membership page. | Must   |
 | Empty date                  | Given a chosen date has no showings, when it is displayed, then a clear empty state appears.                                                                                           | Could  |
 
@@ -58,19 +60,26 @@ Success: a customer can get from the landing page to a specific screening's seat
 
 Success: no seat is ever double-booked under concurrent access, shown by an automated concurrency test and a manual two-tab check.
 
-| Step                 | Scenario                                                                                                                                                                                                      | MoSCoW |
-| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ |
-| Live grid            | Given a screening page loads, when the seat grid renders, then every seat's live status is shown through `data-seat-status`, never a stale one.                                                               | Must   |
-| Selecting            | Given seats are available, when the customer taps them, then they are selected without a server call.                                                                                                         | Must   |
-| Ticket types         | Given seats are selected, when the customer proceeds, then each seat is given a ticket type (adult, student, OAP, child) with its price shown, and infants can be added free without taking a seat.           | Must   |
-| Hold created         | Given seats are selected, when the customer proceeds, then the server re-validates and creates holds for the venue's hold time.                                                                               | Must   |
-| Conflict             | Given a seat was taken in the gap, when the hold is attempted, then only the conflicting seats are flagged and the other selections are kept.                                                                 | Must   |
-| Paying on Stripe     | Given the customer has left for Stripe's page, when they are paying there, then their seats stay held (4.13).                                                                                                 | Must   |
-| Amend                | Given a customer has moved on to checkout, when they go back and change their seats, then the holds on removed seats are released and holds on the new seats are created in one step, without starting again. | Must   |
-| Seats never stuck    | Given a customer cancels or switches to different seats, when they do, then the previous seats are immediately available to everyone else.                                                                    | Must   |
-| Cancel               | Given the customer decides not to continue, when they choose Cancel, then the hold is released immediately.                                                                                                   | Must   |
-| Expired mid-checkout | Given a hold has expired, when payment is attempted, then the customer returns to the seat map with a plain explanation.                                                                                      | Must   |
-| Back button          | Given the browser's back button is used, when the seat grid reappears, then it re-fetches live state.                                                                                                         | Should |
+| Step                      | Scenario                                                                                                                                                                                                                    | MoSCoW |
+| ------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ |
+| Live grid                 | Given a screening page loads, when the seat grid renders, then every seat's live status is shown through `data-seat-status`, never a stale one.                                                                             | Must   |
+| Outside section           | Given an area is closed for this screening, when the customer views the map, then its seats show as outside section and can't be selected.                                                                                  | Must   |
+| Accessibility note        | Given the seat map is shown, when it loads, then it says the circle is reached by stairs only.                                                                                                                              | Should |
+| Selecting                 | Given seats are available, when the customer taps them, then they are selected without a server call.                                                                                                                       | Must   |
+| Ticket types              | Given seats are selected, when the customer proceeds, then each seat is given a ticket type (such as adult, student, OAP, young person or child) with its price shown, and infants can be added free without taking a seat. | Must   |
+| Infants need an adult     | Given a booking has infants or Child tickets, when it has no ticket that doesn't need an adult, then it can't proceed and the customer is told why.                                                                         | Must   |
+| Infants on suitable films | Given a film is rated 15 or 18, when the customer adds infants, then they are refused, since infants are only allowed on U, PG and 12A films.                                                                               | Must   |
+| Ticket types by rating    | Given a film's rating, when ticket types are offered, then any type whose maximum age is below the film's minimum age isn't offered.                                                                                        | Must   |
+| Proof reminder            | Given a booking includes a ticket type that needs proof, when the customer reaches checkout and the confirmation, then both remind them to bring proof of age or status.                                                    | Should |
+| Hold created              | Given seats are selected, when the customer proceeds, then the server re-validates and creates holds for the venue's hold time.                                                                                             | Must   |
+| Conflict                  | Given a seat was taken in the gap, when the hold is attempted, then only the conflicting seats are flagged and the other selections are kept.                                                                               | Must   |
+| Sales closed              | Given a screening is about to start, when the venue's online sales cut-off has passed, then it can't be booked online and the customer is told why.                                                                         | Must   |
+| Extended at payment       | Given the customer chooses Pay, when the Stripe Checkout Session is created, then the holds are extended to the end of the session so the seats can't be sold to anyone else meanwhile.                                     | Must   |
+| Amend                     | Given a customer has moved on to checkout, when they go back and change their seats, then the holds on removed seats are released and holds on the new seats are created in one step, without starting again.               | Must   |
+| Seats never stuck         | Given a customer cancels or switches to different seats, when they do, then the previous seats are immediately available to everyone else.                                                                                  | Must   |
+| Cancel                    | Given the customer decides not to continue, when they choose Cancel, then the hold is released immediately.                                                                                                                 | Must   |
+| Expired mid-checkout      | Given a hold has expired, when payment is attempted, then the customer returns to the seat map with a plain explanation.                                                                                                    | Must   |
+| Back button               | Given the browser's back button is used, when the seat grid reappears, then it re-fetches live state.                                                                                                                       | Should |
 
 ## Journey 3: Add food and drink
 
@@ -118,37 +127,42 @@ Success: the customer is never told a payment succeeded unless Stripe has confir
 | Going back                 | Given the customer is in checkout, when they use the back button or a Change link, then they return to the previous step with their selections intact and can amend them before paying.                                                                                                                                | Must   |
 | Policy shown before paying | Given the customer is about to pay, when the total is displayed, then the cancellation policy is shown beside it.                                                                                                                                                                                                      | Should |
 | Live summary               | Given seats, items or a voucher change, when they do, then the displayed total, with a line per ticket type, updates immediately and is recalculated by the server at payment (4.20).                                                                                                                                  | Could  |
-| Payment submitted          | Given a non-zero total, when the customer pays on Stripe's page and returns, then the booking is confirmed only by Stripe's webhook, and until then the page says payment is being confirmed (4.13).                                                                                                                   | Must   |
+| Basket kept                | Given the customer proceeds to checkout, when they go back, then ticket types, infants, food and drink and any voucher entered are still there, because they are stored on the pending booking.                                                                                                                        | Must   |
+| Sent to Stripe             | Given a non-zero total, when the customer chooses Pay, then they are taken to Stripe's hosted page, and confirmation comes only from Stripe's webhook (4.13).                                                                                                                                                          | Must   |
+| Confirming                 | Given the customer returns before the webhook has arrived, when the page loads, then a "confirming your payment" message updates itself, and success is shown only once the booking is paid.                                                                                                                           | Must   |
 | Payment succeeds           | Given the verified success webhook arrives, when it is processed, then the holds convert and are deleted, the voucher decreases, `amount_charged_pence` is stored, and the customer sees a confirmation with a prominent booking reference, the screening details, what to do on arrival, and the cancellation policy. | Must   |
-| Payment not completed      | Given the customer backs out of Stripe's page, when they return to the site, then they are told no payment was taken, their seats are still held, and they can try again.                                                                                                                                              | Must   |
+| Payment not completed      | Given the customer returns without paying (the cancel link or a closed tab), when they come back, then the seats are still held, the time left is shown and Try again is offered.                                                                                                                                      | Must   |
+| Declined card              | Given a card is declined, when it happens on Stripe's page, then Stripe shows the reason and lets the customer try another card, and the booking stays pending.                                                                                                                                                        | Should |
+| Payment after seats lost   | Given a payment succeeds after the holds were lost and the seats resold, when the webhook is processed, then it is refunded automatically and the customer is told.                                                                                                                                                    | Should |
 | Zero total                 | Given a voucher covers the full total, when checkout completes, then the booking is marked paid without contacting Stripe, with an identical confirmation screen.                                                                                                                                                      | Must   |
-| Dropped connection         | Given the browser loses connection after submitting, when the customer returns, then the real payment status is checked with Stripe before any new attempt, so no one is charged twice.                                                                                                                                | Should |
+| Dropped connection         | Given the customer returns and the booking is still pending, when they try again, then the Checkout Session's real status is checked with Stripe first, so no one is charged twice.                                                                                                                                    | Should |
 
 ## Journey 7: Manage my bookings and request a cancellation
 
 Success: a customer can see every booking and request a cancellation without phoning, except inside the cutoff, where they are told clearly how to reach the venue.
 
-| Step                        | Scenario                                                                                                                                                                                    | MoSCoW |
-| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ |
-| List                        | Given a logged-in customer, when they open My Bookings, then all their bookings are shown with status.                                                                                      | Must   |
-| Detail                      | Given a booking, when it is opened, then the screening, seats, items, amount charged and reference are shown, using stored figures, not recalculated ones.                                  | Must   |
-| Request outside cutoff      | Given an upcoming booking more than the cutoff hours away, when the customer requests cancellation, then the booking becomes `cancellation_requested` and they are told staff will confirm. | Should |
-| Inside cutoff               | Given a booking inside the cutoff window, when the customer opens the cancellation page, then no request form is offered, and the venue's phone number and opening hours are shown.         | Should |
-| Staff decision              | Given a staff member approves a request, when they choose a voucher or card refund, then the seats are released immediately, the status updates, and the action is logged with a reason.    | Should |
-| Past or cancelled           | Given a booking is past or already cancelled, when it is viewed, then no cancellation option is shown.                                                                                      | Should |
-| Grace period after purchase | Given a customer cancels within minutes of booking, when inside the cutoff, then the request is still allowed.                                                                              | Could  |
+| Step                        | Scenario                                                                                                                                                                                                                                                                                                               | MoSCoW |
+| --------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ |
+| List                        | Given a logged-in customer, when they open My Bookings, then all their bookings are shown with status.                                                                                                                                                                                                                 | Must   |
+| Detail                      | Given a booking, when it is opened, then the screening, seats, items, amount charged and reference are shown, using stored figures, not recalculated ones.                                                                                                                                                             | Must   |
+| Request outside cutoff      | Given an upcoming booking more than the cutoff hours away, when the customer requests cancellation, then the booking becomes `cancellation_requested` and they are told staff will confirm.                                                                                                                            | Should |
+| Inside cutoff               | Given a booking inside the cutoff window, when the customer opens the cancellation page, then no request form is offered, and the venue's phone number and opening hours are shown.                                                                                                                                    | Should |
+| Staff decision              | Given a staff member approves a request, when they confirm it, then a voucher for the booking's value minus any cancellation fee is issued, the seats are released immediately, the status updates, and the action is logged with a reason. A card refund instead is a Manager's exception, also logged with a reason. | Should |
+| Request declined            | Given Front of House decline a request, when they record a note, then the booking returns to paid, the customer is told, and the action is logged with the staff member's name.                                                                                                                                        | Should |
+| Past or cancelled           | Given a booking is past or already cancelled, when it is viewed, then no cancellation option is shown.                                                                                                                                                                                                                 | Should |
+| Grace period after purchase | Given a customer cancels within minutes of booking, when inside the cutoff, then the request is still allowed.                                                                                                                                                                                                         | Could  |
 
 ## Journey 8: Buy a membership
 
 Success: membership validity is always a plain expiry-date check, never a staff judgement.
 
-| Step             | Scenario                                                                                                                                | MoSCoW    |
-| ---------------- | --------------------------------------------------------------------------------------------------------------------------------------- | --------- |
-| View tiers       | Given a logged-in customer, when they view membership, then each tier's price and benefits are clear.                                   | Must      |
-| Purchase         | Given a tier is selected, when payment succeeds, then the tier and an expiry one year ahead are set on their profile.                   | Must      |
-| Lapsed           | Given the expiry has passed, when the customer views their profile, then a renewal prompt appears and nothing is charged automatically. | Must      |
-| Not completed    | Given a purchase isn't completed on Stripe's page, when the customer returns, then the same pattern as journey 6 applies.               | Should    |
-| Withdrawal right | Given the 14-day cancellation right turns out to apply (see 4.22), when a member cancels inside it, then a path exists to do so.        | To verify |
+| Step          | Scenario                                                                                                                                                     | MoSCoW |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------ |
+| View tiers    | Given a logged-in customer, when they view membership, then each tier's price and benefits are clear.                                                        | Must   |
+| Purchase      | Given a tier is selected, when payment succeeds, then a `MembershipPurchase` is recorded and the tier and an expiry one year ahead are set on their profile. | Must   |
+| Lapsed        | Given the expiry has passed, when the customer views their profile, then a renewal prompt appears and nothing is charged automatically.                      | Must   |
+| Not completed | Given a purchase isn't completed on Stripe's page, when the customer returns, then the same pattern as journey 6 applies.                                    | Should |
+| Withdrawal    | Given a membership was bought in the last 14 days and no booking has used it, when staff refund it, then the card is refunded and the tier and expiry reset. | Should |
 
 ## Journey 9: Book in a priority window
 
@@ -188,13 +202,13 @@ Success: no customer-facing page ever links to staff tooling, checked by crawlin
 
 Success: the no-overlap rule holds on every save, not only on creation, and edits never change what a past booking shows.
 
-| Step               | Scenario                                                                                                                                                    | MoSCoW |
-| ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ |
-| Overlap rejected   | Given a screening overlaps another on the same screen, when it is saved, then it is rejected with a clear message.                                          | Must   |
-| Runtime changed    | Given a film's runtime changes so an upcoming screening would overlap, when staff save, then each clash is listed with a link to move it.                   | Should |
-| Valid save         | Given no overlap, when it is saved, then it appears immediately in staff and (if public) customer listings.                                                 | Must   |
-| Price table        | Given staff choose a ticket class, when the form loads, then a price for each ticket type is pre-filled from the class default and each line can be edited. | Must   |
-| Price edited later | Given a paid booking exists, when a ticket price on that screening is later edited, then the booking still shows the amount charged at the time.            | Must   |
+| Step               | Scenario                                                                                                                                                      | MoSCoW |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ |
+| Overlap rejected   | Given a screening overlaps another on the same screen, including its trailer and turnaround time, when it is saved, then it is rejected with a clear message. | Must   |
+| Runtime changed    | Given a film's runtime changes so an upcoming screening would overlap, when staff save, then each clash is listed with a link to move it.                     | Should |
+| Valid save         | Given no overlap, when it is saved, then it appears immediately in staff and (if public) customer listings.                                                   | Must   |
+| Price table        | Given staff choose a ticket class, when the form loads, then a price for each ticket type is pre-filled from the class default and each line can be edited.   | Must   |
+| Price edited later | Given a paid booking exists, when a ticket price on that screening is later edited, then the booking still shows the amount charged at the time.              | Must   |
 
 ## Journey 13: Add a film from TMDb
 
@@ -224,26 +238,27 @@ Success: `stripe_payment_intent_id` stays empty on every in-venue booking, so th
 
 Success: every cancellation or refund has a required reason and a named staff member, and the seats are available to sell again at once.
 
-| Step                | Scenario                                                                                                                                                                 | MoSCoW |
-| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------ |
-| Permission check    | Given a staff member, when they try to cancel, refund or issue a voucher, then each action requires its own permission.                                                  | Must   |
-| Voucher route       | Given a booking is cancelled with a voucher, when it is processed, then a voucher for the amount charged is issued and the action is logged with a reason.               | Must   |
-| Card refund         | Given a card refund is chosen, when it is processed, then Stripe's refund is called directly, the status becomes `refunded`, and the action is logged with a reason.     | Must   |
-| Seats released      | Given the cancellation is confirmed before the screening, when it completes, then the seats are released immediately (`released_at` is set) and can be booked again.     | Must   |
-| After the screening | Given the screening has already happened, when a goodwill refund is made, then the money is handled and no seat is released.                                             | Could  |
-| Any time            | Given a booking inside the customer cutoff, when a staff member cancels it at the customer's request by phone, then it works, since the cutoff only limits self-service. | Must   |
+| Step                 | Scenario                                                                                                                                                                 | MoSCoW |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------ |
+| Permission check     | Given a staff member, when they try to cancel, refund or issue a voucher, then each action requires its own permission.                                                  | Must   |
+| Voucher route        | Given a booking is cancelled with a voucher, when it is processed, then a voucher for the amount charged is issued and the action is logged with a reason.               | Must   |
+| Card refund          | Given a card refund is chosen, when it is processed, then Stripe's refund is called directly, the status becomes `refunded`, and the action is logged with a reason.     | Must   |
+| Part-paid by voucher | Given a booking was part-paid with a voucher, when it is refunded, then the card amount goes back to the card and the voucher amount is restored to the voucher.         | Should |
+| Seats released       | Given the cancellation is confirmed before the screening, when it completes, then the seats are released immediately (`released_at` is set) and can be booked again.     | Must   |
+| After the screening  | Given the screening has already happened, when a goodwill refund is made, then the money is handled and no seat is released.                                             | Could  |
+| Any time             | Given a booking inside the customer cutoff, when a staff member cancels it at the customer's request by phone, then it works, since the cutoff only limits self-service. | Must   |
 
 ## Journey 16: Cancel a screening
 
 Success: the number of customer outcomes (voucher or refund) always equals the number of bookings that existed, with no one missed or paid twice.
 
-| Step               | Scenario                                                                                                                      | MoSCoW |
-| ------------------ | ----------------------------------------------------------------------------------------------------------------------------- | ------ |
-| Batch              | Given a screening with bookings is cancelled, when it is triggered, then every booking is cancelled and its seats released.   | Must   |
-| Customer's choice  | Given the batch has run, when each customer is contacted, then a voucher is issued by default and a card refund is available. | Must   |
-| One log entry each | Given the batch completes, when it is reviewed, then one audit entry exists per affected booking.                             | Must   |
-| No bookings        | Given a screening has none, when it is cancelled, then it simply cancels.                                                     | Should |
-| Still listed       | Given a screening is cancelled, when the public browses before its date, then it shows greyed out and labelled Cancelled.     | Should |
+| Step               | Scenario                                                                                                                                                                     | MoSCoW |
+| ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ |
+| Batch              | Given a screening with bookings is cancelled, when it is triggered, then every booking is cancelled and its seats released.                                                  | Must   |
+| Customer's choice  | Given the batch has run, when each customer is contacted, then a voucher is issued by default, a card refund is available, and the choice is recorded on the `Cancellation`. | Must   |
+| One log entry each | Given the batch completes, when it is reviewed, then one audit entry exists per affected booking.                                                                            | Must   |
+| No bookings        | Given a screening has none, when it is cancelled, then it simply cancels.                                                                                                    | Should |
+| Fee                | Given a customer cancels and the venue sets a fee, when the voucher is issued, then the fee is deducted and recorded.                                                        | Could  |
 
 ## Journey 17: View the sales dashboard
 
@@ -257,6 +272,20 @@ Success: figures can never drift from the underlying data, because nothing is st
 | Discounts         | Given discounts and vouchers redeemed are shown, when they are computed, then they match the paid bookings.                        | Should |
 | Sold and released | Given a seat was sold then released, when sell-through is analysed, then the original demand can still be seen.                    | Could  |
 | Ticket mix        | Given the dashboard loads, when sales are broken down, then tickets sold by type (adult, student, OAP, child, infant) can be seen. | Could  |
+
+## Journey 18: Buy a gift voucher
+
+Success: a voucher only becomes usable after Stripe confirms payment, and its balance always matches what was paid.
+
+| Step                  | Scenario                                                                                                                                                                                                                               | MoSCoW            |
+| --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------- |
+| Choose an amount      | Given a logged-in customer opens the gift voucher page, when they choose a button amount or enter another whole-pound amount, then it must be within the smallest and largest values the venue sets (£10 and £100 to start).           | Must              |
+| Pay                   | Given an amount is chosen, when the customer chooses Pay, then an inactive voucher is created and payment follows the same pattern as journey 6.                                                                                       | Must              |
+| Activated once        | Given the success webhook arrives, when it is processed, then the voucher is activated, the code is shown and emailed to the purchaser, and a repeated event changes nothing.                                                          | Must              |
+| Payment not completed | Given the customer returns from Stripe without paying, when they come back, then no usable voucher exists and they can try again. A declined card is handled on Stripe's page and this site never sees it (same pattern as journey 6). | Must              |
+| Spend it              | Given an active purchased voucher, when anyone enters the code at checkout, then it behaves as in journey 5.                                                                                                                           | Must              |
+| Gift message          | Given the purchaser is giving it away, when they add a short message, then a printable voucher page shows it.                                                                                                                          | Could             |
+| Guest purchase        | Given no account, when someone wants to buy a voucher, then they are asked to register first.                                                                                                                                          | Won't (this time) |
 
 ---
 

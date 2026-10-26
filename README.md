@@ -40,16 +40,16 @@ The full list, app by app, is in [Core features](docs/features.md).
 
 I've kept the design and planning detail in [`docs/`](docs/) so this README stays short. The documents are numbered in reading order, and when I write a cross-reference such as "see 4.10", it points at a numbered section in them.
 
-| #   | Document                                                     | What's in it                                                                                           |
-| :-- | :----------------------------------------------------------- | :----------------------------------------------------------------------------------------------------- |
-| 1   | [Project purpose and user stories](docs/user_stories.md)     | MoSCoW prioritisation, and 17 customer and staff journeys written as Given/When/Then scenarios          |
-| 2   | [Research](docs/research.md)                                 | Everyman and Tivoli, the real Regal in Evesham, and the Dribbble booking concepts I drew on             |
-| 3   | [UX design strategy](docs/ux_design.md)                      | The five planes: strategy, scope, structure, skeleton and surface, including the CUBE CSS approach     |
-| 4   | [System architecture and data model](docs/architecture.md)   | The seven Django apps, every model and relationship, and the business rules (holds, payment, refunds) |
-| 5   | [Core features](docs/features.md)                            | Customer-facing and staff-facing features for each app, and the permission model                      |
-| 6   | [Development log](docs/development_log.md)                   | The planned build phases, to be filled in as development happens                                      |
-| 7   | [Testing and quality assurance](docs/testing.md)             | The testing plan, validators, Lighthouse, browser checks and known issues                              |
-| 8   | [Future business ideas](docs/future_ideas.md)                | Loyalty points, newsletters and goodwill discounts, kept out of the initial build on purpose           |
+| # | Document                                                   | What's in it                                                                                                         |
+| : | :--------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------- |
+| 1 | [Project purpose and user stories](docs/user_stories.md)   | MoSCoW prioritisation, and 18 customer and staff journeys written as Given/When/Then scenarios                       |
+| 2 | [Research](docs/research.md)                               | Everyman and Tivoli, the real Regal in Evesham, and the Dribbble booking concepts I drew on                          |
+| 3 | [UX design strategy](docs/ux_design.md)                    | The five planes: strategy, scope, structure, skeleton and surface, including the CUBE CSS approach                   |
+| 4 | [System architecture and data model](docs/architecture.md) | The seven Django apps, every model and relationship, and the business rules (holds, payment, refunds, gift vouchers) |
+| 5 | [Core features](docs/features.md)                          | Customer-facing and staff-facing features for each app, and the permission model                                     |
+| 6 | [Development log](docs/development_log.md)                 | The planned build phases, to be filled in as development happens                                                     |
+| 7 | [Testing and quality assurance](docs/testing.md)           | The testing plan, validators, Lighthouse, browser checks and known issues                                            |
+| 8 | [Future business ideas](docs/future_ideas.md)              | Loyalty points, newsletters and goodwill discounts, kept out of the initial build on purpose                         |
 
 ## <a name="deployment"></a> Deployment guide
 
