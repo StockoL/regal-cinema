@@ -4,24 +4,25 @@ This is the brief I'm drawing the wireframes against, and where they'll sit once
 
 I'm drawing them in Excalidraw, low fidelity: grey boxes, real labels, a crossed box for each image, and notes in the margin wherever behaviour isn't visible. Every screen gets two frames, phone (375px) and desktop (1280px). The exports and the `.excalidraw` source files both go in `docs/wireframes/`, named by number and width, such as `01-home-mobile.png`, `01-home-desktop.png` and `01-home.excalidraw`, and the exports get added under their screen below.
 
-The order follows when each screen is needed. Screens 1 to 8 are this week's. The membership page comes before 7 December, and the gift voucher page, the TMDb review screen and the private hire form before 21 December. I'm not wireframing the Django admin or the sales dashboard's layout.
+The order follows when each screen is needed. Screens 1 to 9 are this week's. The membership page comes before 7 December, and the gift voucher page, the TMDb review screen and the private hire form before 21 December. I'm not wireframing the Django admin or the sales dashboard's layout. That includes setting up screenings: staff do it in the admin, with the ticket type prices and closed areas edited on the screening's own page, and the overlap check runs in the model's validation, so there's no custom screening form to draw.
 
 ## Status
 
-| #   | Screen                                             | Due       | Journeys      | Phone | Desktop |
-| :-- | :------------------------------------------------- | :-------- | :------------ | :---- | :------ |
-| 1   | Home: the Reel and the discounted row              | 1 Nov     | 1, 9          | To do | To do   |
-| 2   | Film page and showtimes by date                    | 1 Nov     | 1             | To do | To do   |
-| 3   | Seat map with ticket types and the live summary    | 1 Nov     | 2             | To do | To do   |
-| 4   | Basket and checkout                                | 1 Nov     | 3, 5, 6       | To do | To do   |
-| 5   | Return pages: confirming, not completed, outcomes  | 1 Nov     | 6             | To do | To do   |
-| 6   | Customer cancellation request and decline message  | 1 Nov     | 7             | To do | To do   |
-| 7   | Staff: the till                                    | 1 Nov     | 14            | To do | To do   |
-| 8   | Staff: the cancellation queue                      | 1 Nov     | 7, 15         | To do | To do   |
-| 9   | Membership page                                    | 7 Dec     | 8, 9          | To do | To do   |
-| 10  | Gift voucher page                                  | 21 Dec    | 18            | To do | To do   |
-| 11  | Staff: TMDb review screen                          | 21 Dec    | 13            | To do | To do   |
-| 12  | Private hire enquiry form                          | 21 Dec    | 10            | To do | To do   |
+| #  | Screen                                            | Due    | Journeys | Phone | Desktop |
+| :- | :------------------------------------------------ | :----- | :------- | :---- | :------ |
+| 1  | Home: the Reel and the discounted row             | 1 Nov  | 1, 9     | To do | To do   |
+| 2  | Film page and showtimes by date                   | 1 Nov  | 1        | To do | To do   |
+| 3  | Seat map with ticket types and the live summary   | 1 Nov  | 2        | To do | To do   |
+| 4  | Basket and checkout                               | 1 Nov  | 3, 5, 6  | To do | To do   |
+| 5  | Return pages: confirming, not completed, outcomes | 1 Nov  | 6        | To do | To do   |
+| 6  | Customer cancellation request and decline message | 1 Nov  | 7        | To do | To do   |
+| 7  | Log in and register                               | 1 Nov  | 4        | To do | To do   |
+| 8  | Staff: the till                                   | 1 Nov  | 14       | To do | To do   |
+| 9  | Staff: the cancellation queue                     | 1 Nov  | 7, 15    | To do | To do   |
+| 10 | Membership page                                   | 7 Dec  | 8, 9     | To do | To do   |
+| 11 | Gift voucher page                                 | 21 Dec | 18       | To do | To do   |
+| 12 | Staff: TMDb review screen                         | 21 Dec | 13       | To do | To do   |
+| 13 | Private hire enquiry form                         | 21 Dec | 10       | To do | To do   |
 
 ## Shared layout
 
@@ -32,7 +33,7 @@ Every customer page uses the same header, menu and footer, so I'll draw these on
 - Footer with the venue's phone number, address and opening hours, the accessibility policy, the membership terms, and the line "Regal Cinema is a fictional venue created for a course project."
 - A "Skip to main content" link, shown when it has keyboard focus.
 
-The staff pages (screens 7, 8 and 11) have their own header and menu, clearly different from the customer site, showing only the items a staff member's permissions allow.
+The staff pages (screens 8, 9 and 12) have their own header and menu, clearly different from the customer site, showing only the items a staff member's permissions allow.
 
 ## This week
 
@@ -118,7 +119,17 @@ Wording to write: all five messages.
 
 Wording to write: the request confirmation, the inside-the-cutoff text and the decline message.
 
-### 7. Staff: the till
+### 7. Log in and register
+
+- Email and password only. Register asks for the password twice.
+- Errors written out next to the field they belong to.
+- The mid-checkout version, with a note that the seats are held while the customer logs in, and the hold timer.
+- The verification banner after registering. The account works straight away, so this is a reminder, not a block.
+- Links between the two pages, and a forgotten password link.
+
+Wording to write: the duplicate email error (which also covers the same address with different capitals), the mid-checkout note and the verification banner.
+
+### 8. Staff: the till
 
 - Choosing a screening, then the same seat map and ticket type choices as screen 3.
 - Looking up a member by email to apply their discount, or carrying on as an anonymous sale.
@@ -127,7 +138,7 @@ Wording to write: the request confirmation, the inside-the-cutoff text and the d
 - The proof reminder for concessionary tickets, and the booking reference to give the customer.
 - Finding an existing booking by its reference.
 
-### 8. Staff: the cancellation queue
+### 9. Staff: the cancellation queue
 
 - The queue of customer cancellation requests, oldest first, with each booking's details.
 - Approving with a voucher (the booking's value minus any fee) or declining, with a note required either way (4.22).
@@ -137,7 +148,7 @@ Wording to write: the headings and the confirmation messages for approving and d
 
 ## Before 7 December
 
-### 9. Membership page
+### 10. Membership page
 
 - The tiers, each with its price and benefits: priority booking hours, ticket discount, and the food and drink discount for the higher tier (4.4, 4.18).
 - Buying a tier, through the same Stripe hand-off as a booking.
@@ -146,7 +157,7 @@ Wording to write: the headings and the confirmation messages for approving and d
 
 ## Before 21 December
 
-### 10. Gift voucher page
+### 11. Gift voucher page
 
 - Buttons for £10, £20, £50 and £100, and an "other amount" field for whole pounds within the venue's limits (4.26).
 - The 14-day refund rule in one sentence (4.22).
@@ -154,14 +165,14 @@ Wording to write: the headings and the confirmation messages for approving and d
 - The code shown on screen after payment, and the optional gift message (a Could).
 - The remaining balance after a part-covered booking, and a used-up code's message.
 
-### 11. Staff: TMDb review screen
+### 12. Staff: TMDb review screen
 
 - Search results as a list with poster, title and year.
 - The review screen: synopsis, poster, the suggested trailer with alternatives, and the suggested UK age rating, nothing saved until staff confirm (4.15).
 - The message and retry button for when TMDb can't be reached.
 - Adding a film by hand, for events with no TMDb entry.
 
-### 12. Private hire enquiry form
+### 13. Private hire enquiry form
 
 - The enquiry form: name, email, event type, preferred date, party size and message (4.6).
 - The confirmation after sending.
