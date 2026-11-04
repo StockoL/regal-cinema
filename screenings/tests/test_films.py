@@ -126,3 +126,32 @@ class FilmInfantTests(TestCase):
     def test_a_film_with_no_rating_yet_does_not(self):
         """Until staff confirm the rating, nothing assumes it's safe."""
         self.assertFalse(self.allows(''))
+
+
+class FilmContentAdviceTests(TestCase):
+    """A line of advice shown with the rating, whatever the rating is,
+    including none yet."""
+
+    def test_advice_is_optional(self):
+        film = Film.objects.create(title='A film', duration_minutes=90)
+        self.assertEqual(film.content_advice, '')
+
+    def test_advice_is_stored_with_or_without_a_rating(self):
+        for rating in ('15', ''):
+            with self.subTest(rating=rating):
+                film = Film.objects.create(
+                    title=f'Film {rating or "unrated"}', duration_minutes=90,
+                    age_rating=rating,
+                    content_advice='Includes themes of abuse.',
+                )
+                film.refresh_from_db()
+                self.assertEqual(
+                    film.content_advice, 'Includes themes of abuse.'
+                )
+
+    def test_advice_is_kept_short(self):
+        film = Film(
+            title='A film', duration_minutes=90, content_advice='x' * 201
+        )
+        with self.assertRaises(ValidationError):
+            film.full_clean()

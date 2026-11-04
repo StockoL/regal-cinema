@@ -18,7 +18,8 @@ from .services import fill_prices
 
 @admin.register(Film)
 class FilmAdmin(admin.ModelAdmin):
-    list_display = ('title', 'age_rating', 'duration_minutes', 'is_active')
+    list_display = ('title', 'age_rating', 'content_advice',
+                    'duration_minutes', 'is_active')
     list_filter = ('is_active', 'age_rating')
     search_fields = ('title',)
 

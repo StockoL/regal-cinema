@@ -35,6 +35,8 @@ class Film(models.Model):
     age_rating = models.CharField(
         max_length=3, choices=AgeRating.choices, blank=True
     )
+    # Shown with the rating, such as "Includes themes of abuse".
+    content_advice = models.CharField(max_length=200, blank=True)
     duration_minutes = models.PositiveSmallIntegerField(
         validators=[MinValueValidator(1)]
     )
