@@ -76,8 +76,15 @@ class Screen(models.Model):
 
     @property
     def capacity(self):
-        """Counted from the seat plan, so it can't drift from it."""
-        return self.seats.count()
+        """The screen as normally laid out: fixed seats plus the default
+        layout's, in use. Counted from the seat plan, so staff change it
+        by editing the seats. A screening's own capacity is on the
+        screening, since it may use another layout or close an area."""
+        default = self.layouts.filter(is_default=True).values('pk')
+        return self.seats.filter(
+            models.Q(layout__isnull=True) | models.Q(layout__in=default),
+            is_active=True,
+        ).count()
 
 
 class SeatingLayout(models.Model):

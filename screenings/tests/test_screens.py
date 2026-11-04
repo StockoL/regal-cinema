@@ -10,17 +10,37 @@ class ScreenTests(TestCase):
     def setUp(self):
         self.screen = Screen.objects.create(name='Screen 1')
 
-    def test_capacity_counts_the_seats(self):
-        for number in range(1, 4):
-            Seat.objects.create(
-                screen=self.screen, row_label='A', number=number,
-                area=Seat.Area.STALLS, row_index=0, column_index=0,
-            )
+    def test_capacity_counts_fixed_seats_and_the_default_layout(self):
+        """The figure the admin list shows: the screen as it's normally
+        laid out. A screening's own capacity is on the screening (4.1)."""
+        rows = SeatingLayout.objects.create(
+            screen=self.screen, name='Rows', is_default=True
+        )
+        tables = SeatingLayout.objects.create(
+            screen=self.screen, name='Tables'
+        )
+        for layout, numbers in ((rows, range(1, 4)), (tables, range(1, 3))):
+            for number in numbers:
+                Seat.objects.create(
+                    screen=self.screen, layout=layout, number=number,
+                    area=Seat.Area.STALLS, row_index=0, column_index=0,
+                )
         Seat.objects.create(
             screen=self.screen, row_label='K', number=1,
             area=Seat.Area.CIRCLE, row_index=0, column_index=0,
         )
+        Seat.objects.create(
+            screen=self.screen, row_label='K', number=2, is_active=False,
+            area=Seat.Area.CIRCLE, row_index=0, column_index=1,
+        )
         self.assertEqual(self.screen.capacity, 4)
+
+    def test_capacity_with_no_default_layout_counts_fixed_seats(self):
+        Seat.objects.create(
+            screen=self.screen, row_label='K', number=1,
+            area=Seat.Area.CIRCLE, row_index=0, column_index=0,
+        )
+        self.assertEqual(self.screen.capacity, 1)
 
     def test_capacity_is_zero_with_no_seats(self):
         self.assertEqual(self.screen.capacity, 0)
