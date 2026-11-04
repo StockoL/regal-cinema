@@ -2,7 +2,7 @@ from django.core.exceptions import ValidationError
 from django.db import IntegrityError
 from django.test import TestCase
 
-from screenings.models import Film
+from screenings.models import Film, TicketType
 
 
 class FilmTests(TestCase):
@@ -66,3 +66,39 @@ class FilmTests(TestCase):
 
     def test_string_is_the_title(self):
         self.assertEqual(str(self.make_film()), 'Nosferatu')
+
+
+class FilmTicketTypeTests(TestCase):
+    """A ticket type isn't offered when its maximum age is below the
+    film's minimum age. Journey 2, "Ticket types by rating"; 4.1."""
+
+    def offered(self, rating):
+        film = Film.objects.create(
+            title=f'A {rating} film', duration_minutes=90, age_rating=rating
+        )
+        return set(film.ticket_types().values_list('name', flat=True))
+
+    def test_every_type_is_offered_for_u_pg_and_12a(self):
+        everyone = {'Adult', 'Student', 'OAP', 'Young person', 'Child',
+                    'Companion'}
+        for rating in ('U', 'PG', '12A'):
+            with self.subTest(rating=rating):
+                self.assertEqual(self.offered(rating), everyone)
+
+    def test_child_drops_out_of_15_films(self):
+        self.assertEqual(
+            self.offered('15'),
+            {'Adult', 'Student', 'OAP', 'Young person', 'Companion'},
+        )
+
+    def test_child_and_young_person_drop_out_of_18_films(self):
+        self.assertEqual(
+            self.offered('18'), {'Adult', 'Student', 'OAP', 'Companion'}
+        )
+
+    def test_a_12_film_drops_child(self):
+        self.assertNotIn('Child', self.offered('12'))
+
+    def test_a_type_switched_off_is_never_offered(self):
+        TicketType.objects.filter(name='Companion').update(is_active=False)
+        self.assertNotIn('Companion', self.offered('U'))

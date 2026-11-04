@@ -46,6 +46,22 @@ class Film(models.Model):
     def __str__(self):
         return self.title
 
+    @property
+    def minimum_age(self):
+        """The youngest age the rating admits on its own. U, PG and 12A
+        count as 0, since 12A admits under-12s with an adult (4.1)."""
+        return {self.AgeRating.TWELVE: 12, self.AgeRating.FIFTEEN: 15,
+                self.AgeRating.EIGHTEEN: 18}.get(self.age_rating, 0)
+
+    def ticket_types(self):
+        """The active ticket types this film can be booked with. A type is
+        left out when its maximum age is below the film's minimum age, so
+        Child drops out of 15 and 18 films and Young person out of 18."""
+        return TicketType.objects.filter(is_active=True).filter(
+            models.Q(max_age__isnull=True)
+            | models.Q(max_age__gte=self.minimum_age)
+        )
+
     def save(self, *args, **kwargs):
         # Set once, so the film's address doesn't change if the title does.
         if not self.slug:
