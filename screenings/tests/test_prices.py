@@ -11,6 +11,7 @@ from screenings.models import (
     Screen,
     Screening,
     ScreeningPrice,
+    SeatingLayout,
     TicketClass,
     TicketType,
 )
@@ -20,9 +21,11 @@ class ScreeningPriceTests(TestCase):
     """One price per ticket type per screening (architecture 4.1)."""
 
     def setUp(self):
+        screen = Screen.objects.create(name='Screen 1')
         self.screening = Screening.objects.create(
             film=Film.objects.create(title='Paddington', duration_minutes=95),
-            screen=Screen.objects.create(name='Screen 1'),
+            screen=screen,
+            layout=SeatingLayout.objects.create(screen=screen, name='Rows'),
             ticket_class=TicketClass.objects.create(name='Family Super Saver'),
             date_time=datetime(2026, 11, 15, 11, 0,
                                tzinfo=ZoneInfo('Europe/London')),

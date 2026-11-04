@@ -7,6 +7,7 @@ from django.contrib.postgres.fields import (
     RangeBoundary,
     RangeOperators,
 )
+from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator
 from django.db import models
 from django.utils import timezone
@@ -75,12 +76,49 @@ class Screen(models.Model):
 
     @property
     def capacity(self):
-        """Counted from the seat plan, so it can't drift from it."""
-        return self.seats.count()
+        """The screen as normally laid out: fixed seats plus the default
+        layout's, in use. Counted from the seat plan, so staff change it
+        by editing the seats. A screening's own capacity is on the
+        screening, since it may use another layout or close an area."""
+        default = self.layouts.filter(is_default=True).values('pk')
+        return self.seats.filter(
+            models.Q(layout__isnull=True) | models.Q(layout__in=default),
+            is_active=True,
+        ).count()
+
+
+class SeatingLayout(models.Model):
+    """One arrangement of a screen's stalls, such as standard rows or
+    tables. The circle is fixed and appears in every layout (4.1)."""
+
+    screen = models.ForeignKey(
+        Screen, on_delete=models.CASCADE, related_name='layouts'
+    )
+    name = models.CharField(max_length=50)
+    is_default = models.BooleanField(default=False)
+
+    class Meta:
+        ordering = ['screen', 'name']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['screen', 'name'],
+                name='unique_layout_name_per_screen',
+            ),
+            models.UniqueConstraint(
+                fields=['screen'],
+                condition=models.Q(is_default=True),
+                name='one_default_layout_per_screen',
+            ),
+        ]
+
+    def __str__(self):
+        return f'{self.screen}: {self.name}'
 
 
 class Seat(models.Model):
-    """One seat in a screen's fixed plan. Area describes where it is; it
+    """One seat in a screen. With no layout it's fixed and appears in
+    every layout, which is how the circle works. With a layout it belongs
+    to that stalls arrangement only. Area describes where it is; it
     doesn't change the price (architecture 4.1)."""
 
     class Area(models.TextChoices):
@@ -90,24 +128,72 @@ class Seat(models.Model):
     screen = models.ForeignKey(
         Screen, on_delete=models.CASCADE, related_name='seats'
     )
-    row_label = models.CharField(max_length=3)
-    seat_number = models.PositiveSmallIntegerField()
+    layout = models.ForeignKey(
+        SeatingLayout, on_delete=models.CASCADE, related_name='seats',
+        null=True, blank=True,
+    )
+    row_label = models.CharField(max_length=3, blank=True)
+    number = models.PositiveSmallIntegerField()
+    table_number = models.PositiveSmallIntegerField(null=True, blank=True)
     area = models.CharField(max_length=10, choices=Area.choices)
+    # Where the seat sits on the map. Empty columns are aisles and gaps.
+    row_index = models.PositiveSmallIntegerField()
+    column_index = models.PositiveSmallIntegerField()
+    is_wheelchair_space = models.BooleanField(default=False)
+    # Beside a wheelchair space, offered first to a companion (4.17).
+    is_companion_seat = models.BooleanField(default=False)
+    # False for a seat out of use. It stays in the plan but can't be sold.
+    is_active = models.BooleanField(default=True)
+    # For the few seats whose name isn't row and number, such as "Box C".
+    label_override = models.CharField(max_length=20, blank=True)
 
     class Meta:
-        ordering = ['screen', 'row_label', 'seat_number']
+        ordering = ['screen', 'row_label', 'number']
         constraints = [
             models.UniqueConstraint(
-                fields=['screen', 'row_label', 'seat_number'],
-                name='unique_seat_per_screen',
+                fields=['screen', 'layout', 'area', 'row_label', 'number'],
+                name='unique_seat_per_layout',
+            ),
+            # PostgreSQL treats empty layouts as different from each
+            # other, so fixed seats need their own rule.
+            models.UniqueConstraint(
+                fields=['screen', 'area', 'row_label', 'number'],
+                condition=models.Q(layout__isnull=True),
+                name='unique_fixed_seat_per_screen',
             ),
         ]
 
     def __str__(self):
-        return (
-            f'Row {self.row_label}, seat {self.seat_number}, '
-            f'{self.get_area_display().lower()}'
-        )
+        return self.label
+
+    @property
+    def label(self):
+        """Built from the fields, not stored, so it can't disagree with
+        them: "Stalls, seat 20" or "Circle, row B, seat 14". The boxes
+        are the exception and carry their own label."""
+        if self.label_override:
+            return self.label_override
+        parts = [self.get_area_display()]
+        if self.row_label:
+            parts.append(f'row {self.row_label}')
+        parts.append(f'seat {self.number}')
+        return ', '.join(parts)
+
+    def clean(self):
+        super().clean()
+        if (self.layout_id and self.screen_id
+                and self.layout.screen_id != self.screen_id):
+            raise ValidationError({
+                'layout': 'Choose a layout that belongs to this screen.',
+            })
+        # The circle is reached by stairs only (4.1, 4.17).
+        if self.is_wheelchair_space and self.area == self.Area.CIRCLE:
+            raise ValidationError({
+                'is_wheelchair_space': (
+                    'A wheelchair space can only be in the stalls. The '
+                    'circle is reached by stairs only.'
+                ),
+            })
 
 
 class TicketClass(models.Model):
@@ -158,6 +244,9 @@ class Screening(models.Model):
     screen = models.ForeignKey(
         Screen, on_delete=models.PROTECT, related_name='screenings'
     )
+    layout = models.ForeignKey(
+        SeatingLayout, on_delete=models.PROTECT, related_name='screenings'
+    )
     ticket_class = models.ForeignKey(
         TicketClass, on_delete=models.PROTECT, related_name='screenings'
     )
@@ -200,6 +289,19 @@ class Screening(models.Model):
     def is_cancelled(self):
         return self.cancelled_at is not None
 
+    def seats(self):
+        """The screen's fixed seats plus this screening's layout, leaving
+        out seats out of use. Capacity comes from this set, worked out
+        when needed, so it can't disagree with the seat plan (4.1)."""
+        return self.screen.seats.filter(
+            models.Q(layout__isnull=True) | models.Q(layout=self.layout_id),
+            is_active=True,
+        ).exclude(area__in=self.closed_areas.values('area'))
+
+    @property
+    def capacity(self):
+        return self.seats().count()
+
     def calculate_ends_at(self):
         minutes = (
             settings.SCREENING_TRAILER_MINUTES
@@ -213,6 +315,11 @@ class Screening(models.Model):
         # gets the overlap message instead of a database error.
         if self.film_id and self.date_time:
             self.ends_at = self.calculate_ends_at()
+        if (self.layout_id and self.screen_id
+                and self.layout.screen_id != self.screen_id):
+            raise ValidationError({
+                'layout': 'Choose a layout that belongs to this screen.',
+            })
         super().clean()
 
     def validate_constraints(self, exclude=None):
@@ -227,6 +334,28 @@ class Screening(models.Model):
     def save(self, *args, **kwargs):
         self.ends_at = self.calculate_ends_at()
         super().save(*args, **kwargs)
+
+
+class ScreeningClosedArea(models.Model):
+    """An area shut for one screening, such as the circle for a quiet
+    showing. Its seats show as outside section and don't count towards
+    capacity (4.1)."""
+
+    screening = models.ForeignKey(
+        Screening, on_delete=models.CASCADE, related_name='closed_areas'
+    )
+    area = models.CharField(max_length=10, choices=Seat.Area.choices)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=['screening', 'area'],
+                name='one_closure_per_area_per_screening',
+            ),
+        ]
+
+    def __str__(self):
+        return f'{self.get_area_display()} closed for {self.screening}'
 
 
 class ScreeningPrice(models.Model):

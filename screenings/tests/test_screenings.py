@@ -7,7 +7,13 @@ from django.db import IntegrityError, transaction
 from django.db.models import ProtectedError
 from django.test import TestCase, override_settings
 
-from screenings.models import Film, Screen, Screening, TicketClass
+from screenings.models import (
+    Film,
+    Screen,
+    Screening,
+    SeatingLayout,
+    TicketClass,
+)
 
 LONDON = ZoneInfo('Europe/London')
 
@@ -22,12 +28,16 @@ class ScreeningTests(TestCase):
             title='Nosferatu', duration_minutes=100
         )
         self.screen = Screen.objects.create(name='Screen 1')
+        self.layout = SeatingLayout.objects.create(
+            screen=self.screen, name='Standard'
+        )
         self.ticket_class = TicketClass.objects.create(name='Standard')
         self.start = datetime(2026, 11, 14, 19, 0, tzinfo=LONDON)
 
     def schedule(self, start, **fields):
         fields.setdefault('film', self.film)
         fields.setdefault('screen', self.screen)
+        fields.setdefault('layout', self.layout)
         fields.setdefault('ticket_class', self.ticket_class)
         return Screening.objects.create(date_time=start, **fields)
 
@@ -92,7 +102,7 @@ class ScreeningTests(TestCase):
         """Journey 12 "Overlap rejected": staff forms call full_clean."""
         self.schedule(self.start)
         clash = Screening(
-            film=self.film, screen=self.screen,
+            film=self.film, screen=self.screen, layout=self.layout,
             ticket_class=self.ticket_class,
             date_time=self.start + timedelta(minutes=30),
         )
@@ -107,12 +117,14 @@ class ScreeningTests(TestCase):
         class ScreeningForm(forms.ModelForm):
             class Meta:
                 model = Screening
-                fields = ['film', 'screen', 'ticket_class', 'date_time']
+                fields = ['film', 'screen', 'layout', 'ticket_class',
+                          'date_time']
 
         self.schedule(self.start)
         form = ScreeningForm(data={
             'film': self.film.pk,
             'screen': self.screen.pk,
+            'layout': self.layout.pk,
             'ticket_class': self.ticket_class.pk,
             'date_time': '2026-11-14 19:30',
         })
@@ -140,7 +152,7 @@ class ScreeningTests(TestCase):
         cancelled.cancelled_at = self.start - timedelta(days=1)
         cancelled.save()
         replacement = Screening(
-            film=self.film, screen=self.screen,
+            film=self.film, screen=self.screen, layout=self.layout,
             ticket_class=self.ticket_class, date_time=self.start,
         )
         replacement.full_clean()
