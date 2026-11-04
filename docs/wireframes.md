@@ -1,8 +1,8 @@
 # Wireframes
 
-This is the brief I'm drawing the wireframes against, and where they'll sit once they're done. It belongs to the skeleton plane of the [UX design strategy](ux_design.md). Each screen lists what has to be on it, taken from the [user journeys](user_stories.md) and the [architecture](architecture.md), the questions only a drawing will answer, and the wording I still need to write.
+This is the brief I drew the wireframes against, with each frame under its screen. It belongs to the skeleton plane of the [UX design strategy](ux_design.md). Each screen lists what has to be on it, taken from the [user journeys](user_stories.md) and the [architecture](architecture.md), the questions only a drawing will answer, and the wording I still need to write.
 
-I'm drawing them in Excalidraw, low fidelity: grey boxes, real labels, a crossed box for each image, and notes in the margin wherever behaviour isn't visible. Every screen gets two frames, phone (375px) and desktop (1280px). The exports and the `.excalidraw` source files both go in `docs/wireframes/`, named by number and width, such as `01-home-mobile.png`, `01-home-desktop.png` and `01-home.excalidraw`, and the exports get added under their screen below.
+I'm drawing them in Excalidraw, low fidelity: grey boxes, real labels, a crossed box for each image, and notes in the margin wherever behaviour isn't visible. Every customer screen gets a phone frame (375px). The seat map also has a desktop frame (1280px), and the staff screens are drawn for a tablet. The exports go in `docs/wireframes/`, numbered in drawing order with the width and the state they show, such as `07-phone-reel.png` and `05-desktop.png`.
 
 The order follows when each screen is needed. Screens 1 to 9 are this week's. The membership page comes before 7 December, and the gift voucher page, the TMDb review screen and the private hire form before 21 December. I'm not wireframing the Django admin or the sales dashboard's layout. That includes setting up screenings: staff do it in the admin, with the ticket type prices and closed areas edited on the screening's own page, and the overlap check runs in the model's validation, so there's no custom screening form to draw.
 
@@ -10,15 +10,15 @@ The order follows when each screen is needed. Screens 1 to 9 are this week's. Th
 
 | #  | Screen                                            | Due    | Journeys | Phone | Desktop |
 | :- | :------------------------------------------------ | :----- | :------- | :---- | :------ |
-| 1  | Home: the Reel and the discounted row             | 1 Nov  | 1, 9     | To do | To do   |
-| 2  | Film page and showtimes by date                   | 1 Nov  | 1        | To do | To do   |
-| 3  | Seat map with ticket types and the live summary   | 1 Nov  | 2        | To do | To do   |
-| 4  | Basket and checkout                               | 1 Nov  | 3, 5, 6  | To do | To do   |
-| 5  | Return pages: confirming, not completed, outcomes | 1 Nov  | 6        | To do | To do   |
-| 6  | Customer cancellation request and decline message | 1 Nov  | 7        | To do | To do   |
-| 7  | Log in and register                               | 1 Nov  | 4        | To do | To do   |
-| 8  | Staff: the till                                   | 1 Nov  | 14       | To do | To do   |
-| 9  | Staff: the cancellation queue                     | 1 Nov  | 7, 15    | To do | To do   |
+| 1  | Home: the Reel and the discounted row             | 1 Nov  | 1, 9     | Done  | To do   |
+| 2  | Film page and showtimes by date                   | 1 Nov  | 1        | Done  | To do   |
+| 3  | Seat map with ticket types and the live summary   | 1 Nov  | 2        | Done  | Done    |
+| 4  | Basket and checkout                               | 1 Nov  | 3, 5, 6  | Done  | To do   |
+| 5  | Return pages: confirming, not completed, outcomes | 1 Nov  | 6        | Done  | To do   |
+| 6  | Customer cancellation request and decline message | 1 Nov  | 7        | Done  | To do   |
+| 7  | Log in and register                               | 1 Nov  | 4        | Done  | To do   |
+| 8  | Staff: the till                                   | 1 Nov  | 14       | Part  | To do   |
+| 9  | Staff: the cancellation queue                     | 1 Nov  | 7, 15    | To do | Done    |
 | 10 | Membership page                                   | 7 Dec  | 8, 9     | To do | To do   |
 | 11 | Gift voucher page                                 | 21 Dec | 18       | To do | To do   |
 | 12 | Staff: TMDb review screen                         | 21 Dec | 13       | To do | To do   |
@@ -51,6 +51,8 @@ Questions to answer: does a card stand for a film or a single screening? Where d
 
 Wording to write: the priority label with dates, the "Friends only" label, the sales-closed label and the empty-row message.
 
+<img src="wireframes/07-phone-reel.png" alt="Phone wireframe of the home page: a date strip, a row of discounted showings, and today's films with showtime pills marked sales closed, seats left or Friends first" width="300">
+
 ### 2. Film page and showtimes by date
 
 - Poster, title, the age rating shown prominently, runtime and synopsis.
@@ -64,6 +66,8 @@ Wording to write: the priority label with dates, the "Friends only" label, the s
 Question to answer: on a phone, does the synopsis come before or after the showtimes?
 
 Wording to write: the photo ID line, the message for a date with nothing showing, and the cancelled screening page.
+
+<img src="wireframes/08-phone-film.png" alt="Phone wireframe of a film page: poster, age rating, the photo ID line, a trailer button, synopsis, a date strip and the day's showtimes with Choose seats buttons" width="300">
 
 ### 3. Seat map with ticket types and the live summary
 
@@ -85,6 +89,20 @@ Questions to answer: how do long rows fit a phone, by scrolling sideways or by s
 
 Wording to write: the seat-taken message, the hold timer text, the screen reader name for each seat state, the accompanying-ticket message and the sales-closed message.
 
+The whole room, one circle block, and the room again with the chosen seats badged.
+
+<img src="wireframes/01-phone-whole-room.png" alt="Phone wireframe of the seat map: a seat counter, the stalls seat by seat, and the circle as three block tiles with seats left or Full" width="300"> <img src="wireframes/02-phone-circle-block.png" alt="Phone wireframe of one circle block, rows A to E, with two seats selected and sold seats crossed out" width="300"> <img src="wireframes/03-phone-seats-chosen.png" alt="Phone wireframe of the whole room again, with a 2 chosen badge on the circle left block and the summary bar reading 2 of 2 seats chosen" width="300">
+
+The same seats as a plain form when JavaScript is off, and the desktop map with the live summary beside it.
+
+<img src="wireframes/04-phone-no-javascript.png" alt="Phone wireframe of the seat map without JavaScript: a fieldset of checkboxes per row, with sold seats disabled" width="300">
+
+<img src="wireframes/05-desktop.png" alt="Desktop wireframe of the seat map: stalls and circle on the left, and a Your seats panel on the right with a ticket type per seat, an infant counter, the total and the hold timer">
+
+The seat and block states.
+
+<img src="wireframes/06-states-key.png" alt="Key to the seat states: available, selected, sold, outside section, wheelchair space, companion seat and out of use, plus the three block tile states on a phone" width="520">
+
 ### 4. Basket and checkout
 
 Payment happens on Stripe's hosted Checkout page (4.13), so there's no card field on this site.
@@ -98,6 +116,10 @@ Payment happens on Stripe's hosted Checkout page (4.13), so there's no card fiel
 
 Wording to write: the test card warning and the proof reminder.
 
+Food and drink is its own page, before the order check.
+
+<img src="wireframes/09-phone-food-and-drink.png" alt="Phone wireframe of food and drink: seat delivery or bar collection, items popular with this film, drinks and snacks with plus and minus buttons, and a running total" width="300"> <img src="wireframes/10-phone-check-order.png" alt="Phone wireframe of Check your order: seats and ticket types, an infant, food, a voucher applied with the balance left on it, the amount to pay by card and the test-mode warning" width="300">
+
 ### 5. Return pages: confirming, not completed, outcomes
 
 - Confirming: the customer is back before Stripe's webhook has arrived. The page says the payment is being confirmed and updates itself.
@@ -107,6 +129,10 @@ Wording to write: the test card warning and the proof reminder.
 - Refunded: a payment landed after the seats had gone, and it's been refunded automatically.
 
 Wording to write: all five messages.
+
+<img src="wireframes/11-phone-confirming-payment.png" alt="Phone wireframe of Confirming your payment: a spinner, a note not to pay again, the booking summary and a Check again button" width="300"> <img src="wireframes/12-phone-payment-not-completed.png" alt="Phone wireframe of Payment not completed: the seats still held with the time left, and Try again, Change my seats and Release my seats buttons" width="300"> <img src="wireframes/13-phone-seats-lost-refunded.png" alt="Phone wireframe of We couldn't keep your seats: the payment arrived after the hold ran out and has been refunded" width="300">
+
+<img src="wireframes/14-phone-booking-confirmed.png" alt="Phone wireframe of Booking confirmed: the reference, the itemised booking, what to do on the night and links to My bookings and What's on" width="300">
 
 ### 6. Customer cancellation request and decline message
 
@@ -119,6 +145,8 @@ Wording to write: all five messages.
 
 Wording to write: the request confirmation, the inside-the-cutoff text and the decline message.
 
+<img src="wireframes/17-phone-my-bookings.png" alt="Phone wireframe of My bookings: Upcoming, Past and Vouchers tabs, each booking with its status, reference and a Request a cancellation button" width="300"> <img src="wireframes/18-phone-request-cancellation.png" alt="Phone wireframe of Request a cancellation: the booking, what happens next with the voucher amount, an optional reason and Send request" width="300"> <img src="wireframes/19-phone-cancellation-outcomes.png" alt="Phone wireframe of the three outcomes of a cancellation request: received, approved with a voucher, and declined with the staff note" width="300">
+
 ### 7. Log in and register
 
 - Email and password only. Register asks for the password twice.
@@ -129,6 +157,8 @@ Wording to write: the request confirmation, the inside-the-cutoff text and the d
 
 Wording to write: the duplicate email error (which also covers the same address with different capitals), the mid-checkout note and the verification banner.
 
+<img src="wireframes/15-phone-login.png" alt="Phone wireframe of Log in during checkout, with a note that the seats are still held" width="300"> <img src="wireframes/16-phone-register.png" alt="Phone wireframe of Create an account, with an inline error under the email field" width="300">
+
 ### 8. Staff: the till
 
 - Choosing a screening, then the same seat map and ticket type choices as screen 3.
@@ -138,6 +168,10 @@ Wording to write: the duplicate email error (which also covers the same address 
 - The proof reminder for concessionary tickets, and the booking reference to give the customer.
 - Finding an existing booking by its reference.
 
+Only check-in is drawn so far: finding a booking by its reference.
+
+<img src="wireframes/22-phone-staff-check-in.png" alt="Phone wireframe of staff check-in: find a booking by reference or email, see its seats and ticket types, and check in" width="300">
+
 ### 9. Staff: the cancellation queue
 
 - The queue of customer cancellation requests, oldest first, with each booking's details.
@@ -145,6 +179,8 @@ Wording to write: the duplicate email error (which also covers the same address 
 - The Manager's version, which also offers a card refund as an exception, with a reason.
 
 Wording to write: the headings and the confirmation messages for approving and declining.
+
+<img src="wireframes/21-tablet-staff-cancellation-requests.png" alt="Tablet wireframe of the staff cancellation queue: a request with Approve, Decline and a manager-only Refund to card, and the recent decisions from the audit log">
 
 ## Before 7 December
 
@@ -176,6 +212,22 @@ Wording to write: the headings and the confirmation messages for approving and d
 
 - The enquiry form: name, email, event type, preferred date, party size and message (4.6).
 - The confirmation after sending.
+
+## Beyond the brief
+
+Three staff frames cover screens the brief doesn't list.
+
+The food and drink service list for a tablet, in walking order, with every status change logged.
+
+<img src="wireframes/20-tablet-staff-service-list.png" alt="Tablet wireframe of the staff service list: seat delivery orders in walking order, each with Ordered, Preparing and Delivered buttons and a check-ID flag on age-restricted items">
+
+A screening form. It goes further than the brief, which keeps screening setup in the admin.
+
+<img src="wireframes/23-tablet-staff-screening-setup.png" alt="Tablet wireframe of a new screening form: film, screen, date and start with the calculated end time, the seating layout, areas to close, a ticket class with a price per ticket type, and seat delivery">
+
+The venue settings: hold length, sales close, cancellation cutoff and fee, voucher limits, food and drink timings, and the venue details the footer shows.
+
+<img src="wireframes/24-tablet-staff-venue-settings.png" alt="Tablet wireframe of venue settings: seat hold length, sales close, cancellation cutoff and fee, voucher limits, food and drink timings, and the box office phone and hours">
 
 ---
 
