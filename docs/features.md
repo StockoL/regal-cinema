@@ -52,12 +52,17 @@ Staff-facing:
 
 Customer-facing:
 
-- Add drinks or snacks to a booking during checkout
+- Order food and drink ahead for any booking, in the same checkout as the tickets, up to the venue's cutoff before the start ([4.3](architecture.md#43-concessions))
+- Choose once per booking whether it's brought to the seats during the adverts or collected from the bar
+- See each item's allergens, and which items need ID on delivery or collection
+- The food step is optional, can be skipped, and works without JavaScript
 
 Staff-facing:
 
-- Manager: manage the product catalogue (add, edit or retire items and prices)
-- Front of House: a prep list for each screening of what has been ordered and needs to be ready
+- Front of House: the service list for each screening, seat deliveries in walking order and bar collections by reference, moving each item from ordered to preparing to delivered, with every change logged
+- Front of House: mark an item sold out for today, which takes it off the online menu until it's switched back on
+- Manager: manage the product catalogue (add, edit or retire items, prices, allergens and age limits)
+- Manager: turn seat delivery off for one screening, such as a live event ([4.1](architecture.md#41-screenings))
 
 ## 5.4 `membership`
 
