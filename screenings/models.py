@@ -124,12 +124,18 @@ class Seat(models.Model):
         SeatingLayout, on_delete=models.CASCADE, related_name='seats',
         null=True, blank=True,
     )
-    row_label = models.CharField(max_length=3)
+    row_label = models.CharField(max_length=3, blank=True)
     number = models.PositiveSmallIntegerField()
+    table_number = models.PositiveSmallIntegerField(null=True, blank=True)
     area = models.CharField(max_length=10, choices=Area.choices)
     # Where the seat sits on the map. Empty columns are aisles and gaps.
     row_index = models.PositiveSmallIntegerField()
     column_index = models.PositiveSmallIntegerField()
+    is_wheelchair_space = models.BooleanField(default=False)
+    # Beside a wheelchair space, offered first to a companion (4.17).
+    is_companion_seat = models.BooleanField(default=False)
+    # False for a seat out of use. It stays in the plan but can't be sold.
+    is_active = models.BooleanField(default=True)
 
     class Meta:
         ordering = ['screen', 'row_label', 'number']

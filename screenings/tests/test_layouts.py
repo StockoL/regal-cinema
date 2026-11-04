@@ -84,3 +84,36 @@ class SeatInLayoutTests(TestCase):
         seat = self.make_seat(row_index=3, column_index=7)
         seat.refresh_from_db()
         self.assertEqual((seat.row_index, seat.column_index), (3, 7))
+
+
+class SeatFlagTests(TestCase):
+    """Wheelchair spaces, companion seats, tables and seats out of use
+    (architecture 4.1, 4.17)."""
+
+    def setUp(self):
+        self.screen = Screen.objects.create(name='Screen 1')
+
+    def make_seat(self, **fields):
+        fields.setdefault('screen', self.screen)
+        fields.setdefault('row_label', '')
+        fields.setdefault('number', 1)
+        fields.setdefault('area', Seat.Area.STALLS)
+        fields.setdefault('row_index', 0)
+        fields.setdefault('column_index', 0)
+        return Seat.objects.create(**fields)
+
+    def test_flags_are_off_and_the_seat_in_use_by_default(self):
+        seat = self.make_seat()
+        self.assertFalse(seat.is_wheelchair_space)
+        self.assertFalse(seat.is_companion_seat)
+        self.assertTrue(seat.is_active)
+        self.assertIsNone(seat.table_number)
+
+    def test_a_stalls_seat_can_sit_at_a_table(self):
+        seat = self.make_seat(table_number=4)
+        seat.refresh_from_db()
+        self.assertEqual(seat.table_number, 4)
+
+    def test_a_seat_can_be_taken_out_of_use(self):
+        seat = self.make_seat(is_active=False)
+        self.assertFalse(Seat.objects.get(pk=seat.pk).is_active)
