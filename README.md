@@ -41,7 +41,7 @@ The full list, app by app, is in [Core features](docs/features.md).
 I've kept the design and planning detail in [`docs/`](docs/) so this README stays short. The documents are numbered in reading order, and when I write a cross-reference such as "see 4.10", it points at a numbered section in them.
 
 | # | Document                                                   | What's in it                                                                                                         |
-| : | :--------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------- |
+| :- | :--------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------- |
 | 1 | [Project purpose and user stories](docs/user_stories.md)   | MoSCoW prioritisation, and 18 customer and staff journeys written as Given/When/Then scenarios                       |
 | 2 | [Research](docs/research.md)                               | Everyman and Tivoli, the real Regal in Evesham, and the Dribbble booking concepts I drew on                          |
 | 3 | [UX design strategy](docs/ux_design.md)                    | The five planes: strategy, scope, structure, skeleton and surface, including the CUBE CSS approach                   |

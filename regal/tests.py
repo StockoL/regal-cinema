@@ -57,6 +57,18 @@ class StylesheetTests(TestCase):
             with self.subTest(layer=layer):
                 self.assertIn(layer, layers)
 
+    def test_unstyled_lists_lose_the_browsers_indent(self):
+        """LooseLeaf's reset drops the bullets from role="list" but keeps
+        the browser's left padding, which indents every card and strip."""
+        styles = ''.join(
+            read_css(path) for path in re.findall(
+                r'@import url\("([^"]+)"\) layer\(global\)',
+                read_css('main.css'),
+            )
+        )
+        self.assertIn('ul[role="list"]', styles)
+        self.assertIn('padding-inline-start: 0', styles)
+
     def test_every_token_used_is_defined_by_looseleaf(self):
         """A misspelt custom property fails silently in the browser."""
         looseleaf = Path(

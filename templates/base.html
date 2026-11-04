@@ -12,25 +12,32 @@
 <body>
   <a class="skip-link" href="#main">Skip to main content</a>
 
-  <header class="site-header">
-    <a class="site-name" href="{% url 'screenings:screening_list' %}">Regal Cinema</a>
-    {% with current=request.resolver_match.view_name %}
-    <nav aria-label="Main">
-      <ul role="list">
-        <li><a href="{% url 'screenings:screening_list' %}"{% if current == 'screenings:screening_list' %} aria-current="page"{% endif %}>What's on</a></li>
-      </ul>
-    </nav>
-    {% endwith %}
+  <header class="navbar">
+    <div class="wrapper">
+      <div class="cluster" style="--cluster-justify: space-between;">
+        <a class="navbar__brand" href="{% url 'screenings:screening_list' %}">Regal Cinema</a>
+        <details class="navbar__toggle">
+          <summary aria-controls="main-nav">Menu</summary>
+        </details>
+        {% with current=request.resolver_match.view_name %}
+        <nav id="main-nav" class="navbar__menu" aria-label="Main">
+          <a class="navbar__link" href="{% url 'screenings:screening_list' %}"{% if current == 'screenings:screening_list' %} aria-current="page"{% endif %}>What's on</a>
+        </nav>
+        {% endwith %}
+      </div>
+    </div>
   </header>
 
   <main id="main" tabindex="-1">
     {% block content %}{% endblock %}
   </main>
 
-  <footer class="site-footer">
-    {# Placeholder until the venue settings record exists (4.23). #}
-    <p>Phone <a href="tel:+441632960123">01632 960 123</a></p>
-    <p>Regal Cinema is a fictional venue created for a course project. It isn't connected to any real cinema.</p>
+  <footer class="region" data-size="small">
+    <div class="wrapper flow">
+      {# Placeholder until the venue settings record exists (4.23). #}
+      <p>Phone <a href="tel:+441632960123">01632 960 123</a></p>
+      <p>Regal Cinema is a fictional venue created for a course project. It isn't connected to any real cinema.</p>
+    </div>
   </footer>
 </body>
 </html>

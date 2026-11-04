@@ -51,6 +51,50 @@ The CSS foundation I'd written for this project (tokens, base styles, a skip lin
 
 The Regal look is a LooseLeaf theme: the same dark palette and gold accent as before, and the same 18px to 20px fluid type. The theme's tokens give every colour its dark value in both schemes, because LooseLeaf's theme script removes a hard-coded `data-theme` attribute when a visitor hasn't chosen a scheme, and the auditorium look shouldn't depend on the visitor's device. A test checks that text, muted text and links still meet WCAG AA in both schemes.
 
+### 4 November 2026: seats, layouts and ticket types
+
+A screen can now be laid out more than one way. The circle's seats are fixed and appear in every layout, and the stalls belong to a layout, so Screen 1 has a Standard arrangement in rows and a Tables arrangement. Each seat has a row and column on a grid, with empty columns for the aisles, and its name is built from its fields ("Stalls, seat 20", "Circle, row B, seat 14") so the label can never disagree with the plan. Seats can be wheelchair spaces, companion seats beside them, or out of use.
+
+<img src="screenshots/catalogue/admin-screen.png" alt="The admin page for Screen 1, listing its Standard and Tables layouts above the fixed circle seats, each with its area, row, number and grid position">
+
+Every layout is edited on its own page in the admin, with its stalls seats listed beneath it.
+
+<img src="screenshots/catalogue/admin-layout.png" alt="The admin page for Screen 1's Standard layout, with its stalls seats listed beneath, each with its number, grid position and flags">
+
+The circle is reached by stairs only, so a wheelchair space there is refused, and a layout saved without a wheelchair space in use is refused too. Here I unticked both of the Standard layout's wheelchair spaces and tried to save.
+
+<img src="screenshots/catalogue/admin-layout-no-wheelchair-space.png" alt="The Standard layout's admin page refusing to save, with the message: A layout needs at least one wheelchair space in use">
+
+A screening picks one of its screen's layouts, and a manager can close an area for a single screening, such as the circle for a quiet showing. Capacity is never stored: it's counted from the fixed seats plus the layout's seats, leaving out closed areas and seats out of use. In the screenshot below, closing the circle takes this Nosferatu screening down to the 46 stalls seats.
+
+The six ticket types (Adult, Student, OAP, Young person, Child and Companion) come from a data migration, each with the flags the booking rules will read. A film's rating decides which types are offered, so Child drops out of a 15 and Young person out of an 18, and only U, PG and 12A films take infants. When a screening is added, its price table fills itself from the ticket class, with Companion tickets free, and staff change any line.
+
+<img src="screenshots/catalogue/admin-screening.png" alt="The admin page for a Nosferatu screening, with its layout, the price table filled at nine pounds a ticket and Companion at zero, and the circle listed as a closed area">
+
+The demo seat plan comes from `python manage.py seed_seats`, explained in the entry above. Films got one more field on the way: an optional line of content advice shown with the rating, such as "Includes themes of abuse".
+
+### 4 November 2026: browsing by day and the film page
+
+The home page now lists one day at a time. A strip of the next seven days sits above the listings, defaulting to today, and each film's times for that day are grouped in a card with its rating. Captioned and audio described screenings carry a badge on the time itself, so nobody has to open a film to find them. Cancelled and private screenings never appear (4.11, 4.19), and a day with nothing on says so.
+
+<img src="screenshots/catalogue/home-phone.png" alt="The home page on a phone: the day strip with Today highlighted, then cards for Paddington in Peru and Nosferatu with their times and access badges" width="300"> <img src="screenshots/catalogue/home-empty-day.png" alt="The home page on a phone for Saturday, saying Nothing is showing on this day" width="300">
+
+<img src="screenshots/catalogue/home-desktop.png" alt="The home page at desktop width, with the day strip on one line and the two film cards">
+
+Each film has its own page at `/films/<slug>/`, opened on the same day the visitor chose on the home page. It shows the rating with any content advice, the runtime in hours and minutes, and the notes a customer needs before booking: photo ID for 12A and above, whether under 2s can come, and that the circle is stairs only. The trailer is a link to YouTube, so it never plays on its own. A film whose rating hasn't been confirmed says so, and the infant line waits until it is.
+
+<img src="screenshots/catalogue/film-phone.png" alt="The Nosferatu film page on a phone: rated 15 with its content advice, the photo ID, under 2s and stairs notes, a Watch the trailer button, the synopsis, and the showtimes for today" width="300"> <img src="screenshots/catalogue/film-unrated.png" alt="A film page for Members preview, with Rating to be confirmed and only the stairs note" width="300">
+
+The times aren't links yet, because there's no seat map to send them to. That comes in the next block (journey 2).
+
+### 4 November 2026: what the browser showed that the tests didn't
+
+All 205 tests passed before I first looked at these pages in a browser, and two things were still wrong. The header and footer kept the class names from before LooseLeaf, which it doesn't style, so the site name was a plain blue link in the corner. And LooseLeaf's reset takes the bullets off a list marked `role="list"` but keeps the browser's left padding, so every strip of buttons and every card was indented. The header is now LooseLeaf's navbar, whose menu folds behind a Menu button on a phone without JavaScript, and one rule in the global layer removes the padding. Both fixes have a test, but neither problem was the kind a test would have found first. From now on I check each page in a browser before I call it done.
+
+The first screenshot I took is on the left, and the same page after the two fixes is on the right.
+
+<img src="screenshots/catalogue/home-phone-before-layout-fixes.png" alt="The first version of the home page on a phone: the site name a plain blue link in the corner, the menu unstyled, and the day strip, cards and times all indented from the left" width="300"> <img src="screenshots/catalogue/home-phone.png" alt="The same page after the fixes: a styled header with a Menu button, and the day strip and cards lined up with the heading" width="300">
+
 </details>
 
 ## Phase 2: Core booking skeleton, seats and holds

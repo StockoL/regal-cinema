@@ -41,11 +41,17 @@ class WhatsOnPageTests(TestCase):
 
     def test_page_has_landmarks(self):
         self.assertContains(self.response, '<header')
-        self.assertContains(self.response, '<nav aria-label="Main">')
+        self.assertContains(self.response, 'aria-label="Main"')
         self.assertContains(self.response, '<footer')
 
     def test_exactly_one_h1(self):
         self.assertEqual(self.response.content.decode().count('<h1'), 1)
+
+    def test_header_is_a_looseleaf_navbar(self):
+        """The menu opens without JavaScript on a narrow screen."""
+        self.assertContains(self.response, '<header class="navbar">')
+        self.assertContains(self.response, 'class="navbar__brand"')
+        self.assertContains(self.response, '<details class="navbar__toggle">')
 
     def test_current_page_is_marked_in_the_nav(self):
         self.assertContains(
@@ -142,6 +148,13 @@ class WhatsOnByDateTests(TestCase):
             self.get(tomorrow),
             f'href="/films/nosferatu/?date={tomorrow.isoformat()}"',
         )
+
+    def test_runtime_reads_as_hours_and_minutes(self):
+        """The same wording as the film page."""
+        self.schedule(self.nosferatu, self.today, 20)
+        response = self.get()
+        self.assertContains(response, '1 hour 40 minutes')
+        self.assertNotContains(response, '100 minutes')
 
     def test_access_flags_show_on_the_time(self):
         self.schedule(self.nosferatu, self.today, 20, has_captions=True,

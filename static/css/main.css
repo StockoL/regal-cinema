@@ -2,5 +2,5 @@
    (architecture 4.24). LooseLeaf declares the cascade layers, in CUBE
    order: reset, global, compositions, blocks, motion, utilities. Each
    file here is imported into one of them, so its place in the cascade
-   is set by the layer, not by specificity.
-   None yet: LooseLeaf covers everything the pages use so far. */
+   is set by the layer, not by specificity. */
+@import url("global/lists.css") layer(global);
