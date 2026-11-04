@@ -132,6 +132,16 @@ class SeatTests(TestCase):
         self.assertEqual(seat.label, 'Circle, row C, seat 4')
         self.assertEqual(str(seat), 'Circle, row C, seat 4')
 
+    def test_a_box_can_override_its_label(self):
+        """The circle boxes are circle seats that read "Box C", not
+        "Circle, row Box, seat 3" (architecture 4.1)."""
+        seat = Seat.objects.create(
+            screen=self.screen, row_label='Box', number=3,
+            area=Seat.Area.CIRCLE, row_index=0, column_index=0,
+            label_override='Box C',
+        )
+        self.assertEqual(seat.label, 'Box C')
+
     def test_label_leaves_out_an_empty_row(self):
         """Stalls seats are numbered straight through, with no rows."""
         seat = Seat.objects.create(

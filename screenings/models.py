@@ -144,6 +144,8 @@ class Seat(models.Model):
     is_companion_seat = models.BooleanField(default=False)
     # False for a seat out of use. It stays in the plan but can't be sold.
     is_active = models.BooleanField(default=True)
+    # For the few seats whose name isn't row and number, such as "Box C".
+    label_override = models.CharField(max_length=20, blank=True)
 
     class Meta:
         ordering = ['screen', 'row_label', 'number']
@@ -167,7 +169,10 @@ class Seat(models.Model):
     @property
     def label(self):
         """Built from the fields, not stored, so it can't disagree with
-        them: "Stalls, seat 20" or "Circle, row B, seat 14"."""
+        them: "Stalls, seat 20" or "Circle, row B, seat 14". The boxes
+        are the exception and carry their own label."""
+        if self.label_override:
+            return self.label_override
         parts = [self.get_area_display()]
         if self.row_label:
             parts.append(f'row {self.row_label}')

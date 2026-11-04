@@ -25,6 +25,7 @@ class FilmAdmin(admin.ModelAdmin):
 SEAT_FIELDS = (
     'area', 'row_label', 'number', 'table_number', 'row_index',
     'column_index', 'is_wheelchair_space', 'is_companion_seat', 'is_active',
+    'label_override',
 )
 
 
