@@ -1,10 +1,13 @@
-{% load static %}<!doctype html>
+{% load looseleaf static %}<!doctype html>
 <html lang="en-GB">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  {% looseleaf_meta %}
   <title>{% block title %}{% endblock %} | Regal Cinema</title>
+  {% looseleaf_theme %}
+  {% looseleaf_css %}
   <link rel="stylesheet" href="{% static 'css/main.css' %}">
+  {% looseleaf_js %}
 </head>
 <body>
   <a class="skip-link" href="#main">Skip to main content</a>

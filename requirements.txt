@@ -1,5 +1,6 @@
 asgiref==3.13.0
 dj-database-url==3.1.2
+django-looseleaf==2.5.1
 Django==6.1.2
 gunicorn==26.2.0
 psycopg==3.3.6

@@ -59,6 +59,8 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'django.contrib.postgres',
+    'django.forms',
+    'django_looseleaf',
     'accounts',
     'screenings',
     'bookings',
@@ -109,6 +111,12 @@ DATABASES = {
 # (architecture 4.16).
 AUTH_USER_MODEL = 'accounts.User'
 
+
+# LooseLeaf UI renders {{ form }} as labelled, accessible fields (4.17).
+FORM_RENDERER = 'django_looseleaf.renderers.LooseLeafFormRenderer'
+# The Regal theme, compiled from static/theme/design-tokens.json with
+# the LooseLeaf CLI: the dark auditorium palette in both schemes.
+LOOSELEAF_THEME = 'theme'
 
 # How long a screening holds its screen beyond the film itself: trailers
 # before, clearing the room after (architecture 4.1). Defaults until the

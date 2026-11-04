@@ -4,6 +4,7 @@ from pathlib import Path
 from django.contrib.staticfiles import finders
 from django.test import TestCase, override_settings
 from django.urls import reverse
+from django_looseleaf import tokens
 
 
 class HealthCheckTests(TestCase):
@@ -31,12 +32,15 @@ class HealthCheckTests(TestCase):
 
 
 class StylesheetTests(TestCase):
-    """The CSS foundation: one entry stylesheet, CUBE layers, and colour
-    tokens that keep WCAG AA contrast (architecture 4.17, 4.24)."""
+    """LooseLeaf UI first, then this project's own styles in LooseLeaf's
+    cascade layers, with colours that keep WCAG AA contrast
+    (architecture 4.17, 4.24)."""
 
-    def test_pages_link_main_css(self):
-        response = self.client.get('/')
-        self.assertContains(response, 'href="/static/css/main.css"')
+    def test_pages_load_looseleaf_then_the_projects_styles(self):
+        html = self.client.get('/').content.decode()
+        looseleaf = html.index('href="/static/looseleaf/looseleaf.css"')
+        project = html.index('href="/static/css/main.css"')
+        self.assertLess(looseleaf, project)
 
     def test_every_import_in_main_css_exists(self):
         imports = re.findall(
@@ -47,17 +51,19 @@ class StylesheetTests(TestCase):
             with self.subTest(path=path):
                 self.assertIsNotNone(finders.find(f'css/{path}'))
 
-    def test_layers_are_declared_in_cube_order(self):
-        self.assertIn(
-            '@layer global, composition, utility, block, exception;',
-            read_css('main.css'),
-        )
+    def test_every_import_joins_one_of_looseleafs_layers(self):
+        layers = {'reset', 'global', 'compositions', 'blocks', 'motion',
+                  'utilities'}
+        for layer in re.findall(r'layer\((\w+)\)', read_css('main.css')):
+            with self.subTest(layer=layer):
+                self.assertIn(layer, layers)
 
-    def test_every_token_used_is_defined(self):
+    def test_every_token_used_is_defined_by_looseleaf(self):
         """A misspelt custom property fails silently in the browser."""
-        defined = set(re.findall(
-            r'(--[\w-]+):', read_css('global/tokens.css')
-        ))
+        looseleaf = Path(
+            finders.find('looseleaf/looseleaf.css')
+        ).read_text(encoding='utf-8')
+        defined = set(re.findall(r'(--[\w-]+):', looseleaf))
         for path in Path(finders.find('css')).rglob('*.css'):
             used = set(re.findall(
                 r'var\((--[\w-]+)\)', path.read_text(encoding='utf-8')
@@ -65,17 +71,15 @@ class StylesheetTests(TestCase):
             with self.subTest(file=path.name):
                 self.assertEqual(used - defined, set())
 
-    def test_colour_tokens_meet_wcag_aa_on_the_background(self):
-        tokens = dict(re.findall(
-            r'--(color-[\w-]+):\s*(#[0-9a-fA-F]{6})',
-            read_css('global/tokens.css'),
-        ))
-        background = tokens['color-bg']
-        for name in ('color-text', 'color-text-muted', 'color-accent'):
-            with self.subTest(token=name):
-                self.assertGreaterEqual(
-                    contrast_ratio(tokens[name], background), 4.5
-                )
+    def test_text_colours_meet_wcag_aa_on_the_surface(self):
+        for scheme in ('light', 'dark'):
+            surface = tokens.get('color.surface', scheme)
+            for name in ('color.text', 'color.text-muted', 'color.link'):
+                with self.subTest(scheme=scheme, token=name):
+                    self.assertGreaterEqual(
+                        contrast_ratio(tokens.get(name, scheme), surface),
+                        4.5,
+                    )
 
 
 def read_css(path):
