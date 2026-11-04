@@ -482,7 +482,8 @@ regal-cinema/
 │   └── tests/              test_models.py, test_services.py, test_views.py
 ├── templates/              base.html, shared partials, error pages
 ├── static/
-│   ├── css/                main.css, plus one folder per CUBE CSS layer: global, composition, utility, block, exception
+│   ├── css/                main.css and this project's own blocks, in LooseLeaf UI's layers
+│   ├── theme/              the Regal theme for LooseLeaf: design-tokens.json and the files compiled from it
 │   └── js/                 hand-written scripts, one file per feature (seat-map.js)
 ├── docs/
 ├── manage.py  requirements.txt  .env.example
@@ -490,7 +491,7 @@ regal-cinema/
 
 There's one settings module. Anything that differs between my machine and Render (the database URL, secret key, Stripe and TMDb keys, `DEBUG`) comes from environment variables, and `DEBUG` defaults to off, so a missing variable fails safe. `.env.example` lists every variable with a dummy value. The real `.env` is never committed.
 
-`static/css/main.css` is the only stylesheet a page links. It declares CSS cascade layers in CUBE order (`@layer global, composition, utility, block, exception`) and imports each folder's files into its layer. A later layer always wins over an earlier one, whatever the selectors' specificity, so an exception reliably overrides the block it adjusts without stronger selectors or `!important`. The `global` folder holds the design tokens as custom properties and the base styles for plain elements. CUBE CSS treats these as the starting point the other four layers build on, and I'd left it out of the list above at first. There's still no build step: the browser reads the imports directly, and WhiteNoise serves each file compressed with a long cache lifetime.
+The CSS comes from LooseLeaf UI, my CUBE CSS design system, installed as the `django-looseleaf` package. `base.html` loads three stylesheets in order: LooseLeaf's, the Regal theme from `static/theme/`, and this project's `static/css/main.css`. LooseLeaf declares the cascade layers in CUBE order (`@layer reset, global, compositions, blocks, motion, utilities`), and `main.css` imports each of this project's files into one of them, so a file's place in the cascade is set by its layer, whatever the selectors' specificity. The theme only sets token values, in LooseLeaf's `global` layer. It's compiled from `design-tokens.json` with LooseLeaf's command-line tool, and I commit the compiled files, so there's still no build step when the site deploys. WhiteNoise serves every file compressed with a long cache lifetime.
 
 Third-party code stays out of these folders. Python libraries come in through `requirements.txt`, and if I ever include anything vendored by hand it goes in `static/vendor/`, credited in the README.
 

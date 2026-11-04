@@ -45,6 +45,12 @@ The seat plan for Screen 1 is demo data. The Regal in this project is fictional,
 
 Ticket types are reference data. Every deployment needs Adult, Child and the rest before a single screening can be priced, so they'll come from a data migration, the same way the venue settings get their defaults (4.23). A fresh database then works without anyone remembering to run a command.
 
+### 4 November 2026: moving the CSS onto LooseLeaf UI
+
+The CSS foundation I'd written for this project (tokens, base styles, a skip link) was the start of a CUBE CSS design system. I'd already built one as a separate project, LooseLeaf UI, with a Django package on PyPI, so I moved the site onto it rather than build a second. It brings the layers, the compositions this design needs (including the Reel), the reduced-motion handling, a single focus style, and a form renderer that gives every field a label, hint and error in text.
+
+The Regal look is a LooseLeaf theme: the same dark palette and gold accent as before, and the same 18px to 20px fluid type. The theme's tokens give every colour its dark value in both schemes, because LooseLeaf's theme script removes a hard-coded `data-theme` attribute when a visitor hasn't chosen a scheme, and the auditorium look shouldn't depend on the visitor's device. A test checks that text, muted text and links still meet WCAG AA in both schemes.
+
 </details>
 
 ## Phase 2: Core booking skeleton, seats and holds
