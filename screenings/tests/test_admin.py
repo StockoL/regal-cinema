@@ -40,8 +40,8 @@ class ScreeningsAdminTests(TestCase):
                               tzinfo=ZoneInfo('Europe/London'))
 
     def test_every_list_and_add_page_loads(self):
-        for model in ('film', 'screen', 'ticketclass', 'tickettype',
-                      'screening'):
+        for model in ('film', 'screen', 'seatinglayout', 'ticketclass',
+                      'tickettype', 'screening'):
             for page in ('changelist', 'add'):
                 with self.subTest(model=model, page=page):
                     url = reverse(f'admin:screenings_{model}_{page}')
@@ -54,6 +54,35 @@ class ScreeningsAdminTests(TestCase):
         url = reverse('admin:screenings_screen_change', args=[self.screen.pk])
         response = self.client.get(url)
         self.assertContains(response, 'seats-TOTAL_FORMS')
+
+    def test_screen_page_lists_its_layouts(self):
+        url = reverse('admin:screenings_screen_change', args=[self.screen.pk])
+        self.assertContains(self.client.get(url), 'layouts-TOTAL_FORMS')
+
+    def test_layout_page_edits_its_seats(self):
+        url = reverse('admin:screenings_seatinglayout_change',
+                      args=[self.layout.pk])
+        self.assertContains(self.client.get(url), 'seats-TOTAL_FORMS')
+
+    def test_a_seat_added_on_the_layout_page_is_on_its_screen(self):
+        """The seat form has no screen field. The layout knows it."""
+        url = reverse('admin:screenings_seatinglayout_change',
+                      args=[self.layout.pk])
+        response = self.client.post(url, {
+            'screen': self.screen.pk,
+            'name': 'Standard',
+            'seats-TOTAL_FORMS': '1',
+            'seats-INITIAL_FORMS': '0',
+            'seats-0-area': 'stalls',
+            'seats-0-number': '1',
+            'seats-0-row_index': '0',
+            'seats-0-column_index': '0',
+            'seats-0-is_wheelchair_space': 'on',
+            'seats-0-is_active': 'on',
+        })
+        self.assertEqual(response.status_code, 302)
+        seat = Seat.objects.get()
+        self.assertEqual((seat.screen, seat.layout), (self.screen, self.layout))
 
     def test_screening_page_edits_its_prices_and_shows_ends_at(self):
         screening = Screening.objects.create(

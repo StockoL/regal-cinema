@@ -176,6 +176,11 @@ class Seat(models.Model):
 
     def clean(self):
         super().clean()
+        if (self.layout_id and self.screen_id
+                and self.layout.screen_id != self.screen_id):
+            raise ValidationError({
+                'layout': 'Choose a layout that belongs to this screen.',
+            })
         # The circle is reached by stairs only (4.1, 4.17).
         if self.is_wheelchair_space and self.area == self.Area.CIRCLE:
             raise ValidationError({

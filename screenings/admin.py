@@ -1,4 +1,5 @@
 from django.contrib import admin
+from django.forms import BaseInlineFormSet
 
 from .models import (
     Film,
@@ -6,6 +7,7 @@ from .models import (
     Screening,
     ScreeningPrice,
     Seat,
+    SeatingLayout,
     TicketClass,
     TicketType,
 )
@@ -18,15 +20,58 @@ class FilmAdmin(admin.ModelAdmin):
     search_fields = ('title',)
 
 
-class SeatInline(admin.TabularInline):
+SEAT_FIELDS = (
+    'area', 'row_label', 'number', 'table_number', 'row_index',
+    'column_index', 'is_wheelchair_space', 'is_companion_seat', 'is_active',
+)
+
+
+class FixedSeatInline(admin.TabularInline):
+    """Seats that appear in every layout, which is the whole circle.
+    Stalls seats are edited on their layout's page."""
+
     model = Seat
+    fields = SEAT_FIELDS
     extra = 0
+    verbose_name = 'fixed seat'
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).filter(layout__isnull=True)
+
+
+class SeatingLayoutInline(admin.TabularInline):
+    model = SeatingLayout
+    fields = ('name', 'is_default')
+    extra = 0
+    show_change_link = True
 
 
 @admin.register(Screen)
 class ScreenAdmin(admin.ModelAdmin):
     list_display = ('name', 'capacity', 'is_active')
-    inlines = [SeatInline]
+    inlines = [SeatingLayoutInline, FixedSeatInline]
+
+
+class LayoutSeatFormSet(BaseInlineFormSet):
+    """A seat belongs to its layout's screen, so the form doesn't ask."""
+
+    def save_new(self, form, commit=True):
+        form.instance.screen = self.instance.screen
+        return super().save_new(form, commit=commit)
+
+
+class LayoutSeatInline(admin.TabularInline):
+    model = Seat
+    formset = LayoutSeatFormSet
+    fields = SEAT_FIELDS
+    extra = 0
+
+
+@admin.register(SeatingLayout)
+class SeatingLayoutAdmin(admin.ModelAdmin):
+    list_display = ('screen', 'name', 'is_default')
+    list_filter = ('screen',)
+    inlines = [LayoutSeatInline]
 
 
 @admin.register(TicketClass)

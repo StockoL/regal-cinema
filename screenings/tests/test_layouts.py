@@ -94,6 +94,17 @@ class SeatInLayoutTests(TestCase):
         self.layout.delete()
         self.assertEqual(list(Seat.objects.all()), [fixed])
 
+    def test_a_layout_from_another_screen_is_refused(self):
+        other = Screen.objects.create(name='Screen 2')
+        wrong = SeatingLayout.objects.create(screen=other, name='Standard')
+        seat = Seat(
+            screen=self.screen, layout=wrong, number=1,
+            area=Seat.Area.STALLS, row_index=0, column_index=0,
+        )
+        with self.assertRaises(ValidationError) as caught:
+            seat.full_clean()
+        self.assertIn('layout', caught.exception.message_dict)
+
     def test_grid_position_is_stored(self):
         seat = self.make_seat(row_index=3, column_index=7)
         seat.refresh_from_db()
