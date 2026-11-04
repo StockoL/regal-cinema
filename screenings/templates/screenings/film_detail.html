@@ -38,5 +38,27 @@
   {% if film.synopsis %}
     <div class="prose">{{ film.synopsis|linebreaks }}</div>
   {% endif %}
+
+  <section class="flow" aria-labelledby="showtimes">
+    <h2 id="showtimes">Showtimes</h2>
+    {% include 'screenings/_day_strip.html' %}
+    <h3>{{ day|date:"l j F" }}</h3>
+    {% if screenings %}
+      <ul class="flow" role="list">
+        {% for screening in screenings %}
+          <li class="card">
+            <div class="card__body cluster">
+              <time datetime="{{ screening.date_time|date:'c' }}">{{ screening.date_time|time:"g:i a" }}</time>
+              <span>{{ screening.ticket_class }}. {{ screening.screen }}.</span>
+              {% if screening.has_captions %}<span class="badge">Captioned</span>{% endif %}
+              {% if screening.has_audio_description %}<span class="badge">Audio described</span>{% endif %}
+            </div>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p>{{ film.title }} isn't showing on this day.</p>
+    {% endif %}
+  </section>
 </article>
 {% endblock %}

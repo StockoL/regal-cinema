@@ -1,7 +1,17 @@
+from datetime import datetime, time, timedelta
+from zoneinfo import ZoneInfo
+
 from django.test import TestCase
 from django.urls import reverse
+from django.utils import timezone
 
-from screenings.models import Film
+from screenings.models import (
+    Film,
+    Screen,
+    Screening,
+    SeatingLayout,
+    TicketClass,
+)
 from screenings.templatetags.screenings_extras import runtime
 
 
@@ -118,3 +128,71 @@ class RuntimeFilterTests(TestCase):
         for minutes, text in cases.items():
             with self.subTest(minutes=minutes):
                 self.assertEqual(runtime(minutes), text)
+
+
+class FilmShowtimesTests(TestCase):
+    """The film page's showtimes for a chosen day. Journey 1, "Date and
+    showtime picker"."""
+
+    def setUp(self):
+        self.today = timezone.localdate()
+        self.screen = Screen.objects.create(name='Screen 1')
+        self.layout = SeatingLayout.objects.create(
+            screen=self.screen, name='Rows'
+        )
+        self.silver = TicketClass.objects.create(name='Silver Screen')
+        self.film = Film.objects.create(
+            title='Nosferatu', duration_minutes=100, age_rating='15'
+        )
+        self.other = Film.objects.create(
+            title='Paddington', duration_minutes=95, age_rating='PG'
+        )
+
+    def schedule(self, film, day, hour, **fields):
+        return Screening.objects.create(
+            film=film, screen=self.screen, layout=self.layout,
+            ticket_class=self.silver,
+            date_time=datetime.combine(
+                day, time(hour), tzinfo=ZoneInfo('Europe/London')
+            ),
+            **fields,
+        )
+
+    def get(self, day=None):
+        url = reverse('screenings:film_detail', args=[self.film.slug])
+        return self.client.get(url, {'date': day.isoformat()} if day else {})
+
+    def test_lists_this_films_times_for_the_day(self):
+        self.schedule(self.film, self.today, 14)
+        self.schedule(self.other, self.today, 18)
+        response = self.get()
+        self.assertEqual(len(response.context['screenings']), 1)
+        self.assertContains(response, 'Silver Screen')
+        self.assertContains(response, 'Screen 1')
+
+    def test_another_day_shows_that_days_times(self):
+        tomorrow = self.today + timedelta(days=1)
+        self.schedule(self.film, tomorrow, 20, has_captions=True)
+        response = self.get(tomorrow)
+        self.assertEqual(response.context['day'], tomorrow)
+        self.assertEqual(len(response.context['screenings']), 1)
+        self.assertContains(response, 'Captioned')
+
+    def test_hidden_screenings_are_left_out(self):
+        self.schedule(self.film, self.today, 11, is_private=True)
+        self.schedule(self.film, self.today, 20,
+                      cancelled_at=timezone.now())
+        self.assertEqual(len(self.get().context['screenings']), 0)
+
+    def test_a_day_without_this_film_says_so(self):
+        self.assertContains(
+            self.get(), "Nosferatu isn't showing on this day."
+        )
+
+    def test_the_day_strip_stays_on_the_film_page(self):
+        response = self.get()
+        self.assertEqual(len(response.context['days']), 7)
+        self.assertContains(response, 'aria-current="date"', count=1)
+
+    def test_the_day_strip_comment_is_not_shown(self):
+        self.assertNotContains(self.get(), 'The days a visitor can choose')

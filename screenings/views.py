@@ -9,6 +9,12 @@ from .models import Film, Screening
 DAYS_SHOWN = 7
 
 
+def offered_days():
+    """The days the date strip offers, starting today."""
+    today = timezone.localdate()
+    return [today + timedelta(days=n) for n in range(DAYS_SHOWN)]
+
+
 def chosen_day(request, days):
     """The day in ?date=, or today if it's missing, malformed or not one
     of the days on offer."""
@@ -22,8 +28,7 @@ def chosen_day(request, days):
 def screening_list(request):
     """The home page: one day's public screenings, grouped by film, in
     the order each film first shows that day (journey 1)."""
-    today = timezone.localdate()
-    days = [today + timedelta(days=n) for n in range(DAYS_SHOWN)]
+    days = offered_days()
     day = chosen_day(request, days)
     screenings = (
         Screening.objects.public().on_date(day)
@@ -42,4 +47,15 @@ def screening_list(request):
 def film_detail(request, slug):
     """A film's own page. A retired film is gone from the public site."""
     film = get_object_or_404(Film, slug=slug, is_active=True)
-    return render(request, 'screenings/film_detail.html', {'film': film})
+    days = offered_days()
+    day = chosen_day(request, days)
+    screenings = (
+        film.screenings.public().on_date(day)
+        .select_related('screen', 'ticket_class').order_by('date_time')
+    )
+    return render(request, 'screenings/film_detail.html', {
+        'film': film,
+        'day': day,
+        'days': days,
+        'screenings': screenings,
+    })
