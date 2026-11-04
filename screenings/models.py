@@ -155,10 +155,17 @@ class Seat(models.Model):
         ]
 
     def __str__(self):
-        return (
-            f'Row {self.row_label}, seat {self.number}, '
-            f'{self.get_area_display().lower()}'
-        )
+        return self.label
+
+    @property
+    def label(self):
+        """Built from the fields, not stored, so it can't disagree with
+        them: "Stalls, seat 20" or "Circle, row B, seat 14"."""
+        parts = [self.get_area_display()]
+        if self.row_label:
+            parts.append(f'row {self.row_label}')
+        parts.append(f'seat {self.number}')
+        return ', '.join(parts)
 
     def clean(self):
         super().clean()

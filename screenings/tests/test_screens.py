@@ -104,12 +104,21 @@ class SeatTests(TestCase):
         self.screen.delete()
         self.assertEqual(Seat.objects.count(), 0)
 
-    def test_string_describes_the_seat(self):
+    def test_label_names_the_area_row_and_seat(self):
         seat = Seat.objects.create(
             screen=self.screen, row_label='C', number=4,
             area=Seat.Area.CIRCLE, row_index=0, column_index=0,
         )
-        self.assertEqual(str(seat), 'Row C, seat 4, circle')
+        self.assertEqual(seat.label, 'Circle, row C, seat 4')
+        self.assertEqual(str(seat), 'Circle, row C, seat 4')
+
+    def test_label_leaves_out_an_empty_row(self):
+        """Stalls seats are numbered straight through, with no rows."""
+        seat = Seat.objects.create(
+            screen=self.screen, number=20, area=Seat.Area.STALLS,
+            row_index=0, column_index=0,
+        )
+        self.assertEqual(seat.label, 'Stalls, seat 20')
 
     def test_seats_order_by_row_then_number(self):
         for row, number in [('B', 2), ('A', 10), ('A', 2)]:
