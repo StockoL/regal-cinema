@@ -112,15 +112,15 @@ DATABASES = {
 AUTH_USER_MODEL = 'accounts.User'
 
 
-# How long a screening holds its screen beyond the film itself: trailers
-# before, clearing the room after (architecture 4.1). Defaults until the
-# venue settings record (4.23) exists.
 # LooseLeaf UI renders {{ form }} as labelled, accessible fields (4.17).
 FORM_RENDERER = 'django_looseleaf.renderers.LooseLeafFormRenderer'
 # The Regal theme, compiled from static/theme/design-tokens.json with
 # the LooseLeaf CLI: the dark auditorium palette in both schemes.
 LOOSELEAF_THEME = 'theme'
 
+# How long a screening holds its screen beyond the film itself: trailers
+# before, clearing the room after (architecture 4.1). Defaults until the
+# venue settings record (4.23) exists.
 SCREENING_TRAILER_MINUTES = 20
 SCREENING_TURNAROUND_MINUTES = 15
 
