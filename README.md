@@ -18,7 +18,7 @@ Django (data model, business logic)
 
 - The backend is Django with a PostgreSQL database. The schema follows the venue's real domain (screenings, seats, ticket types, bookings, concessions, membership), and constraints in the database stop the same seat being sold twice.
 - The frontend is server-rendered Django templates, plain CSS and a small amount of JavaScript. I haven't used a frontend framework. The reasoning is in the [UX design strategy](docs/ux_design.md#design-principles).
-- The visual style is a dark, cinema-inspired design system made from a small set of reusable layout and colour patterns, based on _Every Layout_ (Heydon Pickering and Andy Bell) and Alla Kholmatova's _Design Systems_.
+- The visual style is a dark, cinema-inspired theme for [LooseLeaf UI](https://github.com/StockoL/looseleaf-ui), a CUBE CSS design system I built as a separate project, based on _Every Layout_ (Heydon Pickering and Andy Bell) and Alla Kholmatova's _Design Systems_.
 
 ### Key features
 
@@ -135,7 +135,7 @@ To be completed.
 - dj-database-url and python-dotenv, which read the database URL and other settings from the environment
 - gunicorn, which runs the app on Render, and WhiteNoise, which serves its static files
 - Render for hosting, and cron-job.org to keep the free web service awake
-- CUBE CSS, _Every Layout_ patterns and Utopia fluid scales for the design system
+- LooseLeaf UI, through its Django package `django-looseleaf`, for the design system: CUBE CSS layers, _Every Layout_ compositions, Utopia fluid scales and accessible form rendering
 - Planned: Stripe in test mode for payments, The Movie Database (TMDb) API for film details, and the View Transitions API between pages
 
 Exact versions are pinned in [`requirements.txt`](requirements.txt).
@@ -152,7 +152,8 @@ This product uses the TMDB API but is not endorsed or certified by TMDB.
 
 ### Code from other sources
 
-- The fluid type and space scales in [`static/css/global/tokens.css`](static/css/global/tokens.css) were generated with [Utopia](https://utopia.fyi), by James Gilyead and Trys Mudford, using its default settings. The file notes the settings and links to the calculator that regenerates them.
+- [LooseLeaf UI](https://github.com/StockoL/looseleaf-ui) is my own design system, a separate MIT-licensed project installed from PyPI as `django-looseleaf`. Its stylesheet, scripts and templates aren't copied into this repository. The Regal theme in [`static/theme/`](static/theme/) is compiled from [`design-tokens.json`](static/theme/design-tokens.json) with LooseLeaf's command-line tool.
+- LooseLeaf's fluid type and space scales are generated with [Utopia](https://utopia.fyi), by James Gilyead and Trys Mudford. The Regal theme sets body text from 18px to 20px.
 
 ### Repository layout
 
