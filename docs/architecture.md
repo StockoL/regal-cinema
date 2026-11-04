@@ -133,6 +133,7 @@ User ──1:1── Profile ──FK (nullable)── MembershipTier
 
 User ──FK (nullable, as customer)── Booking
 User ──FK (nullable, as staff)──── Booking.created_by
+User ──FK (nullable, as staff)──── Booking.checked_in_by
 User ──FK (nullable)────────────── SeatHold.user
 User ──FK──────────────────────── AuditLogEntry.actor
 User ──FK (nullable)────────────── Cancellation.decided_by
@@ -148,7 +149,7 @@ Booking ──FK── Screening ──FK── Film
    │
    ├──1:N── SeatBooking ──FK── Seat, TicketType, Screening (duplicated, partial unique constraint)
    ├──1:N── SeatHold                      [while the booking is pending, see 4.8]
-   ├──1:N── OrderItem ──FK── Product
+   ├──1:N── OrderItem ──FK── Product    [status moves along the service list, see 4.3]
    ├──1:N── Cancellation                  [one row per cancellation, see 4.2]
    ├──FK (nullable)── Voucher            [1 Voucher : N Bookings, balance drawn down over time]
    └──FK (nullable)── MembershipTier     [snapshot at time of booking, see 4.2]
