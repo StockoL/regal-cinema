@@ -98,7 +98,7 @@ The project runs on PostgreSQL locally as well as in production, never SQLite. T
    git clone https://github.com/StockoL/regal-cinema.git
    cd regal-cinema
    python -m venv .venv
-   .venv\Scriptsctivate
+   .venv\Scripts\activate
    pip install -r requirements.txt
    ```
 
