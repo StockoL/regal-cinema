@@ -1,0 +1,64 @@
+{% extends 'base.html' %}
+{% load screenings_extras %}
+
+{% block title %}{{ film.title }}{% endblock %}
+
+{% block content %}
+<article class="wrapper region flow">
+  <h1>{{ film.title }}</h1>
+
+  <ul class="cluster" role="list">
+    <li>
+      {% if film.age_rating %}
+        <span class="badge">Rated {{ film.age_rating }}</span>
+      {% else %}
+        <span class="badge">Rating to be confirmed</span>
+      {% endif %}
+    </li>
+    <li>{{ film.duration_minutes|runtime }}</li>
+  </ul>
+
+  {% if film.content_advice %}<p>{{ film.content_advice }}</p>{% endif %}
+
+  <ul class="flow" role="list">
+    {% if film.is_age_restricted %}<li>Bring photo ID showing your date of birth.</li>{% endif %}
+    {% if film.age_rating %}
+      <li>{% if film.allows_infants %}Under 2s go free and sit on a lap.{% else %}Under 2s can't come to this film.{% endif %}</li>
+    {% endif %}
+    <li>The circle is reached by stairs only. The stalls are step-free.</li>
+  </ul>
+
+  {% if film.trailer_key %}
+    <p>
+      <a class="button" data-variant="secondary"
+         href="https://www.youtube.com/watch?v={{ film.trailer_key|urlencode }}">Watch the trailer</a>
+    </p>
+  {% endif %}
+
+  {% if film.synopsis %}
+    <div class="prose">{{ film.synopsis|linebreaks }}</div>
+  {% endif %}
+
+  <section class="flow" aria-labelledby="showtimes">
+    <h2 id="showtimes">Showtimes</h2>
+    {% include 'screenings/_day_strip.html' %}
+    <h3>{{ day|date:"l j F" }}</h3>
+    {% if screenings %}
+      <ul class="flow" role="list">
+        {% for screening in screenings %}
+          <li class="card">
+            <div class="card__body cluster">
+              <time datetime="{{ screening.date_time|date:'c' }}">{{ screening.date_time|time:"g:i a" }}</time>
+              <span>{{ screening.ticket_class }}. {{ screening.screen }}.</span>
+              {% if screening.has_captions %}<span class="badge">Captioned</span>{% endif %}
+              {% if screening.has_audio_description %}<span class="badge">Audio described</span>{% endif %}
+            </div>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p>{{ film.title }} isn't showing on this day.</p>
+    {% endif %}
+  </section>
+</article>
+{% endblock %}

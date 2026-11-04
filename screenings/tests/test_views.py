@@ -1,5 +1,19 @@
+from datetime import datetime, time, timedelta
+from zoneinfo import ZoneInfo
+
 from django.test import TestCase
 from django.urls import reverse
+from django.utils import timezone
+
+from screenings.models import (
+    Film,
+    Screen,
+    Screening,
+    SeatingLayout,
+    TicketClass,
+)
+
+LONDON = ZoneInfo('Europe/London')
 
 
 class WhatsOnPageTests(TestCase):
@@ -60,3 +74,94 @@ class WhatsOnPageTests(TestCase):
         self.assertContains(
             self.response, "<title>What's on | Regal Cinema</title>"
         )
+
+
+class WhatsOnByDateTests(TestCase):
+    """The home page lists one day's screenings, grouped by film, with a
+    strip of days to choose from. Journey 1, "Date and showtime picker",
+    "Access flags" and "Empty date"."""
+
+    def setUp(self):
+        self.today = timezone.localdate()
+        screen = Screen.objects.create(name='Screen 1')
+        self.layout = SeatingLayout.objects.create(screen=screen, name='Rows')
+        self.screen = screen
+        self.ticket_class = TicketClass.objects.create(name='Standard')
+        self.nosferatu = Film.objects.create(
+            title='Nosferatu', duration_minutes=100, age_rating='15'
+        )
+        self.paddington = Film.objects.create(
+            title='Paddington', duration_minutes=95, age_rating='PG'
+        )
+
+    def schedule(self, film, day, hour, **fields):
+        start = datetime.combine(day, time(hour), tzinfo=LONDON)
+        return Screening.objects.create(
+            film=film, screen=self.screen, layout=self.layout,
+            ticket_class=self.ticket_class, date_time=start, **fields,
+        )
+
+    def get(self, day=None):
+        url = reverse('screenings:screening_list')
+        return self.client.get(url, {'date': day.isoformat()} if day else {})
+
+    def test_shows_todays_screenings_by_default(self):
+        self.schedule(self.nosferatu, self.today, 20)
+        response = self.get()
+        self.assertEqual(response.context['day'], self.today)
+        self.assertContains(response, 'Nosferatu')
+
+    def test_another_day_shows_only_that_days_screenings(self):
+        tomorrow = self.today + timedelta(days=1)
+        self.schedule(self.nosferatu, self.today, 20)
+        self.schedule(self.paddington, tomorrow, 11)
+        response = self.get(tomorrow)
+        self.assertContains(response, 'Paddington')
+        self.assertNotContains(response, 'Nosferatu')
+
+    def test_screenings_are_grouped_under_their_film(self):
+        self.schedule(self.nosferatu, self.today, 14)
+        self.schedule(self.nosferatu, self.today, 20)
+        self.schedule(self.paddington, self.today, 11)
+        listings = self.get().context['listings']
+        self.assertEqual(
+            [(film.title, len(times)) for film, times in listings],
+            [('Paddington', 1), ('Nosferatu', 2)],
+        )
+
+    def test_cancelled_and_private_screenings_are_left_out(self):
+        self.schedule(self.nosferatu, self.today, 11, is_private=True)
+        self.schedule(self.nosferatu, self.today, 20,
+                      cancelled_at=timezone.now())
+        self.assertNotContains(self.get(), 'Nosferatu')
+
+    def test_each_film_links_to_its_page_on_the_same_day(self):
+        tomorrow = self.today + timedelta(days=1)
+        self.schedule(self.nosferatu, tomorrow, 20)
+        self.assertContains(
+            self.get(tomorrow),
+            f'href="/films/nosferatu/?date={tomorrow.isoformat()}"',
+        )
+
+    def test_access_flags_show_on_the_time(self):
+        self.schedule(self.nosferatu, self.today, 20, has_captions=True,
+                      has_audio_description=True)
+        response = self.get()
+        self.assertContains(response, 'Captioned')
+        self.assertContains(response, 'Audio described')
+
+    def test_the_day_strip_offers_a_week_and_marks_the_chosen_day(self):
+        response = self.get(self.today + timedelta(days=2))
+        self.assertEqual(len(response.context['days']), 7)
+        self.assertContains(response, 'aria-current="date"', count=1)
+
+    def test_a_date_outside_the_week_shows_today(self):
+        for day in ('2001-01-01', 'not-a-date'):
+            with self.subTest(day=day):
+                response = self.client.get(
+                    reverse('screenings:screening_list'), {'date': day}
+                )
+                self.assertEqual(response.context['day'], self.today)
+
+    def test_a_day_with_nothing_on_says_so(self):
+        self.assertContains(self.get(), 'Nothing is showing on this day.')

@@ -1,0 +1,15 @@
+{% comment %}The days a visitor can choose, with the chosen one marked.
+Needs days and day in the context.{% endcomment %}
+<nav aria-label="Choose a day">
+  <ul class="cluster" role="list">
+    {% for option in days %}
+      <li>
+        <a class="button" href="?date={{ option.isoformat }}"
+           {% if option == day %}data-variant="primary" aria-current="date"{% else %}data-variant="secondary"{% endif %}>
+          {% if forloop.first %}Today{% else %}{{ option|date:"D" }}{% endif %}
+          {{ option|date:"j" }}
+        </a>
+      </li>
+    {% endfor %}
+  </ul>
+</nav>
