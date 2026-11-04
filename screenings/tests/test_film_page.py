@@ -43,6 +43,53 @@ class FilmPageTests(TestCase):
         film = Film.objects.create(title='Preview', duration_minutes=90)
         self.assertContains(self.get(film), 'Rating to be confirmed')
 
+    def test_an_age_rated_film_asks_for_photo_id(self):
+        """Architecture 4.1: age is checked at the door."""
+        line = 'Bring photo ID showing your date of birth.'
+        for rating, shown in (('U', False), ('PG', False), ('12A', True),
+                              ('15', True), ('18', True)):
+            with self.subTest(rating=rating):
+                film = Film.objects.create(
+                    title=f'Film {rating}', duration_minutes=90,
+                    age_rating=rating,
+                )
+                if shown:
+                    self.assertContains(self.get(film), line)
+                else:
+                    self.assertNotContains(self.get(film), line)
+
+    def test_says_whether_under_2s_can_come(self):
+        family = Film.objects.create(
+            title='Paddington', duration_minutes=95, age_rating='PG'
+        )
+        self.assertContains(
+            self.get(family), 'Under 2s go free and sit on a lap.'
+        )
+        self.assertContains(
+            self.get(), "Under 2s can't come to this film."
+        )
+
+    def test_says_the_circle_is_stairs_only(self):
+        self.assertContains(
+            self.get(),
+            'The circle is reached by stairs only. The stalls are '
+            'step-free.',
+        )
+
+    def test_the_trailer_is_a_link_that_never_autoplays(self):
+        self.film.trailer_key = 'abc123'
+        self.film.save()
+        response = self.get()
+        self.assertContains(
+            response, 'href="https://www.youtube.com/watch?v=abc123"'
+        )
+        self.assertContains(response, 'Watch the trailer')
+        self.assertNotContains(response, '<iframe')
+        self.assertNotContains(response, 'autoplay')
+
+    def test_no_trailer_means_no_trailer_link(self):
+        self.assertNotContains(self.get(), 'Watch the trailer')
+
     def test_the_title_names_the_film(self):
         self.assertContains(
             self.get(), '<title>Nosferatu | Regal Cinema</title>'

@@ -56,6 +56,14 @@ class Film(models.Model):
                 self.AgeRating.EIGHTEEN: 18}.get(self.age_rating, 0)
 
     @property
+    def is_age_restricted(self):
+        """12A and above, where staff may check age at the door (4.1)."""
+        return self.age_rating in (
+            self.AgeRating.TWELVE_A, self.AgeRating.TWELVE,
+            self.AgeRating.FIFTEEN, self.AgeRating.EIGHTEEN,
+        )
+
+    @property
     def allows_infants(self):
         """Infants, under 2 and on a lap, are only allowed on U, PG and
         12A films (4.2)."""
