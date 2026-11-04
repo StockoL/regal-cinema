@@ -272,6 +272,20 @@ class TsTzRange(models.Func):
     output_field = DateTimeRangeField()
 
 
+class ScreeningQuerySet(models.QuerySet):
+
+    def public(self):
+        """What the public can see: never a cancelled or private
+        screening, nor one of a retired film (4.11, 4.19)."""
+        return self.filter(
+            cancelled_at__isnull=True, is_private=False, film__is_active=True,
+        )
+
+    def on_date(self, day):
+        """Screenings starting on a calendar day in the venue's time."""
+        return self.filter(date_time__date=day)
+
+
 class Screening(models.Model):
     """A film on a screen at a time. It holds the screen from date_time to
     ends_at, and no two screenings on a screen may overlap (4.1)."""
@@ -295,6 +309,8 @@ class Screening(models.Model):
     is_private = models.BooleanField(default=False)
     has_captions = models.BooleanField(default=False)
     has_audio_description = models.BooleanField(default=False)
+
+    objects = ScreeningQuerySet.as_manager()
 
     class Meta:
         ordering = ['date_time']
