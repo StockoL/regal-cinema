@@ -272,6 +272,19 @@ class Screening(models.Model):
     def is_cancelled(self):
         return self.cancelled_at is not None
 
+    def seats(self):
+        """The screen's fixed seats plus this screening's layout, leaving
+        out seats out of use. Capacity comes from this set, worked out
+        when needed, so it can't disagree with the seat plan (4.1)."""
+        return self.screen.seats.filter(
+            models.Q(layout__isnull=True) | models.Q(layout=self.layout_id),
+            is_active=True,
+        )
+
+    @property
+    def capacity(self):
+        return self.seats().count()
+
     def calculate_ends_at(self):
         minutes = (
             settings.SCREENING_TRAILER_MINUTES

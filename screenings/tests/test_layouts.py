@@ -199,3 +199,53 @@ class ScreeningLayoutTests(TestCase):
         self.make_screening().save()
         with self.assertRaises(ProtectedError):
             self.layout.delete()
+
+
+class ScreeningSeatsTests(TestCase):
+    """The seats a screening uses are the screen's fixed seats plus its
+    layout's seats, less any seat out of use (architecture 4.1)."""
+
+    def setUp(self):
+        self.screen = Screen.objects.create(name='Screen 1')
+        self.rows = SeatingLayout.objects.create(
+            screen=self.screen, name='Rows'
+        )
+        self.tables = SeatingLayout.objects.create(
+            screen=self.screen, name='Tables'
+        )
+        self.circle_a1 = self.seat(area=Seat.Area.CIRCLE, row_label='A')
+        self.rows_1 = self.seat(layout=self.rows)
+        self.rows_2 = self.seat(layout=self.rows, number=2, column_index=1)
+        self.tables_1 = self.seat(layout=self.tables)
+        self.screening = Screening.objects.create(
+            film=Film.objects.create(title='Nosferatu', duration_minutes=100),
+            screen=self.screen, layout=self.rows,
+            ticket_class=TicketClass.objects.create(name='Standard'),
+            date_time=datetime(2026, 11, 14, 19, 0,
+                               tzinfo=ZoneInfo('Europe/London')),
+        )
+
+    def seat(self, **fields):
+        fields.setdefault('screen', self.screen)
+        fields.setdefault('area', Seat.Area.STALLS)
+        fields.setdefault('number', 1)
+        fields.setdefault('row_index', 0)
+        fields.setdefault('column_index', 0)
+        return Seat.objects.create(**fields)
+
+    def test_fixed_seats_and_the_layouts_seats_are_included(self):
+        self.assertCountEqual(
+            self.screening.seats(),
+            [self.circle_a1, self.rows_1, self.rows_2],
+        )
+
+    def test_another_layouts_seats_are_left_out(self):
+        self.assertNotIn(self.tables_1, self.screening.seats())
+
+    def test_a_seat_out_of_use_is_left_out(self):
+        self.rows_2.is_active = False
+        self.rows_2.save()
+        self.assertNotIn(self.rows_2, self.screening.seats())
+
+    def test_capacity_is_counted_from_those_seats(self):
+        self.assertEqual(self.screening.capacity, 3)
