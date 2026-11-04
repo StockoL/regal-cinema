@@ -1,9 +1,11 @@
+from datetime import datetime
 from io import StringIO
+from zoneinfo import ZoneInfo
 
-from django.core.management import call_command
+from django.core.management import CommandError, call_command
 from django.test import TestCase
 
-from screenings.models import Screen, Seat
+from screenings.models import Film, Screen, Screening, Seat, TicketClass
 
 
 class SeedSeatsTests(TestCase):
@@ -67,3 +69,36 @@ class SeedSeatsTests(TestCase):
         call_command('seed_seats', stdout=out)
         self.assertEqual(Seat.objects.count(), 46 + 36 + 140)
         self.assertIn('already has seats', out.getvalue())
+
+
+class SeedSeatsReplaceTests(TestCase):
+    """--replace clears Screen 1's plan and seeds it again, so a change
+    to the plan can be applied to a database that already has one."""
+
+    def seed(self, *args):
+        out = StringIO()
+        call_command('seed_seats', *args, stdout=out)
+        return out.getvalue()
+
+    def test_replace_rebuilds_the_plan(self):
+        self.seed()
+        screen = Screen.objects.get(name='Screen 1')
+        screen.seats.filter(area=Seat.Area.CIRCLE).first().delete()
+        self.seed('--replace')
+        self.assertEqual(screen.seats.filter(area=Seat.Area.CIRCLE).count(),
+                         140)
+        self.assertEqual(screen.layouts.count(), 2)
+
+    def test_replace_is_refused_once_a_screening_uses_the_plan(self):
+        self.seed()
+        screen = Screen.objects.get(name='Screen 1')
+        Screening.objects.create(
+            film=Film.objects.create(title='A film', duration_minutes=90),
+            screen=screen, layout=screen.layouts.get(is_default=True),
+            ticket_class=TicketClass.objects.create(name='Standard'),
+            date_time=datetime(2026, 11, 14, 19, 0,
+                               tzinfo=ZoneInfo('Europe/London')),
+        )
+        with self.assertRaises(CommandError):
+            self.seed('--replace')
+        self.assertEqual(screen.seats.count(), 46 + 36 + 140)

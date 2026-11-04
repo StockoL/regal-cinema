@@ -1,4 +1,4 @@
-from django.core.management.base import BaseCommand
+from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 
 from screenings.models import Screen, Seat, SeatingLayout
@@ -28,12 +28,30 @@ class Command(BaseCommand):
         'venue, so it is run by hand and never by a migration.'
     )
 
+    def add_arguments(self, parser):
+        parser.add_argument(
+            '--replace', action='store_true',
+            help="Delete Screen 1's seats and layouts and seed them again. "
+                 'Refused once any screening uses them.',
+        )
+
     @transaction.atomic
     def handle(self, *args, **options):
         screen, _ = Screen.objects.get_or_create(name='Screen 1')
         if screen.seats.exists():
-            self.stdout.write('Screen 1 already has seats. Nothing changed.')
-            return
+            if not options['replace']:
+                self.stdout.write(
+                    'Screen 1 already has seats. Nothing changed. '
+                    'Use --replace to seed it again.'
+                )
+                return
+            if screen.screenings.exists():
+                raise CommandError(
+                    'Screen 1 has screenings, so its seat plan is in use '
+                    "and can't be replaced. Edit it in the admin instead."
+                )
+            screen.seats.all().delete()
+            screen.layouts.all().delete()
 
         standard = SeatingLayout.objects.create(
             screen=screen, name='Standard', is_default=True
