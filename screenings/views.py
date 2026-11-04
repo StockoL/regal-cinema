@@ -1,9 +1,9 @@
 from datetime import date, timedelta
 
-from django.shortcuts import render
+from django.shortcuts import get_object_or_404, render
 from django.utils import timezone
 
-from .models import Screening
+from .models import Film, Screening
 
 # How many days the date strip offers, starting today.
 DAYS_SHOWN = 7
@@ -37,3 +37,9 @@ def screening_list(request):
         'days': days,
         'listings': list(films.items()),
     })
+
+
+def film_detail(request, slug):
+    """A film's own page. A retired film is gone from the public site."""
+    film = get_object_or_404(Film, slug=slug, is_active=True)
+    return render(request, 'screenings/film_detail.html', {'film': film})

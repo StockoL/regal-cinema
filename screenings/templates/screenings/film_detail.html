@@ -1,0 +1,27 @@
+{% extends 'base.html' %}
+{% load screenings_extras %}
+
+{% block title %}{{ film.title }}{% endblock %}
+
+{% block content %}
+<article class="wrapper region flow">
+  <h1>{{ film.title }}</h1>
+
+  <ul class="cluster" role="list">
+    <li>
+      {% if film.age_rating %}
+        <span class="badge">Rated {{ film.age_rating }}</span>
+      {% else %}
+        <span class="badge">Rating to be confirmed</span>
+      {% endif %}
+    </li>
+    <li>{{ film.duration_minutes|runtime }}</li>
+  </ul>
+
+  {% if film.content_advice %}<p>{{ film.content_advice }}</p>{% endif %}
+
+  {% if film.synopsis %}
+    <div class="prose">{{ film.synopsis|linebreaks }}</div>
+  {% endif %}
+</article>
+{% endblock %}
