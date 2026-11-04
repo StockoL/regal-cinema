@@ -6,6 +6,17 @@ from screenings.models import Screen, Seat, SeatingLayout
 STALLS = Seat.Area.STALLS
 CIRCLE = Seat.Area.CIRCLE
 
+# The plan lives in these constants, so changing it is a one-line edit.
+
+# Circle rows, front to back.
+CIRCLE_ROWS = 'ABCDE'
+# Circle seat numbers in each row, left to right, one range per block
+# with an aisle between blocks: 28 seats a row, 140 in all.
+CIRCLE_BLOCKS = [range(28, 19, -1), range(19, 9, -1), range(9, 0, -1)]
+# Boxes as (label, column) on a row behind the circle, such as
+# [('Box C', 0), ('Box D', 30)]. None for now, so the circle stays at 140.
+BOXES = []
+
 # Stalls rows of ten with a centre aisle at column 5.
 ROW_COLUMNS = [0, 1, 2, 3, 4, 6, 7, 8, 9, 10]
 
@@ -42,14 +53,12 @@ class Command(BaseCommand):
         )
 
     def circle(self, screen):
-        """Rows A (front) to E, numbered 28 down to 1 from left to right
-        across three blocks, with an aisle between blocks. Fixed seats,
+        """The circle rows and blocks above, then any boxes. Fixed seats,
         so they appear in every layout."""
-        blocks = [range(28, 19, -1), range(19, 9, -1), range(9, 0, -1)]
         seats = []
-        for row_index, row_label in enumerate('ABCDE'):
+        for row_index, row_label in enumerate(CIRCLE_ROWS):
             column = 0
-            for block in blocks:
+            for block in CIRCLE_BLOCKS:
                 for number in block:
                     seats.append(Seat(
                         screen=screen, area=CIRCLE, row_label=row_label,
@@ -58,11 +67,11 @@ class Command(BaseCommand):
                     ))
                     column += 1
                 column += 1
-        for number, (column, name) in enumerate(
-                [(0, 'Box C'), (30, 'Box D')], start=1):
+        for number, (name, column) in enumerate(BOXES, start=1):
             seats.append(Seat(
                 screen=screen, area=CIRCLE, row_label='Box', number=number,
-                row_index=5, column_index=column, label_override=name,
+                row_index=len(CIRCLE_ROWS), column_index=column,
+                label_override=name,
             ))
         return seats
 

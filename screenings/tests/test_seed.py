@@ -15,8 +15,8 @@ class SeedSeatsTests(TestCase):
         return Screen.objects.get(name='Screen 1')
 
     def test_the_default_layout_gives_the_usual_capacity(self):
-        """46 stalls seats, 140 circle seats and the two boxes."""
-        self.assertEqual(self.seed().capacity, 188)
+        """46 stalls seats and 140 circle seats."""
+        self.assertEqual(self.seed().capacity, 186)
 
     def test_standard_is_the_default_and_tables_is_the_other(self):
         screen = self.seed()
@@ -29,10 +29,9 @@ class SeedSeatsTests(TestCase):
     def test_the_circle_is_fixed_with_five_rows(self):
         circle = self.seed().seats.filter(area=Seat.Area.CIRCLE)
         self.assertFalse(circle.filter(layout__isnull=False).exists())
+        self.assertEqual(circle.count(), 140)
         self.assertEqual(
-            set(circle.exclude(row_label='Box')
-                .values_list('row_label', flat=True)),
-            set('ABCDE'),
+            set(circle.values_list('row_label', flat=True)), set('ABCDE')
         )
 
     def test_every_layout_has_wheelchair_spaces_with_companions(self):
@@ -58,12 +57,6 @@ class SeedSeatsTests(TestCase):
             with self.subTest(table=number):
                 self.assertEqual(tables.filter(table_number=number).count(), 4)
 
-    def test_the_boxes_read_as_boxes(self):
-        labels = {seat.label for seat in self.seed().seats.filter(
-            row_label='Box'
-        )}
-        self.assertEqual(labels, {'Box C', 'Box D'})
-
     def test_every_seat_passes_validation(self):
         for seat in self.seed().seats.all():
             seat.full_clean()
@@ -72,5 +65,5 @@ class SeedSeatsTests(TestCase):
         self.seed()
         out = StringIO()
         call_command('seed_seats', stdout=out)
-        self.assertEqual(Seat.objects.count(), 46 + 36 + 142)
+        self.assertEqual(Seat.objects.count(), 46 + 36 + 140)
         self.assertIn('already has seats', out.getvalue())
