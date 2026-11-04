@@ -149,6 +149,13 @@ class WhatsOnByDateTests(TestCase):
             f'href="/films/nosferatu/?date={tomorrow.isoformat()}"',
         )
 
+    def test_runtime_reads_as_hours_and_minutes(self):
+        """The same wording as the film page."""
+        self.schedule(self.nosferatu, self.today, 20)
+        response = self.get()
+        self.assertContains(response, '1 hour 40 minutes')
+        self.assertNotContains(response, '100 minutes')
+
     def test_access_flags_show_on_the_time(self):
         self.schedule(self.nosferatu, self.today, 20, has_captions=True,
                       has_audio_description=True)

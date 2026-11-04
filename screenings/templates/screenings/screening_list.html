@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load screenings_extras %}
 
 {% block title %}What's on{% endblock %}
 
@@ -19,7 +20,7 @@
               <a href="{% url 'screenings:film_detail' film.slug %}?date={{ day.isoformat }}">{{ film.title }}</a>
               {% if film.age_rating %}<span class="badge">{{ film.age_rating }}</span>{% endif %}
             </h3>
-            <p>{{ film.duration_minutes }} minutes</p>
+            <p>{{ film.duration_minutes|runtime }}</p>
             <ul class="cluster" role="list" aria-label="Times">
               {% for screening in screenings %}
                 <li>
