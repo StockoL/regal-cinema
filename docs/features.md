@@ -6,7 +6,7 @@ Each app's customer-facing and staff-facing features, following from the [data m
 
 There are two kinds of user: registered customers and staff. A superuser grants staff status (`is_staff`), and there's no public way to become staff. What staff can do is set by individual permissions, bundled into groups (see [4.9](architecture.md#49-staff)). Below, "Front of House" and "Manager" mean who holds the permission by default. A venue can move any permission between groups in the admin.
 
-Staff don't use Django's built-in `/admin` for day-to-day work. It exposes every field on every model, which is more power, and more room for accidental mistakes, than daily duties need, and it doesn't match the rest of the site or guide someone unfamiliar with Django through their tasks. The day-to-day tools are custom pages instead, built with the same templates and design system as the public site and gated by permission checks: the till for in-venue bookings, the cancellation queue, the prep list and screening occupancy. The admin is for back-office configuration that changes rarely: the catalogue, ticket types and classes, seating layouts, the venue settings, and users and groups. Anything done there that's sensitive goes through the same service functions as the custom pages, so the audit log is written either way.
+Staff don't use Django's built-in `/admin` for day-to-day work. It exposes every field on every model, which is more power, and more room for accidental mistakes, than daily duties need, and it doesn't match the rest of the site or guide someone unfamiliar with Django through their tasks. The day-to-day tools are custom pages instead, built with the same templates and design system as the public site and gated by permission checks: the till for in-venue bookings, check-in, the cancellation queue, the food and drink service list and screening occupancy. The admin is for back-office configuration that changes rarely: the catalogue, ticket types and classes, seating layouts, the venue settings, and users and groups. Anything done there that's sensitive goes through the same service functions as the custom pages, so the audit log is written either way.
 
 Anything financial or sensitive (a refund, a cancellation, a voucher issued) is recorded in the audit log with who did it and why. See [4.9](architecture.md#49-staff).
 
@@ -44,7 +44,7 @@ Staff-facing:
 - Front of House: create a booking for a walk-up customer by card, with no email or account needed, using the same seat map, ticket types, concessions and discount rules as the online flow ([4.14](architecture.md#414-in-venue-bookings-staff-assisted-card-only))
 - Front of House: view the bookings for a screening, for door and headcount purposes
 - Front of House: view a single booking in full (seats, ticket types, concessions, payment status), to resolve a customer query at the door or by phone
-- Front of House: find a booking by its reference
+- Front of House: find a booking by its reference or the customer's email, and check the party in, which records who did it and when ([4.2](architecture.md#42-bookings))
 - Front of House: review customer cancellation requests, and approve them with a voucher or decline them, with a note required either way. Both are logged ([4.22](architecture.md#422-customer-cancellations-and-refunds))
 - Manager: refund to the original card, including the exception for a cancellation the customer started, and cancel or refund any booking. Seats are released immediately and the action is logged
 
@@ -90,7 +90,7 @@ Customer-facing:
 Staff-facing:
 
 - Front of House: view and update the status of enquiries (new, contacted, booked, declined), and see which `Screening` an enquiry became ([4.19](architecture.md#419-private-hire-and-screening-visibility))
-- Manager, in the admin: edit the venue settings (cancellation cutoff and fee, hold length, online sales cut-off, trailer and turnaround times, gift voucher limits, phone number, address and opening hours) ([4.23](architecture.md#423-venue-settings-and-what-is-law-versus-policy))
+- Manager, in the admin: edit the venue settings (cancellation cutoff and fee, withdrawal period, hold length, online sales cut-off, trailer and turnaround times, gift voucher limits, food order cutoff, bar collection lead time, seat delivery default, phone number, address and opening hours) ([4.23](architecture.md#423-venue-settings-and-what-is-law-versus-policy))
 
 ## 5.6 `staff`
 
