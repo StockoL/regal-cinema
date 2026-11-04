@@ -53,6 +53,18 @@ The real Regal adds a booking fee of £3.75 to each ticket, and doesn't refund i
 
 The real Regal asks for 30 days' notice to cancel a membership. That kind of rule belongs with a membership that renews and charges automatically. Mine doesn't renew (4.18), so there's nothing to give notice about, and the 14-day refund in 4.22 covers changing your mind just after buying. If recurring billing were ever added, a notice period would come with it.
 
+## 8.6 In-seat ordering during the screening
+
+Ordering ahead (4.3) covers the main case: the customer decides before they arrive and the food comes during the adverts. The next step would be a QR code on each seat that opens a short menu, so someone can order a second drink once the film has started. The order would link to the seat rather than a booking, and staff would need a kitchen view that updates as orders arrive, which is more than the service list does. It's a real feature at some cinemas, and it's out until the ordering-ahead flow has been used and the venue says it wants it.
+
+## 8.7 A private hire budget estimator
+
+The enquiry form (4.6) asks for the event type, date and party size, and staff reply by email. An estimator on the enquiry page could give a rough price from those answers before the customer sends anything. It needs the venue's real hire prices, which I don't have and shouldn't invent, so it stays an idea.
+
+## 8.8 Premium seat pricing
+
+A seat's area doesn't affect its price (4.1): the real venue charges the same wherever you sit. If a venue priced the sofas, the boxes or the front of the circle differently, `ScreeningPrice` would need a seat type alongside the ticket type, and the live summary would show the seat's price as well as the ticket's. That reverses a deliberate decision, so it only happens if a venue actually prices that way.
+
 ---
 
 [← 7. Testing and quality assurance](testing.md) · [README](../README.md)

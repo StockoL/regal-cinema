@@ -61,12 +61,12 @@ Planned scope: Stripe on top of the working booking skeleton: Checkout Session c
 
 </details>
 
-## Phase 4: Concessions, membership and discounts
+## Phase 4: Food and drink, membership and discounts
 
 <details>
 <summary>Phase 4</summary>
 
-Planned scope: the `concessions` app (`Product`, `OrderItem`) in checkout; the `membership` app (`MembershipTier`, `MembershipPurchase`, `Voucher`), including buying a gift voucher (4.26); and the discount and voucher order (4.10). This comes after payment works because there's no sensible way to test whether a discount applies correctly until a charge can already succeed without one.
+Planned scope: food and drink first, as the headline feature (4.3): the `concessions` app (`Product`, `OrderItem`) in checkout, ordering ahead with seat delivery or bar collection, the order cutoff, the sold-out switch and the staff service list; then the `membership` app (`MembershipTier`, `MembershipPurchase`, `Voucher`), including buying a gift voucher (4.26); and the discount and voucher order (4.10). This comes after payment works because there's no sensible way to test whether a discount applies correctly until a charge can already succeed without one.
 
 ### To be completed during development
 
@@ -88,7 +88,7 @@ Planned scope: priority booking logic and the greyed-out listing state (4.18); t
 <details>
 <summary>Phase 6</summary>
 
-Planned scope: staff-assisted card-in-person bookings (4.14); the `staff` app (audit log, refunds, customer cancellation requests, sales dashboard per 4.9 and 4.22); the permission groups and the separate `/staff/` login (4.9, 4.12). This is last among the functional work because it depends on bookings, payments and discounts already existing.
+Planned scope: staff-assisted card-in-person bookings (4.14) and check-in at the door (4.2); the `staff` app (audit log, refunds, customer cancellation requests, sales dashboard per 4.9 and 4.22); the permission groups and the separate `/staff/` login (4.9, 4.12). This is last among the functional work because it depends on bookings, payments and discounts already existing.
 
 ### To be completed during development
 

@@ -75,6 +75,8 @@ Success: no seat is ever double-booked under concurrent access, shown by an auto
 | Infants on suitable films | Given a film is rated 15 or 18, when the customer adds infants, then they are refused, since infants are only allowed on U, PG and 12A films.                                                                               | Must   |
 | Ticket types by rating    | Given a film's rating, when ticket types are offered, then any type whose maximum age is below the film's minimum age isn't offered.                                                                                        | Must   |
 | Proof reminder            | Given a booking includes a ticket type that needs proof, when the customer reaches checkout and the confirmation, then both remind them to bring proof of age or status.                                                    | Should |
+| Companion ticket          | Given a Companion ticket is in the basket, when the rules are checked, then it needs a ticket that is neither child nor companion, and companions can't outnumber those.                                                   | Must   |
+| Companion seat            | Given the customer picks a wheelchair space, when they choose the next seat, then the seats beside it are offered first, and sitting elsewhere gives a notice but isn't blocked.                                             | Should |
 | Hold created              | Given seats are selected, when the customer proceeds, then the server re-validates and creates holds for the venue's hold time.                                                                                             | Must   |
 | Conflict                  | Given a seat was taken in the gap, when the hold is attempted, then only the conflicting seats are flagged and the other selections are kept.                                                                               | Must   |
 | Sales closed              | Given a screening is about to start, when the venue's online sales cut-off has passed, then it can't be booked online and the customer is told why.                                                                         | Must   |
@@ -105,10 +107,19 @@ Success: every `OrderItem` belongs to exactly one finalised booking, with the pr
 
 | Step             | Scenario                                                                                                                                         | MoSCoW |
 | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ | ------ |
-| Browse products  | Given checkout is open, when the customer views items, then drinks and snacks are shown with prices.                                             | Must   |
-| Add              | Given an item is added, when it is added, then an `OrderItem` attaches to the in-progress booking.                                               | Should |
+| Browse products  | Given checkout is open, when the customer views items, then drinks and snacks are shown with prices and allergens.                               | Must   |
+| Add              | Given an item is added, when it is added, then an `OrderItem` attaches to the in-progress booking.                                               | Must   |
 | Adjust           | Given a quantity changes, when it is changed, then the total reflects it, instantly if the live summary is built and on the next step otherwise. | Should |
+| Seat or bar      | Given items are in the basket, when the customer continues, then they choose once whether it's brought to their seats or collected from the bar. | Must   |
+| Seat delivery off | Given seat delivery is off for the screening, when the customer orders, then only bar collection is offered.                                    | Should |
+| Order cutoff     | Given the screening starts within the venue's food cutoff, when the customer reaches the food step, then ordering is closed and they are told.   | Must   |
+| Age-restricted   | Given an item has a minimum age, when it is in the basket, then the item, the order check and the confirmation say ID is checked on delivery.    | Should |
+| Sold out         | Given an item is marked sold out, when the customer browses the menu, then it isn't offered.                                                     | Should |
+| Skip             | Given the customer wants no food, when they skip the step, then checkout continues with tickets only.                                            | Must   |
+| No JavaScript    | Given JavaScript is off, when the customer orders, then the food step works as a plain form.                                                     | Should |
 | Survives payment | Given payment succeeds, when the booking is finalised, then every item is recorded with its unit price at that moment.                           | Must   |
+| Service list     | Given a screening has orders, when staff open its service list, then each item is shown in walking order and moves through ordered, preparing and delivered, with each change logged. | Must   |
+| Suggested items  | Given a film's page, when the food step loads, then a short list of popular items is offered first.                                              | Could  |
 
 Food and drink on a phone, and the service list staff use on a tablet during the screening.
 
@@ -185,7 +196,7 @@ Success: a customer can see every booking and request a cancellation without pho
 | Detail                      | Given a booking, when it is opened, then the screening, seats, items, amount charged and reference are shown, using stored figures, not recalculated ones.                                                                                                                                                             | Must   |
 | Request outside cutoff      | Given an upcoming booking more than the cutoff hours away, when the customer requests cancellation, then the booking becomes `cancellation_requested` and they are told staff will confirm.                                                                                                                            | Should |
 | Inside cutoff               | Given a booking inside the cutoff window, when the customer opens the cancellation page, then no request form is offered, and the venue's phone number and opening hours are shown.                                                                                                                                    | Should |
-| Staff decision              | Given a staff member approves a request, when they confirm it, then a voucher for the booking's value minus any cancellation fee is issued, the seats are released immediately, the status updates, and the action is logged with a reason. A card refund instead is a Manager's exception, also logged with a reason. | Should |
+| Staff decision              | Given a staff member approves a request, when they confirm it, then a voucher for the booking's value, food and drink included, minus any cancellation fee is issued, the seats are released immediately, the status updates, and the action is logged with a reason. A card refund instead is a Manager's exception, also logged with a reason. | Should |
 | Request declined            | Given Front of House decline a request, when they record a note, then the booking returns to paid, the customer is told, and the action is logged with the staff member's name.                                                                                                                                        | Should |
 | Past or cancelled           | Given a booking is past or already cancelled, when it is viewed, then no cancellation option is shown.                                                                                                                                                                                                                 | Should |
 | Grace period after purchase | Given a customer cancels within minutes of booking, when inside the cutoff, then the request is still allowed.                                                                                                                                                                                                         | Could  |
@@ -251,8 +262,9 @@ Success: the no-overlap rule holds on every save, not only on creation, and edit
 | Valid save         | Given no overlap, when it is saved, then it appears immediately in staff and (if public) customer listings.                                                   | Must   |
 | Price table        | Given staff choose a ticket class, when the form loads, then a price for each ticket type is pre-filled from the class default and each line can be edited.   | Must   |
 | Price edited later | Given a paid booking exists, when a ticket price on that screening is later edited, then the booking still shows the amount charged at the time.              | Must   |
+| Seat delivery off  | Given a screening with no table service, when the Manager turns seat delivery off for it, then customers booking it are offered bar collection only.         | Should |
 
-A screening form for a tablet. It goes further than the [wireframe brief](wireframes.md), which keeps screening setup in the admin.
+The screening setup page for a tablet. It's a Django admin page for Managers, drawn to settle the fields and wording ([wireframe brief](wireframes.md), screen 16).
 
 <img src="wireframes/23-tablet-staff-screening-setup.png" alt="Tablet wireframe of a new screening form: film, screen, date and start with the calculated end time, the seating layout, areas to close, a ticket class with a price per ticket type, and seat delivery">
 
@@ -279,6 +291,7 @@ Success: `stripe_payment_intent_id` stays empty on every in-venue booking, so th
 | Flags set       | Given the customer pays on the venue's card terminal, when staff mark it paid, then channel, payment method and `created_by` are set and no Stripe payment is created. | Must   |
 | Member discount | Given the customer wants their discount, when staff look up their account by email, then the booking links to it.                                                      | Should |
 | Anonymous sale  | Given the customer gives no details, when the sale completes, then the booking has no user.                                                                            | Must   |
+| Check-in        | Given a customer arrives with their reference, when staff find the booking and check the party in, then the booking records who did it and when, and the action is logged. | Must   |
 
 Check-in on a phone: finding a booking by its reference. The till itself isn't drawn yet.
 
