@@ -56,6 +56,10 @@ Success: a customer can get from the landing page to a specific screening's seat
 | Priority screenings visible | Given a screening isn't yet open to the public, when it appears in a listing, then it is greyed out with a text label saying who can book it and when, linking to the membership page. | Must   |
 | Empty date                  | Given a chosen date has no showings, when it is displayed, then a clear empty state appears.                                                                                           | Could  |
 
+The home page and the film page, drawn for a phone.
+
+<img src="wireframes/07-phone-reel.png" alt="Phone wireframe of the home page: a date strip, a row of discounted showings, and today's films with showtime pills marked sales closed, seats left or Friends first" width="300"> <img src="wireframes/08-phone-film.png" alt="Phone wireframe of a film page: poster, age rating, the photo ID line, a trailer button, synopsis, a date strip and the day's showtimes with Choose seats buttons" width="300">
+
 ## Journey 2: Select seats and hold them
 
 Success: no seat is ever double-booked under concurrent access, shown by an automated concurrency test and a manual two-tab check.
@@ -81,6 +85,20 @@ Success: no seat is ever double-booked under concurrent access, shown by an auto
 | Expired mid-checkout      | Given a hold has expired, when payment is attempted, then the customer returns to the seat map with a plain explanation.                                                                                                    | Must   |
 | Back button               | Given the browser's back button is used, when the seat grid reappears, then it re-fetches live state.                                                                                                                       | Should |
 
+The seat map on a phone: the whole room, one circle block, and the room again with the chosen seats badged.
+
+<img src="wireframes/01-phone-whole-room.png" alt="Phone wireframe of the seat map: a seat counter, the stalls seat by seat, and the circle as three block tiles with seats left or Full" width="300"> <img src="wireframes/02-phone-circle-block.png" alt="Phone wireframe of one circle block, rows A to E, with two seats selected and sold seats crossed out" width="300"> <img src="wireframes/03-phone-seats-chosen.png" alt="Phone wireframe of the whole room again, with a 2 chosen badge on the circle left block and the summary bar reading 2 of 2 seats chosen" width="300">
+
+The same seats as a plain form when JavaScript is off, and the desktop map with the live summary beside it.
+
+<img src="wireframes/04-phone-no-javascript.png" alt="Phone wireframe of the seat map without JavaScript: a fieldset of checkboxes per row, with sold seats disabled" width="300">
+
+<img src="wireframes/05-desktop.png" alt="Desktop wireframe of the seat map: stalls and circle on the left, and a Your seats panel on the right with a ticket type per seat, an infant counter, the total and the hold timer">
+
+The seat and block states, each told apart by shape or text, never by colour alone.
+
+<img src="wireframes/06-states-key.png" alt="Key to the seat states: available, selected, sold, outside section, wheelchair space, companion seat and out of use, plus the three block tile states on a phone" width="520">
+
 ## Journey 3: Add food and drink
 
 Success: every `OrderItem` belongs to exactly one finalised booking, with the price recorded at the time, and is never orphaned or duplicated.
@@ -91,6 +109,12 @@ Success: every `OrderItem` belongs to exactly one finalised booking, with the pr
 | Add              | Given an item is added, when it is added, then an `OrderItem` attaches to the in-progress booking.                                               | Should |
 | Adjust           | Given a quantity changes, when it is changed, then the total reflects it, instantly if the live summary is built and on the next step otherwise. | Should |
 | Survives payment | Given payment succeeds, when the booking is finalised, then every item is recorded with its unit price at that moment.                           | Must   |
+
+Food and drink on a phone, and the service list staff use on a tablet during the screening.
+
+<img src="wireframes/09-phone-food-and-drink.png" alt="Phone wireframe of food and drink: seat delivery or bar collection, items popular with this film, drinks and snacks with plus and minus buttons, and a running total" width="300">
+
+<img src="wireframes/20-tablet-staff-service-list.png" alt="Tablet wireframe of the staff service list: seat delivery orders in walking order, each with Ordered, Preparing and Delivered buttons and a check-ID flag on age-restricted items">
 
 ## Journey 4: Register or log in
 
@@ -106,6 +130,10 @@ Success: no customer loses a seat hold by registering or logging in during check
 | Hold survives login  | Given holds exist under an anonymous session, when the customer logs in mid-checkout, then the holds reassign to their account. | Must   |
 | Verification         | Given a new account, when registration completes, then a verification email is sent but the account works immediately.          | Should |
 
+Log in during checkout, with the seats still held, and the register form with an inline error.
+
+<img src="wireframes/15-phone-login.png" alt="Phone wireframe of Log in during checkout, with a note that the seats are still held" width="300"> <img src="wireframes/16-phone-register.png" alt="Phone wireframe of Create an account, with an inline error under the email field" width="300">
+
 ## Journey 5: Apply a voucher
 
 Success: a voucher's balance never goes negative and only ever decreases when payment is confirmed.
@@ -116,6 +144,10 @@ Success: a voucher's balance never goes negative and only ever decreases when pa
 | Used-up code     | Given a voucher's balance is zero, when it is entered, then it is rejected with that reason.                                                                       | Must              |
 | Partial cover    | Given a voucher covers only part of the total, when checkout completes, then the remainder is charged to Stripe and the voucher decreases only after confirmation. | Must              |
 | Simultaneous use | Given one code is entered in two checkouts at once, when both pay, then the documented race window applies (see Known Issues).                                     | Won't (this time) |
+
+The order check with a voucher applied and the balance left on it.
+
+<img src="wireframes/10-phone-check-order.png" alt="Phone wireframe of Check your order: seats and ticket types, an infant, food, a voucher applied with the balance left on it, the amount to pay by card and the test-mode warning" width="300">
 
 ## Journey 6: Check out and pay
 
@@ -137,6 +169,12 @@ Success: the customer is never told a payment succeeded unless Stripe has confir
 | Zero total                 | Given a voucher covers the full total, when checkout completes, then the booking is marked paid without contacting Stripe, with an identical confirmation screen.                                                                                                                                                      | Must   |
 | Dropped connection         | Given the customer returns and the booking is still pending, when they try again, then the Checkout Session's real status is checked with Stripe first, so no one is charged twice.                                                                                                                                    | Should |
 
+The order check, then the four pages a customer can land on after Stripe: confirming, not completed, seats lost and refunded, and booking confirmed.
+
+<img src="wireframes/10-phone-check-order.png" alt="Phone wireframe of Check your order: seats and ticket types, an infant, food, a voucher applied with the balance left on it, the amount to pay by card and the test-mode warning" width="300"> <img src="wireframes/11-phone-confirming-payment.png" alt="Phone wireframe of Confirming your payment: a spinner, a note not to pay again, the booking summary and a Check again button" width="300"> <img src="wireframes/12-phone-payment-not-completed.png" alt="Phone wireframe of Payment not completed: the seats still held with the time left, and Try again, Change my seats and Release my seats buttons" width="300">
+
+<img src="wireframes/13-phone-seats-lost-refunded.png" alt="Phone wireframe of We couldn't keep your seats: the payment arrived after the hold ran out and has been refunded" width="300"> <img src="wireframes/14-phone-booking-confirmed.png" alt="Phone wireframe of Booking confirmed: the reference, the itemised booking, what to do on the night and links to My bookings and What's on" width="300">
+
 ## Journey 7: Manage my bookings and request a cancellation
 
 Success: a customer can see every booking and request a cancellation without phoning, except inside the cutoff, where they are told clearly how to reach the venue.
@@ -151,6 +189,10 @@ Success: a customer can see every booking and request a cancellation without pho
 | Request declined            | Given Front of House decline a request, when they record a note, then the booking returns to paid, the customer is told, and the action is logged with the staff member's name.                                                                                                                                        | Should |
 | Past or cancelled           | Given a booking is past or already cancelled, when it is viewed, then no cancellation option is shown.                                                                                                                                                                                                                 | Should |
 | Grace period after purchase | Given a customer cancels within minutes of booking, when inside the cutoff, then the request is still allowed.                                                                                                                                                                                                         | Could  |
+
+My bookings, the cancellation request form, and the three outcomes of a request.
+
+<img src="wireframes/17-phone-my-bookings.png" alt="Phone wireframe of My bookings: Upcoming, Past and Vouchers tabs, each booking with its status, reference and a Request a cancellation button" width="300"> <img src="wireframes/18-phone-request-cancellation.png" alt="Phone wireframe of Request a cancellation: the booking, what happens next with the voucher amount, an optional reason and Send request" width="300"> <img src="wireframes/19-phone-cancellation-outcomes.png" alt="Phone wireframe of the three outcomes of a cancellation request: received, approved with a voucher, and declined with the staff note" width="300">
 
 ## Journey 8: Buy a membership
 
@@ -210,6 +252,10 @@ Success: the no-overlap rule holds on every save, not only on creation, and edit
 | Price table        | Given staff choose a ticket class, when the form loads, then a price for each ticket type is pre-filled from the class default and each line can be edited.   | Must   |
 | Price edited later | Given a paid booking exists, when a ticket price on that screening is later edited, then the booking still shows the amount charged at the time.              | Must   |
 
+A screening form for a tablet. It goes further than the [wireframe brief](wireframes.md), which keeps screening setup in the admin.
+
+<img src="wireframes/23-tablet-staff-screening-setup.png" alt="Tablet wireframe of a new screening form: film, screen, date and start with the calculated end time, the seating layout, areas to close, a ticket class with a price per ticket type, and seat delivery">
+
 ## Journey 13: Add a film from TMDb
 
 Success: nothing from TMDb is saved without a person confirming it, the age rating especially.
@@ -234,6 +280,10 @@ Success: `stripe_payment_intent_id` stays empty on every in-venue booking, so th
 | Member discount | Given the customer wants their discount, when staff look up their account by email, then the booking links to it.                                                      | Should |
 | Anonymous sale  | Given the customer gives no details, when the sale completes, then the booking has no user.                                                                            | Must   |
 
+Check-in on a phone: finding a booking by its reference. The till itself isn't drawn yet.
+
+<img src="wireframes/22-phone-staff-check-in.png" alt="Phone wireframe of staff check-in: find a booking by reference or email, see its seats and ticket types, and check in" width="300">
+
 ## Journey 15: Cancel or refund a booking
 
 Success: every cancellation or refund has a required reason and a named staff member, and the seats are available to sell again at once.
@@ -247,6 +297,10 @@ Success: every cancellation or refund has a required reason and a named staff me
 | Seats released       | Given the cancellation is confirmed before the screening, when it completes, then the seats are released immediately (`released_at` is set) and can be booked again.     | Must   |
 | After the screening  | Given the screening has already happened, when a goodwill refund is made, then the money is handled and no seat is released.                                             | Could  |
 | Any time             | Given a booking inside the customer cutoff, when a staff member cancels it at the customer's request by phone, then it works, since the cutoff only limits self-service. | Must   |
+
+The cancellation queue on a tablet, with the manager-only refund and the recent decisions from the audit log.
+
+<img src="wireframes/21-tablet-staff-cancellation-requests.png" alt="Tablet wireframe of the staff cancellation queue: a request with Approve, Decline and a manager-only Refund to card, and the recent decisions from the audit log">
 
 ## Journey 16: Cancel a screening
 
