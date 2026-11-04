@@ -46,7 +46,6 @@ class StylesheetTests(TestCase):
         imports = re.findall(
             r'@import url\("([^"]+)"\)', read_css('main.css')
         )
-        self.assertTrue(imports)
         for path in imports:
             with self.subTest(path=path):
                 self.assertIsNotNone(finders.find(f'css/{path}'))

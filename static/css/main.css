@@ -1,6 +1,6 @@
 /* This project's own styles, loaded after LooseLeaf UI's stylesheet
    (architecture 4.24). LooseLeaf declares the cascade layers, in CUBE
    order: reset, global, compositions, blocks, motion, utilities. Each
-   file here joins one of them, so its place in the cascade is set by
-   the layer, not by specificity. */
-@import url("block/skip-link.css") layer(blocks);
+   file here joins one of them with @import url("...") layer(name), so
+   its place in the cascade is set by the layer, not by specificity.
+   None yet: LooseLeaf covers everything the pages use so far. */
