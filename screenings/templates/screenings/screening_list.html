@@ -3,6 +3,50 @@
 {% block title %}What's on{% endblock %}
 
 {% block content %}
+<div class="wrapper region flow">
   <h1>What's on</h1>
-  <p>No screenings are listed yet.</p>
+
+  <nav aria-label="Choose a day">
+    <ul class="cluster" role="list">
+      {% for option in days %}
+        <li>
+          <a class="button" href="?date={{ option.isoformat }}"
+             {% if option == day %}data-variant="primary" aria-current="date"{% else %}data-variant="secondary"{% endif %}>
+            {% if forloop.first %}Today{% else %}{{ option|date:"D" }}{% endif %}
+            {{ option|date:"j" }}
+          </a>
+        </li>
+      {% endfor %}
+    </ul>
+  </nav>
+
+  <h2>{{ day|date:"l j F" }}</h2>
+
+  {% if listings %}
+    <ul class="flow" role="list">
+      {% for film, screenings in listings %}
+        <li class="card">
+          <div class="card__body flow">
+            <h3>
+              {{ film.title }}
+              {% if film.age_rating %}<span class="badge">{{ film.age_rating }}</span>{% endif %}
+            </h3>
+            <p>{{ film.duration_minutes }} minutes</p>
+            <ul class="cluster" role="list" aria-label="Times">
+              {% for screening in screenings %}
+                <li>
+                  <time datetime="{{ screening.date_time|date:'c' }}">{{ screening.date_time|time:"g:i a" }}</time>
+                  {% if screening.has_captions %}<span class="badge">Captioned</span>{% endif %}
+                  {% if screening.has_audio_description %}<span class="badge">Audio described</span>{% endif %}
+                </li>
+              {% endfor %}
+            </ul>
+          </div>
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p>Nothing is showing on this day.</p>
+  {% endif %}
+</div>
 {% endblock %}
