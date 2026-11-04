@@ -105,10 +105,19 @@ Success: every `OrderItem` belongs to exactly one finalised booking, with the pr
 
 | Step             | Scenario                                                                                                                                         | MoSCoW |
 | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ | ------ |
-| Browse products  | Given checkout is open, when the customer views items, then drinks and snacks are shown with prices.                                             | Must   |
-| Add              | Given an item is added, when it is added, then an `OrderItem` attaches to the in-progress booking.                                               | Should |
+| Browse products  | Given checkout is open, when the customer views items, then drinks and snacks are shown with prices and allergens.                               | Must   |
+| Add              | Given an item is added, when it is added, then an `OrderItem` attaches to the in-progress booking.                                               | Must   |
 | Adjust           | Given a quantity changes, when it is changed, then the total reflects it, instantly if the live summary is built and on the next step otherwise. | Should |
+| Seat or bar      | Given items are in the basket, when the customer continues, then they choose once whether it's brought to their seats or collected from the bar. | Must   |
+| Seat delivery off | Given seat delivery is off for the screening, when the customer orders, then only bar collection is offered.                                    | Should |
+| Order cutoff     | Given the screening starts within the venue's food cutoff, when the customer reaches the food step, then ordering is closed and they are told.   | Must   |
+| Age-restricted   | Given an item has a minimum age, when it is in the basket, then the item, the order check and the confirmation say ID is checked on delivery.    | Should |
+| Sold out         | Given an item is marked sold out, when the customer browses the menu, then it isn't offered.                                                     | Should |
+| Skip             | Given the customer wants no food, when they skip the step, then checkout continues with tickets only.                                            | Must   |
+| No JavaScript    | Given JavaScript is off, when the customer orders, then the food step works as a plain form.                                                     | Should |
 | Survives payment | Given payment succeeds, when the booking is finalised, then every item is recorded with its unit price at that moment.                           | Must   |
+| Service list     | Given a screening has orders, when staff open its service list, then each item is shown in walking order and moves through ordered, preparing and delivered, with each change logged. | Must   |
+| Suggested items  | Given a film's page, when the food step loads, then a short list of popular items is offered first.                                              | Could  |
 
 Food and drink on a phone, and the service list staff use on a tablet during the screening.
 
