@@ -44,7 +44,7 @@ class ScreeningsAdminTests(TestCase):
                     self.assertEqual(self.client.get(url).status_code, 200)
 
     def test_screen_page_edits_its_seats(self):
-        Seat.objects.create(screen=self.screen, row_label='A', seat_number=1,
+        Seat.objects.create(screen=self.screen, row_label='A', number=1,
                             area=Seat.Area.STALLS)
         url = reverse('admin:screenings_screen_change', args=[self.screen.pk])
         response = self.client.get(url)

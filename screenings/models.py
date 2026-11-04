@@ -119,21 +119,21 @@ class Seat(models.Model):
         Screen, on_delete=models.CASCADE, related_name='seats'
     )
     row_label = models.CharField(max_length=3)
-    seat_number = models.PositiveSmallIntegerField()
+    number = models.PositiveSmallIntegerField()
     area = models.CharField(max_length=10, choices=Area.choices)
 
     class Meta:
-        ordering = ['screen', 'row_label', 'seat_number']
+        ordering = ['screen', 'row_label', 'number']
         constraints = [
             models.UniqueConstraint(
-                fields=['screen', 'row_label', 'seat_number'],
+                fields=['screen', 'row_label', 'number'],
                 name='unique_seat_per_screen',
             ),
         ]
 
     def __str__(self):
         return (
-            f'Row {self.row_label}, seat {self.seat_number}, '
+            f'Row {self.row_label}, seat {self.number}, '
             f'{self.get_area_display().lower()}'
         )
 
