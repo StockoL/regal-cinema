@@ -84,6 +84,25 @@ class ScreeningsAdminTests(TestCase):
         seat = Seat.objects.get()
         self.assertEqual((seat.screen, seat.layout), (self.screen, self.layout))
 
+    def test_a_layout_without_a_wheelchair_space_is_refused(self):
+        """Every stalls layout needs at least one (architecture 4.1)."""
+        url = reverse('admin:screenings_seatinglayout_change',
+                      args=[self.layout.pk])
+        response = self.client.post(url, {
+            'screen': self.screen.pk,
+            'name': 'Standard',
+            'seats-TOTAL_FORMS': '1',
+            'seats-INITIAL_FORMS': '0',
+            'seats-0-area': 'stalls',
+            'seats-0-number': '1',
+            'seats-0-row_index': '0',
+            'seats-0-column_index': '0',
+            'seats-0-is_active': 'on',
+        })
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'at least one wheelchair space')
+        self.assertEqual(Seat.objects.count(), 0)
+
     def test_screening_page_edits_its_prices_and_shows_ends_at(self):
         screening = Screening.objects.create(
             film=self.film, screen=self.screen, layout=self.layout,

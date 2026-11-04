@@ -1,4 +1,5 @@
 from django.contrib import admin
+from django.core.exceptions import ValidationError
 from django.forms import BaseInlineFormSet
 
 from .models import (
@@ -58,6 +59,22 @@ class LayoutSeatFormSet(BaseInlineFormSet):
     def save_new(self, form, commit=True):
         form.instance.screen = self.instance.screen
         return super().save_new(form, commit=commit)
+
+    def clean(self):
+        super().clean()
+        # Every stalls layout needs a wheelchair space (4.1). The circle
+        # can't have one, so a layout is the only place to check.
+        seats = [
+            form.cleaned_data for form in self.forms
+            if form.cleaned_data and not form.cleaned_data.get('DELETE')
+        ]
+        if seats and not any(
+            seat['is_wheelchair_space'] and seat['is_active']
+            for seat in seats
+        ):
+            raise ValidationError(
+                'A layout needs at least one wheelchair space in use.'
+            )
 
 
 class LayoutSeatInline(admin.TabularInline):
