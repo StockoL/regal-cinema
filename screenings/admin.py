@@ -13,6 +13,7 @@ from .models import (
     TicketClass,
     TicketType,
 )
+from .services import fill_prices
 
 
 @admin.register(Film)
@@ -122,6 +123,12 @@ class ScreeningAdmin(admin.ModelAdmin):
     date_hierarchy = 'date_time'
     readonly_fields = ('ends_at',)
     inlines = [ScreeningPriceInline, ClosedAreaInline]
+
+    def save_related(self, request, form, formsets, change):
+        # After any prices staff typed are saved, so theirs are kept.
+        super().save_related(request, form, formsets, change)
+        if not change:
+            fill_prices(form.instance)
 
     @admin.display(boolean=True, description='Cancelled')
     def is_cancelled(self, screening):

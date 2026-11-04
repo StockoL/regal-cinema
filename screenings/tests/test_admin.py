@@ -143,6 +143,35 @@ class ScreeningsAdminTests(TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertEqual(screening.capacity, 0)
 
+    def test_adding_a_screening_fills_its_price_table(self):
+        """Journey 12, "Price table": staff then adjust any line."""
+        self.ticket_class.default_price_pence = 900
+        self.ticket_class.save()
+        response = self.client.post(
+            reverse('admin:screenings_screening_add'),
+            {
+                'film': self.film.pk,
+                'screen': self.screen.pk,
+                'layout': self.layout.pk,
+                'ticket_class': self.ticket_class.pk,
+                'date_time_0': self.start.strftime('%d/%m/%Y'),
+                'date_time_1': self.start.strftime('%H:%M'),
+                'prices-TOTAL_FORMS': '1',
+                'prices-INITIAL_FORMS': '0',
+                'prices-0-ticket_type': self.adult.pk,
+                'prices-0-price_pence': '1000',
+                'closed_areas-TOTAL_FORMS': '0',
+                'closed_areas-INITIAL_FORMS': '0',
+            },
+        )
+        self.assertEqual(response.status_code, 302)
+        prices = dict(Screening.objects.get().prices.values_list(
+            'ticket_type__name', 'price_pence'
+        ))
+        self.assertEqual(prices['Adult'], 1000)
+        self.assertEqual(prices['Student'], 900)
+        self.assertEqual(prices['Companion'], 0)
+
     def test_an_overlapping_screening_shows_the_message(self):
         """Bug 1 in the testing docs, through the admin form."""
         Screening.objects.create(
