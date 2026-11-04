@@ -92,15 +92,34 @@ The project runs on PostgreSQL locally as well as in production, never SQLite. T
    ```
 
    The role needs `CREATEDB` so Django's test runner can create and drop its own test database.
-3. Add the connection string to a `.env` file in the project root. This file is never committed.
+3. Clone the repository and create a virtual environment.
+
+   ```text
+   git clone https://github.com/StockoL/regal-cinema.git
+   cd regal-cinema
+   python -m venv .venv
+   .venv\Scriptsctivate
+   pip install -r requirements.txt
+   ```
+
+4. Copy `.env.example` to `.env` in the project root and fill it in, with your own `SECRET_KEY` and the password from step 2 in `DATABASE_URL`. This file is never committed.
 
    ```text
    DATABASE_URL=postgres://regal:choose-a-password@localhost:5432/regal_cinema
    ```
 
-On macOS or Linux, install PostgreSQL 17 with your package manager (Homebrew, apt) and run the same two `psql` commands.
+5. Create the tables, load the demo seat plan for Screen 1, and make an account for the admin.
 
-The remaining steps (clone, virtual environment, install requirements, migrate, run the server) will be added once the project skeleton exists.
+   ```text
+   python manage.py migrate
+   python manage.py seed_seats
+   python manage.py createsuperuser
+   ```
+
+   `seed_seats` is demo data for this fictional venue, so it's run by hand and is safe to run again: it does nothing if the screen already has seats. The reasons are in the [development log](docs/development_log.md#4-november-2026-demo-data-and-reference-data).
+6. Start the server with `python manage.py runserver` and open http://127.0.0.1:8000/. The admin is at http://127.0.0.1:8000/admin/.
+
+On macOS or Linux, install PostgreSQL 17 with your package manager (Homebrew, apt), run the same two `psql` commands, and activate the virtual environment with `source .venv/bin/activate`.
 
 ### Quick local spin-up alternatives
 
