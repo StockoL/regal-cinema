@@ -4,7 +4,7 @@ This is the brief I drew the wireframes against, with each frame under its scree
 
 I'm drawing them in Excalidraw, low fidelity: grey boxes, real labels, a crossed box for each image, and notes in the margin wherever behaviour isn't visible. Every customer screen gets a phone frame (375px). The seat map also has a desktop frame (1280px), and the staff screens are drawn for a tablet. The exports go in `docs/wireframes/`, numbered in drawing order with the width and the state they show, such as `07-phone-reel.png` and `05-desktop.png`.
 
-The order follows when each screen is needed. Screens 1 to 9 are this week's. The membership page comes before 7 December, and the gift voucher page, the TMDb review screen and the private hire form before 21 December. I'm not wireframing the Django admin or the sales dashboard's layout. That includes setting up screenings: staff do it in the admin, with the ticket type prices and closed areas edited on the screening's own page, and the overlap check runs in the model's validation, so there's no custom screening form to draw.
+The order follows when each screen is needed. Screens 1 to 9 are this week's. The membership page comes before 7 December, and the gift voucher page, the TMDb review screen and the private hire form before 21 December. I'm not wireframing the sales dashboard's layout. Screening setup and the venue settings live in the Django admin, for Managers only, with the ticket type prices and closed areas edited on the screening's own page and the overlap check in the model's validation. Screens 16 and 17 show what those admin pages need to hold, not custom pages. The day-to-day staff tools (the till, check-in, the cancellation queue and the food and drink service list) are custom pages.
 
 ## Status
 
@@ -17,12 +17,16 @@ The order follows when each screen is needed. Screens 1 to 9 are this week's. Th
 | 5  | Return pages: confirming, not completed, outcomes | 1 Nov  | 6        | Done  | To do   |
 | 6  | Customer cancellation request and decline message | 1 Nov  | 7        | Done  | To do   |
 | 7  | Log in and register                               | 1 Nov  | 4        | Done  | To do   |
-| 8  | Staff: the till                                   | 1 Nov  | 14       | Part  | To do   |
+| 8  | Staff: the till                                   | 1 Nov  | 14       | To do | To do   |
 | 9  | Staff: the cancellation queue                     | 1 Nov  | 7, 15    | To do | Done    |
 | 10 | Membership page                                   | 7 Dec  | 8, 9     | To do | To do   |
 | 11 | Gift voucher page                                 | 21 Dec | 18       | To do | To do   |
 | 12 | Staff: TMDb review screen                         | 21 Dec | 13       | To do | To do   |
 | 13 | Private hire enquiry form                         | 21 Dec | 10       | To do | To do   |
+| 14 | Staff: food and drink service list                | 7 Dec  | 3        | To do | Done    |
+| 15 | Staff: check-in                                   | 6 Dec  | 14       | Done  | To do   |
+| 16 | Staff: screening setup (admin)                    | 21 Dec | 12       | To do | Done    |
+| 17 | Staff: venue settings (admin)                     | 21 Dec |          | To do | Done    |
 
 ## Shared layout
 
@@ -116,7 +120,7 @@ Payment happens on Stripe's hosted Checkout page (4.13), so there's no card fiel
 
 Wording to write: the test card warning and the proof reminder.
 
-Food and drink is its own page, before the order check.
+Food and drink is its own step before the order check (4.3): seat delivery or bar collection, the allergen link, items that need ID, and a sold-out item.
 
 <img src="wireframes/09-phone-food-and-drink.png" alt="Phone wireframe of food and drink: seat delivery or bar collection, items popular with this film, drinks and snacks with plus and minus buttons, and a running total" width="300"> <img src="wireframes/10-phone-check-order.png" alt="Phone wireframe of Check your order: seats and ticket types, an infant, food, a voucher applied with the balance left on it, the amount to pay by card and the test-mode warning" width="300">
 
@@ -168,10 +172,6 @@ Wording to write: the duplicate email error (which also covers the same address 
 - The proof reminder for concessionary tickets, and the booking reference to give the customer.
 - Finding an existing booking by its reference.
 
-Only check-in is drawn so far: finding a booking by its reference.
-
-<img src="wireframes/22-phone-staff-check-in.png" alt="Phone wireframe of staff check-in: find a booking by reference or email, see its seats and ticket types, and check in" width="300">
-
 ### 9. Staff: the cancellation queue
 
 - The queue of customer cancellation requests, oldest first, with each booking's details.
@@ -213,19 +213,44 @@ Wording to write: the headings and the confirmation messages for approving and d
 - The enquiry form: name, email, event type, preferred date, party size and message (4.6).
 - The confirmation after sending.
 
-## Beyond the brief
+## Added on 4 November
 
-Three staff frames cover screens the brief doesn't list.
+Four staff screens the first brief didn't list. The service list and check-in are custom pages. Screening setup and venue settings are admin pages, drawn so the admin forms get the right fields and wording.
 
-The food and drink service list for a tablet, in walking order, with every status change logged.
+### 14. Staff: food and drink service list
+
+- One screening at a time, with seat deliveries and bar collections as two tabs.
+- Seat deliveries in walking order: stalls front to back, then the circle. Each row has the seat, the items, the booking reference and its status.
+- Ordered, preparing and delivered as buttons on each row, and a count of each.
+- A check-ID flag on any age-restricted item.
+- A note that every status change is logged with the staff member's name and the time (4.9).
 
 <img src="wireframes/20-tablet-staff-service-list.png" alt="Tablet wireframe of the staff service list: seat delivery orders in walking order, each with Ordered, Preparing and Delivered buttons and a check-ID flag on age-restricted items">
 
-A screening form. It goes further than the brief, which keeps screening setup in the admin.
+### 15. Staff: check-in
+
+- Find a booking by reference or customer email.
+- The booking's film, time, screen, customer and reference, and each seat with its ticket type and any condition (with an adult, under 2).
+- What staff need on the night: the food order and where it's going, and any ticket that needs proof or an adult.
+- One button to check the whole party in, and a Something's wrong link.
+- A note that checking in is recorded with the staff member's name and the time.
+
+<img src="wireframes/22-phone-staff-check-in.png" alt="Phone wireframe of staff check-in: find a booking by reference or email, see its seats and ticket types, and check in" width="300">
+
+### 16. Staff: screening setup (admin)
+
+- Film, screen, date and start, with the calculated end time and whether it clashes (4.1).
+- The seating layout, locked once a seat is booked, and the areas to close for this screening.
+- A ticket class that fills in a starting price for each ticket type, each editable.
+- The seat delivery override (4.3).
+- A note that online sales open on save and close at the start time by default, and that saving is logged.
 
 <img src="wireframes/23-tablet-staff-screening-setup.png" alt="Tablet wireframe of a new screening form: film, screen, date and start with the calculated end time, the seating layout, areas to close, a ticket class with a price per ticket type, and seat delivery">
 
-The venue settings: hold length, sales close, cancellation cutoff and fee, voucher limits, food and drink timings, and the venue details the footer shows.
+### 17. Staff: venue settings (admin)
+
+- Every setting in 4.23 with its default and a one-line explanation: hold length, sales close, trailer and cleaning times, cancellation cutoff and fee, withdrawal period, voucher limits, the food order cutoff, bar collection lead time and seat delivery default, and the phone number and opening hours.
+- A note that changes apply to new bookings only, and that every change is recorded with the old and new value (4.9).
 
 <img src="wireframes/24-tablet-staff-venue-settings.png" alt="Tablet wireframe of venue settings: seat hold length, sales close, cancellation cutoff and fee, voucher limits, food and drink timings, and the box office phone and hours">
 
