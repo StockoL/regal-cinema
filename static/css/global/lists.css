@@ -1,0 +1,8 @@
+/* LooseLeaf's reset drops the bullets from a list marked role="list",
+   but the browser's left padding stays and indents every strip of
+   buttons and every stack of cards. Those lists are layout, not prose,
+   so the padding goes too. */
+ul[role="list"],
+ol[role="list"] {
+  padding-inline-start: 0;
+}
