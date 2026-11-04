@@ -102,3 +102,27 @@ class FilmTicketTypeTests(TestCase):
     def test_a_type_switched_off_is_never_offered(self):
         TicketType.objects.filter(name='Companion').update(is_active=False)
         self.assertNotIn('Companion', self.offered('U'))
+
+
+class FilmInfantTests(TestCase):
+    """Infants are only allowed on U, PG and 12A films. Journey 2,
+    "Infants on suitable films"; architecture 4.2."""
+
+    def allows(self, rating):
+        return Film(
+            title='A film', duration_minutes=90, age_rating=rating
+        ).allows_infants
+
+    def test_u_pg_and_12a_allow_infants(self):
+        for rating in ('U', 'PG', '12A'):
+            with self.subTest(rating=rating):
+                self.assertTrue(self.allows(rating))
+
+    def test_12_15_and_18_do_not(self):
+        for rating in ('12', '15', '18'):
+            with self.subTest(rating=rating):
+                self.assertFalse(self.allows(rating))
+
+    def test_a_film_with_no_rating_yet_does_not(self):
+        """Until staff confirm the rating, nothing assumes it's safe."""
+        self.assertFalse(self.allows(''))

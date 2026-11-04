@@ -53,6 +53,14 @@ class Film(models.Model):
         return {self.AgeRating.TWELVE: 12, self.AgeRating.FIFTEEN: 15,
                 self.AgeRating.EIGHTEEN: 18}.get(self.age_rating, 0)
 
+    @property
+    def allows_infants(self):
+        """Infants, under 2 and on a lap, are only allowed on U, PG and
+        12A films (4.2)."""
+        return self.age_rating in (
+            self.AgeRating.U, self.AgeRating.PG, self.AgeRating.TWELVE_A
+        )
+
     def ticket_types(self):
         """The active ticket types this film can be booked with. A type is
         left out when its maximum age is below the film's minimum age, so
