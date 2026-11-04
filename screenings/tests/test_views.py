@@ -135,6 +135,14 @@ class WhatsOnByDateTests(TestCase):
                       cancelled_at=timezone.now())
         self.assertNotContains(self.get(), 'Nosferatu')
 
+    def test_each_film_links_to_its_page_on_the_same_day(self):
+        tomorrow = self.today + timedelta(days=1)
+        self.schedule(self.nosferatu, tomorrow, 20)
+        self.assertContains(
+            self.get(tomorrow),
+            f'href="/films/nosferatu/?date={tomorrow.isoformat()}"',
+        )
+
     def test_access_flags_show_on_the_time(self):
         self.schedule(self.nosferatu, self.today, 20, has_captions=True,
                       has_audio_description=True)

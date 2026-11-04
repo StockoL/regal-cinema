@@ -16,7 +16,7 @@
         <li class="card">
           <div class="card__body flow">
             <h3>
-              {{ film.title }}
+              <a href="{% url 'screenings:film_detail' film.slug %}?date={{ day.isoformat }}">{{ film.title }}</a>
               {% if film.age_rating %}<span class="badge">{{ film.age_rating }}</span>{% endif %}
             </h3>
             <p>{{ film.duration_minutes }} minutes</p>
