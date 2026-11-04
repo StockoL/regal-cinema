@@ -35,7 +35,7 @@ class ScreeningsAdminTests(TestCase):
             screen=self.screen, name='Standard'
         )
         self.ticket_class = TicketClass.objects.create(name='Standard')
-        self.adult = TicketType.objects.create(name='Adult')
+        self.adult = TicketType.objects.get(name='Adult')
         self.start = datetime(2026, 11, 14, 19, 0,
                               tzinfo=ZoneInfo('Europe/London'))
 
