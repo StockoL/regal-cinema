@@ -7,6 +7,7 @@ from django.contrib.postgres.fields import (
     RangeBoundary,
     RangeOperators,
 )
+from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator
 from django.db import models
 from django.utils import timezone
@@ -158,6 +159,17 @@ class Seat(models.Model):
             f'Row {self.row_label}, seat {self.number}, '
             f'{self.get_area_display().lower()}'
         )
+
+    def clean(self):
+        super().clean()
+        # The circle is reached by stairs only (4.1, 4.17).
+        if self.is_wheelchair_space and self.area == self.Area.CIRCLE:
+            raise ValidationError({
+                'is_wheelchair_space': (
+                    'A wheelchair space can only be in the stalls. The '
+                    'circle is reached by stairs only.'
+                ),
+            })
 
 
 class TicketClass(models.Model):

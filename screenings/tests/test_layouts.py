@@ -1,3 +1,4 @@
+from django.core.exceptions import ValidationError
 from django.db import IntegrityError
 from django.test import TestCase
 
@@ -117,3 +118,30 @@ class SeatFlagTests(TestCase):
     def test_a_seat_can_be_taken_out_of_use(self):
         seat = self.make_seat(is_active=False)
         self.assertFalse(Seat.objects.get(pk=seat.pk).is_active)
+
+
+class WheelchairSpaceTests(TestCase):
+    """The circle is reached by stairs only, so wheelchair spaces may
+    only be in the stalls (architecture 4.1)."""
+
+    def setUp(self):
+        self.screen = Screen.objects.create(name='Screen 1')
+
+    def make_seat(self, **fields):
+        fields.setdefault('screen', self.screen)
+        fields.setdefault('number', 1)
+        fields.setdefault('row_index', 0)
+        fields.setdefault('column_index', 0)
+        return Seat(**fields)
+
+    def test_a_wheelchair_space_in_the_stalls_is_allowed(self):
+        seat = self.make_seat(area=Seat.Area.STALLS, is_wheelchair_space=True)
+        seat.full_clean()
+
+    def test_a_wheelchair_space_in_the_circle_is_refused(self):
+        seat = self.make_seat(
+            area=Seat.Area.CIRCLE, row_label='A', is_wheelchair_space=True
+        )
+        with self.assertRaises(ValidationError) as caught:
+            seat.full_clean()
+        self.assertIn('is_wheelchair_space', caught.exception.message_dict)
