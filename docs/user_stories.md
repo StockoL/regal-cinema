@@ -264,7 +264,7 @@ Success: the no-overlap rule holds on every save, not only on creation, and edit
 | Price edited later | Given a paid booking exists, when a ticket price on that screening is later edited, then the booking still shows the amount charged at the time.              | Must   |
 | Seat delivery off  | Given a screening with no table service, when the Manager turns seat delivery off for it, then customers booking it are offered bar collection only.         | Should |
 
-A screening form for a tablet. It goes further than the [wireframe brief](wireframes.md), which keeps screening setup in the admin.
+The screening setup page for a tablet. It's a Django admin page for Managers, drawn to settle the fields and wording ([wireframe brief](wireframes.md), screen 16).
 
 <img src="wireframes/23-tablet-staff-screening-setup.png" alt="Tablet wireframe of a new screening form: film, screen, date and start with the calculated end time, the seating layout, areas to close, a ticket class with a price per ticket type, and seat delivery">
 
