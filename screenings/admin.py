@@ -6,6 +6,7 @@ from .models import (
     Film,
     Screen,
     Screening,
+    ScreeningClosedArea,
     ScreeningPrice,
     Seat,
     SeatingLayout,
@@ -106,6 +107,11 @@ class ScreeningPriceInline(admin.TabularInline):
     extra = 0
 
 
+class ClosedAreaInline(admin.TabularInline):
+    model = ScreeningClosedArea
+    extra = 0
+
+
 @admin.register(Screening)
 class ScreeningAdmin(admin.ModelAdmin):
     list_display = ('film', 'date_time', 'screen', 'ticket_class',
@@ -113,7 +119,7 @@ class ScreeningAdmin(admin.ModelAdmin):
     list_filter = ('screen', 'is_private', 'ticket_class')
     date_hierarchy = 'date_time'
     readonly_fields = ('ends_at',)
-    inlines = [ScreeningPriceInline]
+    inlines = [ScreeningPriceInline, ClosedAreaInline]
 
     @admin.display(boolean=True, description='Cancelled')
     def is_cancelled(self, screening):

@@ -114,6 +114,35 @@ class ScreeningsAdminTests(TestCase):
         self.assertContains(response, 'prices-TOTAL_FORMS')
         self.assertContains(response, 'Ends at')
 
+    def test_screening_page_closes_areas(self):
+        """Journey 2 "Outside section": a manager closes the circle."""
+        Seat.objects.create(
+            screen=self.screen, area=Seat.Area.CIRCLE, row_label='A',
+            number=1, row_index=0, column_index=0,
+        )
+        screening = Screening.objects.create(
+            film=self.film, screen=self.screen, layout=self.layout,
+            ticket_class=self.ticket_class, date_time=self.start,
+        )
+        url = reverse('admin:screenings_screening_change',
+                      args=[screening.pk])
+        self.assertContains(self.client.get(url), 'closed_areas-TOTAL_FORMS')
+        response = self.client.post(url, {
+            'film': self.film.pk,
+            'screen': self.screen.pk,
+            'layout': self.layout.pk,
+            'ticket_class': self.ticket_class.pk,
+            'date_time_0': self.start.strftime('%d/%m/%Y'),
+            'date_time_1': self.start.strftime('%H:%M'),
+            'prices-TOTAL_FORMS': '0',
+            'prices-INITIAL_FORMS': '0',
+            'closed_areas-TOTAL_FORMS': '1',
+            'closed_areas-INITIAL_FORMS': '0',
+            'closed_areas-0-area': 'circle',
+        })
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(screening.capacity, 0)
+
     def test_an_overlapping_screening_shows_the_message(self):
         """Bug 1 in the testing docs, through the admin form."""
         Screening.objects.create(
@@ -132,6 +161,8 @@ class ScreeningsAdminTests(TestCase):
                 'date_time_1': clash.strftime('%H:%M'),
                 'prices-TOTAL_FORMS': '0',
                 'prices-INITIAL_FORMS': '0',
+                'closed_areas-TOTAL_FORMS': '0',
+                'closed_areas-INITIAL_FORMS': '0',
             },
         )
         self.assertEqual(response.status_code, 200)
