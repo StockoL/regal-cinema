@@ -35,6 +35,8 @@ class Film(models.Model):
     age_rating = models.CharField(
         max_length=3, choices=AgeRating.choices, blank=True
     )
+    # Shown with the rating, such as "Includes themes of abuse".
+    content_advice = models.CharField(max_length=200, blank=True)
     duration_minutes = models.PositiveSmallIntegerField(
         validators=[MinValueValidator(1)]
     )
@@ -45,6 +47,30 @@ class Film(models.Model):
 
     def __str__(self):
         return self.title
+
+    @property
+    def minimum_age(self):
+        """The youngest age the rating admits on its own. U, PG and 12A
+        count as 0, since 12A admits under-12s with an adult (4.1)."""
+        return {self.AgeRating.TWELVE: 12, self.AgeRating.FIFTEEN: 15,
+                self.AgeRating.EIGHTEEN: 18}.get(self.age_rating, 0)
+
+    @property
+    def allows_infants(self):
+        """Infants, under 2 and on a lap, are only allowed on U, PG and
+        12A films (4.2)."""
+        return self.age_rating in (
+            self.AgeRating.U, self.AgeRating.PG, self.AgeRating.TWELVE_A
+        )
+
+    def ticket_types(self):
+        """The active ticket types this film can be booked with. A type is
+        left out when its maximum age is below the film's minimum age, so
+        Child drops out of 15 and 18 films and Young person out of 18."""
+        return TicketType.objects.filter(is_active=True).filter(
+            models.Q(max_age__isnull=True)
+            | models.Q(max_age__gte=self.minimum_age)
+        )
 
     def save(self, *args, **kwargs):
         # Set once, so the film's address doesn't change if the title does.
@@ -214,10 +240,22 @@ class TicketClass(models.Model):
 
 
 class TicketType(models.Model):
-    """Who a seated ticket is for: adult, student, OAP or child. Infants
-    are a headcount on the booking, not a ticket type (4.2)."""
+    """Who a seated ticket is for, such as Adult, Student or Child. The
+    rules come from these fields, not from the name, so a venue can add
+    its own types in the admin. Infants are a headcount on the booking,
+    not a ticket type (4.1, 4.2)."""
 
     name = models.CharField(max_length=30, unique=True)
+    # Shown on the booking page, and carries the age band.
+    description = models.CharField(max_length=200, blank=True)
+    # Can't be booked without a ticket that doesn't need an adult.
+    requires_adult = models.BooleanField(default=False)
+    # A reminder to bring proof at the door. It never blocks a booking.
+    requires_proof = models.BooleanField(default=False)
+    # The free ticket for someone accompanying a disabled customer.
+    is_companion = models.BooleanField(default=False)
+    # Not offered for a film whose minimum age is above this.
+    max_age = models.PositiveSmallIntegerField(null=True, blank=True)
     is_active = models.BooleanField(default=True)
 
     class Meta:

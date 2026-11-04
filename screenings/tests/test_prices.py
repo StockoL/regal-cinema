@@ -30,8 +30,8 @@ class ScreeningPriceTests(TestCase):
             date_time=datetime(2026, 11, 15, 11, 0,
                                tzinfo=ZoneInfo('Europe/London')),
         )
-        self.adult = TicketType.objects.create(name='Adult')
-        self.child = TicketType.objects.create(name='Child')
+        self.adult = TicketType.objects.get(name='Adult')
+        self.child = TicketType.objects.get(name='Child')
 
     def test_each_ticket_type_has_its_own_price(self):
         """A family of two adults and two children pays two prices."""

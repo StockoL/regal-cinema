@@ -2,7 +2,7 @@ from django.core.exceptions import ValidationError
 from django.db import IntegrityError
 from django.test import TestCase
 
-from screenings.models import Film
+from screenings.models import Film, TicketType
 
 
 class FilmTests(TestCase):
@@ -66,3 +66,92 @@ class FilmTests(TestCase):
 
     def test_string_is_the_title(self):
         self.assertEqual(str(self.make_film()), 'Nosferatu')
+
+
+class FilmTicketTypeTests(TestCase):
+    """A ticket type isn't offered when its maximum age is below the
+    film's minimum age. Journey 2, "Ticket types by rating"; 4.1."""
+
+    def offered(self, rating):
+        film = Film.objects.create(
+            title=f'A {rating} film', duration_minutes=90, age_rating=rating
+        )
+        return set(film.ticket_types().values_list('name', flat=True))
+
+    def test_every_type_is_offered_for_u_pg_and_12a(self):
+        everyone = {'Adult', 'Student', 'OAP', 'Young person', 'Child',
+                    'Companion'}
+        for rating in ('U', 'PG', '12A'):
+            with self.subTest(rating=rating):
+                self.assertEqual(self.offered(rating), everyone)
+
+    def test_child_drops_out_of_15_films(self):
+        self.assertEqual(
+            self.offered('15'),
+            {'Adult', 'Student', 'OAP', 'Young person', 'Companion'},
+        )
+
+    def test_child_and_young_person_drop_out_of_18_films(self):
+        self.assertEqual(
+            self.offered('18'), {'Adult', 'Student', 'OAP', 'Companion'}
+        )
+
+    def test_a_12_film_drops_child(self):
+        self.assertNotIn('Child', self.offered('12'))
+
+    def test_a_type_switched_off_is_never_offered(self):
+        TicketType.objects.filter(name='Companion').update(is_active=False)
+        self.assertNotIn('Companion', self.offered('U'))
+
+
+class FilmInfantTests(TestCase):
+    """Infants are only allowed on U, PG and 12A films. Journey 2,
+    "Infants on suitable films"; architecture 4.2."""
+
+    def allows(self, rating):
+        return Film(
+            title='A film', duration_minutes=90, age_rating=rating
+        ).allows_infants
+
+    def test_u_pg_and_12a_allow_infants(self):
+        for rating in ('U', 'PG', '12A'):
+            with self.subTest(rating=rating):
+                self.assertTrue(self.allows(rating))
+
+    def test_12_15_and_18_do_not(self):
+        for rating in ('12', '15', '18'):
+            with self.subTest(rating=rating):
+                self.assertFalse(self.allows(rating))
+
+    def test_a_film_with_no_rating_yet_does_not(self):
+        """Until staff confirm the rating, nothing assumes it's safe."""
+        self.assertFalse(self.allows(''))
+
+
+class FilmContentAdviceTests(TestCase):
+    """A line of advice shown with the rating, whatever the rating is,
+    including none yet."""
+
+    def test_advice_is_optional(self):
+        film = Film.objects.create(title='A film', duration_minutes=90)
+        self.assertEqual(film.content_advice, '')
+
+    def test_advice_is_stored_with_or_without_a_rating(self):
+        for rating in ('15', ''):
+            with self.subTest(rating=rating):
+                film = Film.objects.create(
+                    title=f'Film {rating or "unrated"}', duration_minutes=90,
+                    age_rating=rating,
+                    content_advice='Includes themes of abuse.',
+                )
+                film.refresh_from_db()
+                self.assertEqual(
+                    film.content_advice, 'Includes themes of abuse.'
+                )
+
+    def test_advice_is_kept_short(self):
+        film = Film(
+            title='A film', duration_minutes=90, content_advice='x' * 201
+        )
+        with self.assertRaises(ValidationError):
+            film.full_clean()

@@ -1,9 +1,11 @@
+from datetime import datetime
 from io import StringIO
+from zoneinfo import ZoneInfo
 
-from django.core.management import call_command
+from django.core.management import CommandError, call_command
 from django.test import TestCase
 
-from screenings.models import Screen, Seat
+from screenings.models import Film, Screen, Screening, Seat, TicketClass
 
 
 class SeedSeatsTests(TestCase):
@@ -15,8 +17,8 @@ class SeedSeatsTests(TestCase):
         return Screen.objects.get(name='Screen 1')
 
     def test_the_default_layout_gives_the_usual_capacity(self):
-        """46 stalls seats, 140 circle seats and the two boxes."""
-        self.assertEqual(self.seed().capacity, 188)
+        """46 stalls seats and 140 circle seats."""
+        self.assertEqual(self.seed().capacity, 186)
 
     def test_standard_is_the_default_and_tables_is_the_other(self):
         screen = self.seed()
@@ -29,10 +31,9 @@ class SeedSeatsTests(TestCase):
     def test_the_circle_is_fixed_with_five_rows(self):
         circle = self.seed().seats.filter(area=Seat.Area.CIRCLE)
         self.assertFalse(circle.filter(layout__isnull=False).exists())
+        self.assertEqual(circle.count(), 140)
         self.assertEqual(
-            set(circle.exclude(row_label='Box')
-                .values_list('row_label', flat=True)),
-            set('ABCDE'),
+            set(circle.values_list('row_label', flat=True)), set('ABCDE')
         )
 
     def test_every_layout_has_wheelchair_spaces_with_companions(self):
@@ -58,12 +59,6 @@ class SeedSeatsTests(TestCase):
             with self.subTest(table=number):
                 self.assertEqual(tables.filter(table_number=number).count(), 4)
 
-    def test_the_boxes_read_as_boxes(self):
-        labels = {seat.label for seat in self.seed().seats.filter(
-            row_label='Box'
-        )}
-        self.assertEqual(labels, {'Box C', 'Box D'})
-
     def test_every_seat_passes_validation(self):
         for seat in self.seed().seats.all():
             seat.full_clean()
@@ -72,5 +67,38 @@ class SeedSeatsTests(TestCase):
         self.seed()
         out = StringIO()
         call_command('seed_seats', stdout=out)
-        self.assertEqual(Seat.objects.count(), 46 + 36 + 142)
+        self.assertEqual(Seat.objects.count(), 46 + 36 + 140)
         self.assertIn('already has seats', out.getvalue())
+
+
+class SeedSeatsReplaceTests(TestCase):
+    """--replace clears Screen 1's plan and seeds it again, so a change
+    to the plan can be applied to a database that already has one."""
+
+    def seed(self, *args):
+        out = StringIO()
+        call_command('seed_seats', *args, stdout=out)
+        return out.getvalue()
+
+    def test_replace_rebuilds_the_plan(self):
+        self.seed()
+        screen = Screen.objects.get(name='Screen 1')
+        screen.seats.filter(area=Seat.Area.CIRCLE).first().delete()
+        self.seed('--replace')
+        self.assertEqual(screen.seats.filter(area=Seat.Area.CIRCLE).count(),
+                         140)
+        self.assertEqual(screen.layouts.count(), 2)
+
+    def test_replace_is_refused_once_a_screening_uses_the_plan(self):
+        self.seed()
+        screen = Screen.objects.get(name='Screen 1')
+        Screening.objects.create(
+            film=Film.objects.create(title='A film', duration_minutes=90),
+            screen=screen, layout=screen.layouts.get(is_default=True),
+            ticket_class=TicketClass.objects.create(name='Standard'),
+            date_time=datetime(2026, 11, 14, 19, 0,
+                               tzinfo=ZoneInfo('Europe/London')),
+        )
+        with self.assertRaises(CommandError):
+            self.seed('--replace')
+        self.assertEqual(screen.seats.count(), 46 + 36 + 140)
