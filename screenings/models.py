@@ -214,10 +214,22 @@ class TicketClass(models.Model):
 
 
 class TicketType(models.Model):
-    """Who a seated ticket is for: adult, student, OAP or child. Infants
-    are a headcount on the booking, not a ticket type (4.2)."""
+    """Who a seated ticket is for, such as Adult, Student or Child. The
+    rules come from these fields, not from the name, so a venue can add
+    its own types in the admin. Infants are a headcount on the booking,
+    not a ticket type (4.1, 4.2)."""
 
     name = models.CharField(max_length=30, unique=True)
+    # Shown on the booking page, and carries the age band.
+    description = models.CharField(max_length=200, blank=True)
+    # Can't be booked without a ticket that doesn't need an adult.
+    requires_adult = models.BooleanField(default=False)
+    # A reminder to bring proof at the door. It never blocks a booking.
+    requires_proof = models.BooleanField(default=False)
+    # The free ticket for someone accompanying a disabled customer.
+    is_companion = models.BooleanField(default=False)
+    # Not offered for a film whose minimum age is above this.
+    max_age = models.PositiveSmallIntegerField(null=True, blank=True)
     is_active = models.BooleanField(default=True)
 
     class Meta:

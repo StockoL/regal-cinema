@@ -52,3 +52,33 @@ class TicketTypeTests(TestCase):
 
     def test_string_is_the_name(self):
         self.assertEqual(str(TicketType.objects.create(name='OAP')), 'OAP')
+
+
+class TicketTypeRuleFieldTests(TestCase):
+    """The flags and age limit that drive the booking rules. Nothing about
+    age is written into the code (architecture 4.1)."""
+
+    def test_a_plain_type_needs_nothing(self):
+        adult = TicketType.objects.create(name='Adult')
+        self.assertFalse(adult.requires_adult)
+        self.assertFalse(adult.requires_proof)
+        self.assertFalse(adult.is_companion)
+        self.assertIsNone(adult.max_age)
+        self.assertEqual(adult.description, '')
+
+    def test_a_child_type_carries_its_rules(self):
+        child = TicketType.objects.create(
+            name='Child', description='Aged 2 to 11, with an adult.',
+            requires_adult=True, max_age=11,
+        )
+        child.refresh_from_db()
+        self.assertTrue(child.requires_adult)
+        self.assertEqual(child.max_age, 11)
+        self.assertEqual(child.description, 'Aged 2 to 11, with an adult.')
+
+    def test_a_companion_type_is_marked(self):
+        companion = TicketType.objects.create(
+            name='Companion', is_companion=True, requires_proof=True,
+        )
+        self.assertTrue(companion.is_companion)
+        self.assertTrue(companion.requires_proof)
