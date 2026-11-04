@@ -79,6 +79,34 @@ class Screen(models.Model):
         return self.seats.count()
 
 
+class SeatingLayout(models.Model):
+    """One arrangement of a screen's stalls, such as standard rows or
+    tables. The circle is fixed and appears in every layout (4.1)."""
+
+    screen = models.ForeignKey(
+        Screen, on_delete=models.CASCADE, related_name='layouts'
+    )
+    name = models.CharField(max_length=50)
+    is_default = models.BooleanField(default=False)
+
+    class Meta:
+        ordering = ['screen', 'name']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['screen', 'name'],
+                name='unique_layout_name_per_screen',
+            ),
+            models.UniqueConstraint(
+                fields=['screen'],
+                condition=models.Q(is_default=True),
+                name='one_default_layout_per_screen',
+            ),
+        ]
+
+    def __str__(self):
+        return f'{self.screen}: {self.name}'
+
+
 class Seat(models.Model):
     """One seat in a screen's fixed plan. Area describes where it is; it
     doesn't change the price (architecture 4.1)."""
