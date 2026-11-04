@@ -11,6 +11,7 @@ from screenings.models import (
     Film,
     Screen,
     Screening,
+    ScreeningClosedArea,
     Seat,
     SeatingLayout,
     TicketClass,
@@ -249,3 +250,51 @@ class ScreeningSeatsTests(TestCase):
 
     def test_capacity_is_counted_from_those_seats(self):
         self.assertEqual(self.screening.capacity, 3)
+
+
+class ClosedAreaTests(TestCase):
+    """A manager can close an area for one screening, such as the circle
+    for a quiet showing (architecture 4.1)."""
+
+    def setUp(self):
+        self.screen = Screen.objects.create(name='Screen 1')
+        layout = SeatingLayout.objects.create(screen=self.screen, name='Rows')
+        self.stalls_1 = Seat.objects.create(
+            screen=self.screen, layout=layout, area=Seat.Area.STALLS,
+            number=1, row_index=0, column_index=0,
+        )
+        self.circle_a1 = Seat.objects.create(
+            screen=self.screen, area=Seat.Area.CIRCLE, row_label='A',
+            number=1, row_index=0, column_index=0,
+        )
+        self.screening = Screening.objects.create(
+            film=Film.objects.create(title='Nosferatu', duration_minutes=100),
+            screen=self.screen, layout=layout,
+            ticket_class=TicketClass.objects.create(name='Standard'),
+            date_time=datetime(2026, 11, 14, 19, 0,
+                               tzinfo=ZoneInfo('Europe/London')),
+        )
+
+    def test_a_closed_areas_seats_are_left_out(self):
+        ScreeningClosedArea.objects.create(
+            screening=self.screening, area=Seat.Area.CIRCLE
+        )
+        self.assertEqual(list(self.screening.seats()), [self.stalls_1])
+        self.assertEqual(self.screening.capacity, 1)
+
+    def test_an_area_can_only_be_closed_once_per_screening(self):
+        ScreeningClosedArea.objects.create(
+            screening=self.screening, area=Seat.Area.CIRCLE
+        )
+        with self.assertRaises(IntegrityError):
+            ScreeningClosedArea.objects.create(
+                screening=self.screening, area=Seat.Area.CIRCLE
+            )
+
+    def test_closed_areas_go_with_their_screening(self):
+        """ScreeningClosedArea on Screening is CASCADE (4.21)."""
+        ScreeningClosedArea.objects.create(
+            screening=self.screening, area=Seat.Area.CIRCLE
+        )
+        self.screening.delete()
+        self.assertEqual(ScreeningClosedArea.objects.count(), 0)

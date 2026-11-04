@@ -279,7 +279,7 @@ class Screening(models.Model):
         return self.screen.seats.filter(
             models.Q(layout__isnull=True) | models.Q(layout=self.layout_id),
             is_active=True,
-        )
+        ).exclude(area__in=self.closed_areas.values('area'))
 
     @property
     def capacity(self):
@@ -317,6 +317,28 @@ class Screening(models.Model):
     def save(self, *args, **kwargs):
         self.ends_at = self.calculate_ends_at()
         super().save(*args, **kwargs)
+
+
+class ScreeningClosedArea(models.Model):
+    """An area shut for one screening, such as the circle for a quiet
+    showing. Its seats show as outside section and don't count towards
+    capacity (4.1)."""
+
+    screening = models.ForeignKey(
+        Screening, on_delete=models.CASCADE, related_name='closed_areas'
+    )
+    area = models.CharField(max_length=10, choices=Seat.Area.choices)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=['screening', 'area'],
+                name='one_closure_per_area_per_screening',
+            ),
+        ]
+
+    def __str__(self):
+        return f'{self.get_area_display()} closed for {self.screening}'
 
 
 class ScreeningPrice(models.Model):
