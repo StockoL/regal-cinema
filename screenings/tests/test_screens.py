@@ -1,7 +1,7 @@
 from django.db import IntegrityError
 from django.test import TestCase
 
-from screenings.models import Screen, Seat
+from screenings.models import Screen, Seat, SeatingLayout
 
 
 class ScreenTests(TestCase):
@@ -47,6 +47,40 @@ class SeatTests(TestCase):
                 screen=self.screen, row_label='A', number=1,
                 area=Seat.Area.STALLS, row_index=0, column_index=0,
             )
+
+    def test_same_seat_in_two_layouts_is_allowed(self):
+        """Stalls seat 1 exists in the rows layout and the tables layout.
+        They're different seats, because the arrangements differ."""
+        rows = SeatingLayout.objects.create(screen=self.screen, name='Rows')
+        tables = SeatingLayout.objects.create(
+            screen=self.screen, name='Tables'
+        )
+        for layout in (rows, tables):
+            Seat.objects.create(
+                screen=self.screen, layout=layout, number=1,
+                area=Seat.Area.STALLS, row_index=0, column_index=0,
+            )
+        self.assertEqual(Seat.objects.count(), 2)
+
+    def test_same_seat_twice_in_one_layout_is_rejected(self):
+        layout = SeatingLayout.objects.create(screen=self.screen, name='Rows')
+        Seat.objects.create(
+            screen=self.screen, layout=layout, number=1,
+            area=Seat.Area.STALLS, row_index=0, column_index=0,
+        )
+        with self.assertRaises(IntegrityError):
+            Seat.objects.create(
+                screen=self.screen, layout=layout, number=1,
+                area=Seat.Area.STALLS, row_index=0, column_index=0,
+            )
+
+    def test_same_label_in_stalls_and_circle_is_allowed(self):
+        for area in (Seat.Area.STALLS, Seat.Area.CIRCLE):
+            Seat.objects.create(
+                screen=self.screen, row_label='A', number=1, area=area,
+                row_index=0, column_index=0,
+            )
+        self.assertEqual(Seat.objects.count(), 2)
 
     def test_same_seat_label_on_another_screen_is_allowed(self):
         other = Screen.objects.create(name='Screen 2')

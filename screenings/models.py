@@ -141,8 +141,15 @@ class Seat(models.Model):
         ordering = ['screen', 'row_label', 'number']
         constraints = [
             models.UniqueConstraint(
-                fields=['screen', 'row_label', 'number'],
-                name='unique_seat_per_screen',
+                fields=['screen', 'layout', 'area', 'row_label', 'number'],
+                name='unique_seat_per_layout',
+            ),
+            # PostgreSQL treats empty layouts as different from each
+            # other, so fixed seats need their own rule.
+            models.UniqueConstraint(
+                fields=['screen', 'area', 'row_label', 'number'],
+                condition=models.Q(layout__isnull=True),
+                name='unique_fixed_seat_per_screen',
             ),
         ]
 
