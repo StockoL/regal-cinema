@@ -353,6 +353,7 @@ Colour and contrast. The dark palette from [section 3 (Surface)](ux_design.md#v-
 The seat map is the most complex interactive component, so it gets specific treatment:
 
 - Every seat is a real `<button>`, activated with Enter or Space. Nothing is hover-only or click-only.
+- Each seat button meets the WCAG 2.2 minimum target size, at least 24 by 24 CSS pixels on desktop and about 30 on the phone's block view, with a gap between seats so a tap doesn't land on the neighbour. The 2.1 AA target doesn't ask for this, but a seat grid is exactly where small targets hurt.
 - The whole map is a single tab stop. Arrow keys move between seats along the grid from 4.1, skipping aisles and gaps, using a roving `tabindex`: only the seat that has focus is in the tab order. Tabbing through every seat in a full auditorium would take hundreds of key presses, and Tab leaves the map in one press instead.
 - Each seat's accessible name says what a screen reader user needs ("Circle, row C, seat 4, available"), built from the same fields as its label (4.1), not just a grid coordinate.
 - The key and the film page both say "The circle is reached by stairs only. The stalls are step-free."
