@@ -227,6 +227,9 @@ class Screening(models.Model):
     screen = models.ForeignKey(
         Screen, on_delete=models.PROTECT, related_name='screenings'
     )
+    layout = models.ForeignKey(
+        SeatingLayout, on_delete=models.PROTECT, related_name='screenings'
+    )
     ticket_class = models.ForeignKey(
         TicketClass, on_delete=models.PROTECT, related_name='screenings'
     )
@@ -282,6 +285,11 @@ class Screening(models.Model):
         # gets the overlap message instead of a database error.
         if self.film_id and self.date_time:
             self.ends_at = self.calculate_ends_at()
+        if (self.layout_id and self.screen_id
+                and self.layout.screen_id != self.screen_id):
+            raise ValidationError({
+                'layout': 'Choose a layout that belongs to this screen.',
+            })
         super().clean()
 
     def validate_constraints(self, exclude=None):

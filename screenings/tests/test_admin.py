@@ -10,6 +10,7 @@ from screenings.models import (
     Screen,
     Screening,
     Seat,
+    SeatingLayout,
     TicketClass,
     TicketType,
 )
@@ -30,6 +31,9 @@ class ScreeningsAdminTests(TestCase):
             title='Nosferatu', duration_minutes=100
         )
         self.screen = Screen.objects.create(name='Screen 1')
+        self.layout = SeatingLayout.objects.create(
+            screen=self.screen, name='Standard'
+        )
         self.ticket_class = TicketClass.objects.create(name='Standard')
         self.adult = TicketType.objects.create(name='Adult')
         self.start = datetime(2026, 11, 14, 19, 0,
@@ -53,7 +57,7 @@ class ScreeningsAdminTests(TestCase):
 
     def test_screening_page_edits_its_prices_and_shows_ends_at(self):
         screening = Screening.objects.create(
-            film=self.film, screen=self.screen,
+            film=self.film, screen=self.screen, layout=self.layout,
             ticket_class=self.ticket_class, date_time=self.start,
         )
         url = reverse('admin:screenings_screening_change',
@@ -65,7 +69,7 @@ class ScreeningsAdminTests(TestCase):
     def test_an_overlapping_screening_shows_the_message(self):
         """Bug 1 in the testing docs, through the admin form."""
         Screening.objects.create(
-            film=self.film, screen=self.screen,
+            film=self.film, screen=self.screen, layout=self.layout,
             ticket_class=self.ticket_class, date_time=self.start,
         )
         clash = self.start + timedelta(minutes=30)
@@ -74,6 +78,7 @@ class ScreeningsAdminTests(TestCase):
             {
                 'film': self.film.pk,
                 'screen': self.screen.pk,
+                'layout': self.layout.pk,
                 'ticket_class': self.ticket_class.pk,
                 'date_time_0': clash.strftime('%d/%m/%Y'),
                 'date_time_1': clash.strftime('%H:%M'),

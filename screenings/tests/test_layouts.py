@@ -2,7 +2,19 @@ from django.core.exceptions import ValidationError
 from django.db import IntegrityError
 from django.test import TestCase
 
-from screenings.models import Screen, Seat, SeatingLayout
+from datetime import datetime
+from zoneinfo import ZoneInfo
+
+from django.db.models import ProtectedError
+
+from screenings.models import (
+    Film,
+    Screen,
+    Screening,
+    Seat,
+    SeatingLayout,
+    TicketClass,
+)
 
 
 class SeatingLayoutTests(TestCase):
@@ -145,3 +157,45 @@ class WheelchairSpaceTests(TestCase):
         with self.assertRaises(ValidationError) as caught:
             seat.full_clean()
         self.assertIn('is_wheelchair_space', caught.exception.message_dict)
+
+
+class ScreeningLayoutTests(TestCase):
+    """A screening picks one of its screen's layouts (architecture 4.1)."""
+
+    def setUp(self):
+        self.screen = Screen.objects.create(name='Screen 1')
+        self.layout = SeatingLayout.objects.create(
+            screen=self.screen, name='Standard'
+        )
+        self.film = Film.objects.create(title='Nosferatu', duration_minutes=100)
+        self.ticket_class = TicketClass.objects.create(name='Standard')
+        self.start = datetime(2026, 11, 14, 19, 0,
+                              tzinfo=ZoneInfo('Europe/London'))
+
+    def make_screening(self, **fields):
+        fields.setdefault('film', self.film)
+        fields.setdefault('screen', self.screen)
+        fields.setdefault('layout', self.layout)
+        fields.setdefault('ticket_class', self.ticket_class)
+        fields.setdefault('date_time', self.start)
+        return Screening(**fields)
+
+    def test_a_screening_uses_a_layout(self):
+        screening = self.make_screening()
+        screening.full_clean()
+        screening.save()
+        self.assertEqual(list(self.layout.screenings.all()), [screening])
+
+    def test_a_layout_from_another_screen_is_refused(self):
+        other = Screen.objects.create(name='Screen 2')
+        wrong = SeatingLayout.objects.create(screen=other, name='Standard')
+        screening = self.make_screening(layout=wrong)
+        with self.assertRaises(ValidationError) as caught:
+            screening.full_clean()
+        self.assertIn('layout', caught.exception.message_dict)
+
+    def test_a_layout_in_use_cannot_be_deleted(self):
+        """Screening.layout is PROTECT (architecture 4.21)."""
+        self.make_screening().save()
+        with self.assertRaises(ProtectedError):
+            self.layout.delete()
