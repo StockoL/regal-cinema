@@ -45,7 +45,8 @@ class ScreeningsAdminTests(TestCase):
 
     def test_screen_page_edits_its_seats(self):
         Seat.objects.create(screen=self.screen, row_label='A', number=1,
-                            area=Seat.Area.STALLS)
+                            area=Seat.Area.STALLS, row_index=0,
+                            column_index=0)
         url = reverse('admin:screenings_screen_change', args=[self.screen.pk])
         response = self.client.get(url)
         self.assertContains(response, 'seats-TOTAL_FORMS')

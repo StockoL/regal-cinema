@@ -14,11 +14,11 @@ class ScreenTests(TestCase):
         for number in range(1, 4):
             Seat.objects.create(
                 screen=self.screen, row_label='A', number=number,
-                area=Seat.Area.STALLS,
+                area=Seat.Area.STALLS, row_index=0, column_index=0,
             )
         Seat.objects.create(
             screen=self.screen, row_label='K', number=1,
-            area=Seat.Area.CIRCLE,
+            area=Seat.Area.CIRCLE, row_index=0, column_index=0,
         )
         self.assertEqual(self.screen.capacity, 4)
 
@@ -40,23 +40,23 @@ class SeatTests(TestCase):
     def test_same_seat_twice_on_one_screen_is_rejected(self):
         Seat.objects.create(
             screen=self.screen, row_label='A', number=1,
-            area=Seat.Area.STALLS,
+            area=Seat.Area.STALLS, row_index=0, column_index=0,
         )
         with self.assertRaises(IntegrityError):
             Seat.objects.create(
                 screen=self.screen, row_label='A', number=1,
-                area=Seat.Area.STALLS,
+                area=Seat.Area.STALLS, row_index=0, column_index=0,
             )
 
     def test_same_seat_label_on_another_screen_is_allowed(self):
         other = Screen.objects.create(name='Screen 2')
         Seat.objects.create(
             screen=self.screen, row_label='A', number=1,
-            area=Seat.Area.STALLS,
+            area=Seat.Area.STALLS, row_index=0, column_index=0,
         )
         Seat.objects.create(
             screen=other, row_label='A', number=1,
-            area=Seat.Area.STALLS,
+            area=Seat.Area.STALLS, row_index=0, column_index=0,
         )
         self.assertEqual(Seat.objects.count(), 2)
 
@@ -65,7 +65,7 @@ class SeatTests(TestCase):
         been sold, PROTECT on the booking side blocks this delete."""
         Seat.objects.create(
             screen=self.screen, row_label='A', number=1,
-            area=Seat.Area.STALLS,
+            area=Seat.Area.STALLS, row_index=0, column_index=0,
         )
         self.screen.delete()
         self.assertEqual(Seat.objects.count(), 0)
@@ -73,7 +73,7 @@ class SeatTests(TestCase):
     def test_string_describes_the_seat(self):
         seat = Seat.objects.create(
             screen=self.screen, row_label='C', number=4,
-            area=Seat.Area.CIRCLE,
+            area=Seat.Area.CIRCLE, row_index=0, column_index=0,
         )
         self.assertEqual(str(seat), 'Row C, seat 4, circle')
 
@@ -81,7 +81,7 @@ class SeatTests(TestCase):
         for row, number in [('B', 2), ('A', 10), ('A', 2)]:
             Seat.objects.create(
                 screen=self.screen, row_label=row, number=number,
-                area=Seat.Area.STALLS,
+                area=Seat.Area.STALLS, row_index=0, column_index=0,
             )
         self.assertEqual(
             [(s.row_label, s.number) for s in Seat.objects.all()],

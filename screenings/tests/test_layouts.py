@@ -1,7 +1,7 @@
 from django.db import IntegrityError
 from django.test import TestCase
 
-from screenings.models import Screen, SeatingLayout
+from screenings.models import Screen, Seat, SeatingLayout
 
 
 class SeatingLayoutTests(TestCase):
@@ -45,3 +45,42 @@ class SeatingLayoutTests(TestCase):
             screen=self.screen, name='Tables'
         )
         self.assertEqual(str(layout), 'Screen 1: Tables')
+
+
+class SeatInLayoutTests(TestCase):
+    """A seat is fixed, appearing in every layout, or belongs to one
+    stalls arrangement. Its place on the map is a grid position (4.1)."""
+
+    def setUp(self):
+        self.screen = Screen.objects.create(name='Screen 1')
+        self.layout = SeatingLayout.objects.create(
+            screen=self.screen, name='Standard'
+        )
+
+    def make_seat(self, **fields):
+        fields.setdefault('screen', self.screen)
+        fields.setdefault('row_label', 'A')
+        fields.setdefault('number', 1)
+        fields.setdefault('area', Seat.Area.STALLS)
+        fields.setdefault('row_index', 0)
+        fields.setdefault('column_index', 0)
+        return Seat.objects.create(**fields)
+
+    def test_a_seat_with_no_layout_is_fixed(self):
+        seat = self.make_seat(area=Seat.Area.CIRCLE)
+        self.assertIsNone(seat.layout)
+
+    def test_a_seat_can_belong_to_a_layout(self):
+        seat = self.make_seat(layout=self.layout)
+        self.assertEqual(list(self.layout.seats.all()), [seat])
+
+    def test_deleting_a_layout_removes_only_its_seats(self):
+        fixed = self.make_seat(area=Seat.Area.CIRCLE, row_label='K')
+        self.make_seat(layout=self.layout)
+        self.layout.delete()
+        self.assertEqual(list(Seat.objects.all()), [fixed])
+
+    def test_grid_position_is_stored(self):
+        seat = self.make_seat(row_index=3, column_index=7)
+        seat.refresh_from_db()
+        self.assertEqual((seat.row_index, seat.column_index), (3, 7))

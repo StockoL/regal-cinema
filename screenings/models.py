@@ -108,7 +108,9 @@ class SeatingLayout(models.Model):
 
 
 class Seat(models.Model):
-    """One seat in a screen's fixed plan. Area describes where it is; it
+    """One seat in a screen. With no layout it's fixed and appears in
+    every layout, which is how the circle works. With a layout it belongs
+    to that stalls arrangement only. Area describes where it is; it
     doesn't change the price (architecture 4.1)."""
 
     class Area(models.TextChoices):
@@ -118,9 +120,16 @@ class Seat(models.Model):
     screen = models.ForeignKey(
         Screen, on_delete=models.CASCADE, related_name='seats'
     )
+    layout = models.ForeignKey(
+        SeatingLayout, on_delete=models.CASCADE, related_name='seats',
+        null=True, blank=True,
+    )
     row_label = models.CharField(max_length=3)
     number = models.PositiveSmallIntegerField()
     area = models.CharField(max_length=10, choices=Area.choices)
+    # Where the seat sits on the map. Empty columns are aisles and gaps.
+    row_index = models.PositiveSmallIntegerField()
+    column_index = models.PositiveSmallIntegerField()
 
     class Meta:
         ordering = ['screen', 'row_label', 'number']
