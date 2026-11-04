@@ -96,10 +96,16 @@ Ticket types with `requires_proof` show "Bring proof of age or status" at checko
 
 ## 4.3 `concessions`
 
-- `Product`: `name`, `price_pence`, `category` (drink or snack).
-- `OrderItem`: `booking` (FK), `product` (FK), `quantity`, `unit_price_pence` (a snapshot of the product's price when the order was placed).
+- `Product`: `name`, `price_pence`, `category` (drink or snack), `min_age` (nullable, 18 for alcohol), `allergens` (text), `is_available` (default true, switched off when an item has sold out for the day), `is_active` (false once a product is retired).
+- `OrderItem`: `booking` (FK), `product` (FK), `quantity`, `unit_price_pence` (a snapshot of the product's price when the order was placed), `status` (ordered, preparing or delivered).
 
-Food and drink pre-orders ride along with the ticket purchase through the same checkout and the same `Booking` record, instead of being a separate transaction.
+Food and drink is the venue's selling point, not an add-on: order ahead, sit down, and have it brought to you during the adverts. An order belongs to a `Booking`, so to one screening on any future date, and is paid in the same Checkout Session as the tickets (4.13). The food step comes after the ticket types and before the order check. It's optional and can be skipped, and it works as a plain form with no JavaScript. Orders close a set number of minutes before the start (`food_order_cutoff_minutes`, 90 by default, 4.23).
+
+The customer chooses once per booking how to get it, stored as `Booking.food_fulfilment` (4.2): `seat`, brought to their seats during the adverts, or `bar`, collected from the bar from a set time before the start (`bar_collection_minutes_before`, 30 by default). Seat delivery covers the stalls and the circle, since most seats are in the circle and delivery is the point. It can still be switched off, through `table_service_default` in the venue settings, and `Screening.table_service_enabled` (4.1) overrides that for one screening, such as a live event with no table service. When it's off, the `seat` choice isn't shown.
+
+An age-restricted product can go in the basket whatever the film's rating. ID is checked on delivery or collection, and the product, the order check and the confirmation all say so. Each product's allergens are shown on the order screen behind a visible link. Front of House can mark an item sold out for today, which takes it off the online menu until it's switched back on. Retiring a product for good is `is_active`, a Manager's job.
+
+Staff work from a service list for each screening: seat deliveries in the order staff walk the room, stalls front to back and then the circle, and bar collections by booking reference. Each item moves from ordered to preparing to delivered, and every change is logged with the staff member's name and the time (4.9). Cancelling a booking cancels its food, and the voucher covers the whole booking total (4.22). An item already marked preparing can't be cancelled without a Manager's note.
 
 ## 4.4 `membership`
 
