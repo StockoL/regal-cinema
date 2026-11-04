@@ -57,7 +57,11 @@ A screen can now be laid out more than one way. The circle's seats are fixed and
 
 <img src="screenshots/catalogue/admin-screen.png" alt="The admin page for Screen 1, listing its Standard and Tables layouts above the fixed circle seats, each with its area, row, number and grid position">
 
-Every layout is edited on its own page in the admin. The circle is reached by stairs only, so a wheelchair space there is refused, and a layout saved without a wheelchair space in use is refused too.
+Every layout is edited on its own page in the admin, with its stalls seats listed beneath it.
+
+<img src="screenshots/catalogue/admin-layout.png" alt="The admin page for Screen 1's Standard layout, with its stalls seats listed beneath, each with its number, grid position and flags">
+
+The circle is reached by stairs only, so a wheelchair space there is refused, and a layout saved without a wheelchair space in use is refused too. Here I unticked both of the Standard layout's wheelchair spaces and tried to save.
 
 <img src="screenshots/catalogue/admin-layout-no-wheelchair-space.png" alt="The Standard layout's admin page refusing to save, with the message: A layout needs at least one wheelchair space in use">
 
@@ -86,6 +90,10 @@ The times aren't links yet, because there's no seat map to send them to. That co
 ### 4 November 2026: what the browser showed that the tests didn't
 
 All 205 tests passed before I first looked at these pages in a browser, and two things were still wrong. The header and footer kept the class names from before LooseLeaf, which it doesn't style, so the site name was a plain blue link in the corner. And LooseLeaf's reset takes the bullets off a list marked `role="list"` but keeps the browser's left padding, so every strip of buttons and every card was indented. The header is now LooseLeaf's navbar, whose menu folds behind a Menu button on a phone without JavaScript, and one rule in the global layer removes the padding. Both fixes have a test, but neither problem was the kind a test would have found first. From now on I check each page in a browser before I call it done.
+
+The first screenshot I took is on the left, and the same page after the two fixes is on the right.
+
+<img src="screenshots/catalogue/home-phone-before-layout-fixes.png" alt="The first version of the home page on a phone: the site name a plain blue link in the corner, the menu unstyled, and the day strip, cards and times all indented from the left" width="300"> <img src="screenshots/catalogue/home-phone.png" alt="The same page after the fixes: a styled header with a Menu button, and the day strip and cards lined up with the heading" width="300">
 
 </details>
 
