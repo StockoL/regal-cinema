@@ -39,6 +39,22 @@
   </header>
 
   <main id="main" tabindex="-1">
+    {% if user.is_authenticated and not user.email_verified or messages %}
+      <div class="wrapper region flow" data-size="small">
+        {% if user.is_authenticated and not user.email_verified %}
+          {# A reminder, never a gate: the account already works (4.16). #}
+          <div class="alert flow" data-status="info">
+            <p>Please confirm your email address. We sent a link to {{ user.email }}.</p>
+            <form method="post" action="{% url 'accounts:resend_verification' %}">
+              {% csrf_token %}
+              <input type="hidden" name="next" value="{{ request.get_full_path }}">
+              <button class="button" type="submit" data-variant="secondary" data-size="small">Send the link again</button>
+            </form>
+          </div>
+        {% endif %}
+        {% ll_messages %}
+      </div>
+    {% endif %}
     {% block content %}{% endblock %}
   </main>
 

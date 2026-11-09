@@ -1,4 +1,8 @@
+from django.contrib import messages
 from django.contrib.auth import login
+from django.contrib.auth.decorators import login_required
+from django.utils.http import url_has_allowed_host_and_scheme
+from django.views.decorators.http import require_POST
 from django.shortcuts import redirect, render
 
 from .forms import RegisterForm
@@ -29,3 +33,18 @@ def verify_email(request, token):
     return render(request, 'accounts/verify_email_result.html', {
         'verified': user is not None,
     })
+
+
+@require_POST
+@login_required
+def resend_verification(request):
+    """Send the verification link again, from the reminder banner."""
+    send_verification_email(request, request.user)
+    messages.success(
+        request, f"We've sent a new link to {request.user.email}."
+    )
+    next_page = request.POST.get('next', '')
+    if not url_has_allowed_host_and_scheme(
+            next_page, allowed_hosts={request.get_host()}):
+        next_page = 'screenings:screening_list'
+    return redirect(next_page)

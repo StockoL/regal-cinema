@@ -6,6 +6,7 @@ from django.contrib.auth import get_user_model
 from django.core import mail
 from django.test import TestCase
 from django.urls import reverse
+from django.utils import timezone
 
 User = get_user_model()
 
@@ -342,3 +343,56 @@ class VerificationEmailTests(TestCase):
             response = self.register()
         self.assertRedirects(response, reverse('screenings:screening_list'))
         self.assertTrue(User.objects.filter(email='new@example.com').exists())
+
+
+class VerificationBannerTests(TestCase):
+    """A gentle reminder until the address is confirmed, never a gate
+    (architecture 4.16)."""
+
+    def setUp(self):
+        self.user = User.objects.create_user('new@example.com', 'a-long-pw-1')
+
+    def test_an_unverified_customer_sees_the_reminder(self):
+        self.client.force_login(self.user)
+        response = self.client.get('/')
+        self.assertContains(response, 'Please confirm your email address')
+        self.assertContains(response, 'new@example.com')
+
+    def test_a_verified_customer_doesnt(self):
+        self.user.email_verified_at = timezone.now()
+        self.user.save()
+        self.client.force_login(self.user)
+        self.assertNotContains(
+            self.client.get('/'), 'Please confirm your email address'
+        )
+
+    def test_a_visitor_doesnt(self):
+        self.assertNotContains(
+            self.client.get('/'), 'Please confirm your email address'
+        )
+
+    def test_the_link_can_be_sent_again(self):
+        self.client.force_login(self.user)
+        response = self.client.post(
+            reverse('accounts:resend_verification'), {'next': '/films/x/'}
+        )
+        self.assertRedirects(response, '/films/x/',
+                             fetch_redirect_response=False)
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertEqual(mail.outbox[0].to, ['new@example.com'])
+
+    def test_sending_again_says_so(self):
+        self.client.force_login(self.user)
+        response = self.client.post(
+            reverse('accounts:resend_verification'), follow=True
+        )
+        self.assertContains(response, 'sent a new link to new@example.com')
+
+    def test_sending_again_needs_a_post_and_a_login(self):
+        url = reverse('accounts:resend_verification')
+        self.assertRedirects(
+            self.client.post(url), f"{reverse('accounts:login')}?next={url}"
+        )
+        self.client.force_login(self.user)
+        self.assertEqual(self.client.get(url).status_code, 405)
+        self.assertEqual(len(mail.outbox), 0)
