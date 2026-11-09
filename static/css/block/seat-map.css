@@ -1,0 +1,120 @@
+/* The seat map (architecture 4.17). A Regal block: LooseLeaf has no
+   seat map. Each seat is a label around a visually hidden checkbox,
+   placed on the grid by --row and --col from the seat plan, so aisles
+   and gaps are empty cells. Every state differs by shape or mark as
+   well as colour: sold seats show a cross, outside section a dash and
+   a dashed edge, and chosen seats are filled. */
+.seat-map {
+  /* At least the WCAG 2.2 minimum target of 24 by 24 CSS pixels. */
+  --seat-size: 1.75rem;
+  /* Set on the element from the seat plan: how wide the area is. */
+  --columns: 1;
+  display: grid;
+  grid-template-columns: repeat(var(--columns), var(--seat-size));
+  grid-auto-rows: var(--seat-size);
+  gap: var(--space-3xs);
+  inline-size: max-content;
+}
+
+/* A fieldset won't shrink below its contents by default, which would
+   push the whole page wider than a phone instead of letting the frame
+   scroll. */
+.seat-map-area {
+  min-inline-size: 0;
+}
+
+/* Wider than a phone, so the map scrolls sideways inside its frame
+   rather than shrinking the seats below the target size. */
+.seat-map-frame {
+  overflow-x: auto;
+  padding-block: var(--space-3xs);
+}
+
+.seat-map-screen {
+  padding: var(--space-3xs);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-pill);
+  text-align: center;
+  color: var(--color-text-muted);
+  font-size: var(--text-small);
+}
+
+.seat {
+  /* Set on each seat from the seat plan: where it sits on the grid. */
+  --row: auto;
+  --col: auto;
+  display: grid;
+  place-items: center;
+  grid-row: var(--row);
+  grid-column: var(--col);
+  inline-size: var(--seat-size);
+  block-size: var(--seat-size);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-control);
+  background: var(--color-surface-raised);
+  color: var(--color-text);
+  font-size: var(--text-small);
+  font-weight: var(--weight-semibold);
+  cursor: pointer;
+}
+
+.seat__mark {
+  line-height: 1;
+}
+
+/* The checkbox stays in the form and the accessibility tree but is
+   never drawn, even with focus: the seat itself shows the state and
+   the focus ring. LooseLeaf's visually-hidden reveals on focus, which
+   suits a skip link but not this. */
+.seat__input {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  margin: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.seat {
+  position: relative;
+}
+
+/* The checkbox is hidden, so its focus ring goes on the seat. */
+.seat:has(.seat__input:focus-visible) {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.seat:has(.seat__input:checked),
+.seat[data-seat-status="chosen"] {
+  border-color: var(--color-action);
+  background: var(--color-action);
+  color: var(--color-action-text);
+}
+
+.seat[data-seat-status="sold"] {
+  background: var(--color-surface-sunken);
+  color: var(--color-text-muted);
+  cursor: not-allowed;
+}
+
+.seat[data-seat-status="outside section"] {
+  border-style: dashed;
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: not-allowed;
+}
+
+.seat[data-wheelchair] {
+  border-block-end-width: 3px;
+}
+
+.seat-key {
+  font-size: var(--text-small);
+}
+
+.seat-key__item {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2xs);
+}

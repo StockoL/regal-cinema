@@ -109,11 +109,36 @@ class SeatFormTests(TestCase):
         start = html.index(f'value="{seat.pk}"')
         return html[html.rindex('<input', 0, start):html.index('>', start)]
 
-    def test_seats_are_grouped_by_area_and_row(self):
+    def test_the_seats_are_drawn_area_by_area(self):
         html = self.page()
         self.assertIn('<legend class="legend">Stalls</legend>', html)
-        self.assertIn('<legend class="legend">Circle, row A</legend>', html)
-        self.assertLess(html.index('>Stalls<'), html.index('>Circle, row A<'))
+        self.assertIn('<legend class="legend">Circle</legend>', html)
+        self.assertLess(html.index('>Stalls<'), html.index('>Circle<'))
+
+    def test_each_seat_sits_at_its_place_on_the_grid(self):
+        """Row and column come from the seat plan (4.1), so aisles and
+        gaps are just empty cells."""
+        html = self.page()
+        start = html.index(f'value="{self.stalls[1].pk}"')
+        label = html[html.rindex('<label', 0, start):start]
+        self.assertIn('--row: 1; --col: 3', label)
+
+    def test_each_seat_has_its_full_name_for_screen_readers(self):
+        """4.17: "Circle, row A, seat 24, available", not a grid
+        reference."""
+        self.assertIn('Circle, row A, seat 24, available', self.page())
+
+    def test_each_state_is_marked_for_the_styles(self):
+        html = self.page()
+        self.assertIn('data-seat-status="available"', html)
+
+    def test_the_key_explains_each_state_in_words(self):
+        """Nothing is shown by colour alone (4.17)."""
+        html = self.page()
+        for words in ('Available', 'Your seats', 'Sold',
+                      'Outside section', 'Wheelchair space'):
+            with self.subTest(state=words):
+                self.assertIn(words, html)
 
     def test_each_seat_is_a_checkbox(self):
         self.assertIn('type="checkbox"', self.seat_input(self.circle))
@@ -128,7 +153,7 @@ class SeatFormTests(TestCase):
             expires_at=timezone.now() + timedelta(minutes=10),
         )
         self.assertIn('disabled', self.seat_input(self.stalls[0]))
-        self.assertIn('1, sold', self.page())
+        self.assertIn('Stalls, seat 1, sold', self.page())
 
     def test_an_expired_hold_leaves_the_seat_free(self):
         SeatHold.objects.create(
@@ -145,7 +170,8 @@ class SeatFormTests(TestCase):
             screening=self.screening, area=Seat.Area.CIRCLE
         )
         self.assertIn('disabled', self.seat_input(self.circle))
-        self.assertIn('24, outside section', self.page())
+        self.assertIn('Circle, row A, seat 24, outside section',
+                      self.page())
 
     def test_a_seat_out_of_use_isnt_offered(self):
         self.stalls[1].is_active = False
@@ -162,11 +188,10 @@ class SeatFormTests(TestCase):
         )
         self.assertNotIn(f'value="{other.pk}"', self.page())
 
-    def test_tables_are_their_own_groups(self):
-        for seat in self.stalls:
-            seat.table_number = 3
-            seat.save()
-        self.assertIn('<legend class="legend">Stalls, table 3</legend>',
+    def test_a_wheelchair_space_says_so(self):
+        self.stalls[0].is_wheelchair_space = True
+        self.stalls[0].save()
+        self.assertIn('Stalls, seat 1, available, wheelchair space',
                       self.page())
 
     def test_the_page_says_the_circle_is_stairs_only(self):

@@ -16,19 +16,7 @@
     <form class="flow" method="post">
       {% csrf_token %}
       {% if error %}<div class="alert" data-status="danger" role="alert"><p>{{ error }}</p></div>{% endif %}
-      {% for label, seats in seat_groups %}
-        <fieldset class="fieldset card">
-          <legend class="legend">{{ label }}</legend>
-          <div class="card__body cluster">
-            {% for seat, status in seats %}
-              <label class="choice">
-                <input class="choice__input" type="checkbox" name="seats" value="{{ seat.pk }}"{% if status != 'available' %} disabled{% elif seat.pk in ticked %} checked{% endif %}>
-                {% if seat.label_override %}{{ seat.label_override }}{% else %}{{ seat.number }}{% endif %}{% if status != 'available' %}, {{ status }}{% endif %}{% if seat.is_wheelchair_space %}, wheelchair space{% endif %}
-              </label>
-            {% endfor %}
-          </div>
-        </fieldset>
-      {% endfor %}
+      {% include 'bookings/_seat_map.html' %}
       <button class="button" type="submit" data-variant="primary">Continue</button>
     </form>
   {% endif %}

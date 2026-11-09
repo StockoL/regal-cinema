@@ -77,7 +77,7 @@ def screening_seats(request, pk):
         ticked = set(booking.holds.values_list('seat', flat=True))
     return render(request, 'bookings/screening_seats.html', {
         'screening': screening,
-        'seat_groups': seat_plan(screening, own_booking=booking),
+        'seat_areas': seat_plan(screening, own_booking=booking),
         'ticked': ticked,
         'error': error,
     })
