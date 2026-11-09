@@ -1,7 +1,8 @@
 from datetime import date, datetime, timedelta
 from zoneinfo import ZoneInfo
 
-from django.test import TestCase
+from django.test import TestCase, override_settings
+from django.utils import timezone
 
 from screenings.models import (
     Film,
@@ -71,3 +72,24 @@ class PublicScreeningsTests(TestCase):
             list(Screening.objects.public().on_date(date(2026, 6, 15))),
             [late],
         )
+
+
+class OnlineSalesCutoffTests(TestCase):
+    """Online booking stops a set number of minutes before the listed
+    start, 0 by default (architecture 4.23)."""
+
+    def screening_starting_in(self, minutes):
+        return Screening(
+            film=Film(title='Nosferatu', duration_minutes=90),
+            date_time=timezone.now() + timedelta(minutes=minutes),
+        )
+
+    @override_settings(ONLINE_SALES_CLOSE_MINUTES=0)
+    def test_sales_stay_open_until_the_start(self):
+        self.assertFalse(self.screening_starting_in(5).online_sales_closed)
+        self.assertTrue(self.screening_starting_in(-1).online_sales_closed)
+
+    @override_settings(ONLINE_SALES_CLOSE_MINUTES=30)
+    def test_a_venue_can_close_sales_earlier(self):
+        self.assertTrue(self.screening_starting_in(20).online_sales_closed)
+        self.assertFalse(self.screening_starting_in(40).online_sales_closed)

@@ -135,6 +135,10 @@ SCREENING_TURNAROUND_MINUTES = 15
 # How long chosen seats are kept for a customer (4.8). The 30-minute
 # cap on total hold time is fixed, not a setting.
 SEAT_HOLD_MINUTES = 10
+# How many minutes before the listed start online sales close. 0 closes
+# them at the start, as the real venue's terms admit no one after the
+# film starts (4.23). The staff till isn't bound by it (4.14).
+ONLINE_SALES_CLOSE_MINUTES = 0
 
 
 # Password validation

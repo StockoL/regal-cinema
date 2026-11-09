@@ -351,6 +351,15 @@ class Screening(models.Model):
     def is_cancelled(self):
         return self.cancelled_at is not None
 
+    @property
+    def online_sales_closed(self):
+        """Online booking stops this long before the listed start
+        (4.23). Staff can still sell at the till (4.14)."""
+        cutoff = self.date_time - timedelta(
+            minutes=settings.ONLINE_SALES_CLOSE_MINUTES
+        )
+        return timezone.now() >= cutoff
+
     def seats(self):
         """The screen's fixed seats plus this screening's layout, leaving
         out seats out of use. Capacity comes from this set, worked out
