@@ -8,6 +8,7 @@ app_name = 'accounts'
 
 urlpatterns = [
     path('register/', views.register, name='register'),
+    path('verify/<str:token>/', views.verify_email, name='verify_email'),
     path('login/', auth_views.LoginView.as_view(
         template_name='accounts/login.html',
         authentication_form=LoginForm,

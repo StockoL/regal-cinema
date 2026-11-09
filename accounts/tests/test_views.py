@@ -1,4 +1,6 @@
 import re
+from smtplib import SMTPException
+from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
 from django.core import mail
@@ -266,3 +268,77 @@ class PasswordResetTests(TestCase):
         self.client.logout()
         response = self.client.get(link, follow=True)
         self.assertContains(response, 'This link has expired or been used')
+
+
+class VerificationEmailTests(TestCase):
+    """A verification email goes out on registration, but the account
+    works straight away. Journey 4, "Verification"; architecture 4.16."""
+
+    def register(self):
+        return self.client.post(reverse('accounts:register'), {
+            'email': 'new@example.com',
+            'password1': 'a-long-password',
+            'password2': 'a-long-password',
+        })
+
+    def link_from_email(self):
+        return re.search(
+            r'https?://\S+(/account/verify/\S+/)', mail.outbox[-1].body
+        ).group(1)
+
+    def user(self):
+        return User.objects.get(email='new@example.com')
+
+    def test_registering_sends_one_email_with_a_link(self):
+        self.register()
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertEqual(mail.outbox[0].to, ['new@example.com'])
+        self.assertIn('Confirm your email address', mail.outbox[0].subject)
+        self.assertTrue(self.link_from_email())
+
+    def test_the_account_works_before_it_is_verified(self):
+        self.register()
+        self.assertIsNone(self.user().email_verified_at)
+        self.assertIn('_auth_user_id', self.client.session)
+
+    def test_following_the_link_verifies_the_address(self):
+        self.register()
+        response = self.client.get(self.link_from_email())
+        self.assertContains(response, 'Email address confirmed')
+        self.assertIsNotNone(self.user().email_verified_at)
+
+    def test_the_link_works_without_being_logged_in(self):
+        """It may be opened on another device."""
+        self.register()
+        self.client.logout()
+        self.client.get(self.link_from_email())
+        self.assertIsNotNone(self.user().email_verified_at)
+
+    def test_a_tampered_link_is_refused(self):
+        self.register()
+        response = self.client.get(self.link_from_email()[:-3] + 'xx/')
+        self.assertContains(response, 'This link has expired or is broken')
+        self.assertIsNone(self.user().email_verified_at)
+
+    def test_an_old_link_is_refused(self):
+        self.register()
+        with patch('accounts.verification.LINK_MAX_AGE', -1):
+            response = self.client.get(self.link_from_email())
+        self.assertContains(response, 'This link has expired or is broken')
+        self.assertIsNone(self.user().email_verified_at)
+
+    def test_a_link_for_an_old_address_doesnt_verify_a_new_one(self):
+        self.register()
+        user = self.user()
+        user.email = 'changed@example.com'
+        user.save()
+        self.client.get(self.link_from_email())
+        user.refresh_from_db()
+        self.assertIsNone(user.email_verified_at)
+
+    def test_registration_still_works_if_the_email_cant_be_sent(self):
+        with patch('accounts.verification.send_mail',
+                   side_effect=SMTPException):
+            response = self.register()
+        self.assertRedirects(response, reverse('screenings:screening_list'))
+        self.assertTrue(User.objects.filter(email='new@example.com').exists())

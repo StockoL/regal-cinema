@@ -1,0 +1,10 @@
+{% autoescape off %}Thanks for creating a Regal Cinema account with {{ email }}.
+
+Your account already works. To confirm this is your email address, open this link:
+
+{{ link }}
+
+The link expires after three days. If you didn't create this account, you can ignore this email.
+
+Regal Cinema is a fictional venue created for a course project. It isn't connected to any real cinema.
+{% endautoescape %}
