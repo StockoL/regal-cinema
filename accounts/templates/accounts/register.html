@@ -1,0 +1,17 @@
+{% extends 'base.html' %}
+
+{% block title %}Create an account{% endblock %}
+
+{% block content %}
+<div class="wrapper region">
+  <div class="center flow">
+    <h1>Create an account</h1>
+    <p>An account lets you book online and see your bookings and vouchers.</p>
+    <form class="flow" method="post" novalidate>
+      {% csrf_token %}
+      {{ form }}
+      <button class="button" type="submit" data-variant="primary">Create account</button>
+    </form>
+  </div>
+</div>
+{% endblock %}
