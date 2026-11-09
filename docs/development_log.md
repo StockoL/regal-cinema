@@ -98,7 +98,11 @@ The first screenshot I took is on the left, and the same page after the two fixe
 
 ### 9 November 2026: registering, logging in and out
 
-Customers can now create an account, log in and log out (journey 4). Registering asks for an email address and a password typed twice, and nothing else, as 4.16 sets out. The register wireframe also had a full name and a terms checkbox, but the design brief says email and password only, and the brief wins over the wireframes. The address is stored in lower case before it's checked, so the same address with different capitals is refused as a duplicate, and the new customer is logged straight in.
+Customers can now create an account, log in and log out (journey 4). Registering asks for an email address and a password typed twice, and nothing else, as 4.16 sets out.
+
+<img src="screenshots/accounts/register.png" alt="The empty Create an account page on a phone: email address, password with its hint, and confirm password" width="300">
+
+The register wireframe also had a full name and a terms checkbox, but the design brief says email and password only, and the brief wins over the wireframes. The address is stored in lower case before it's checked, so the same address with different capitals is refused as a duplicate, and the new customer is logged straight in.
 
 Forms render through LooseLeaf's form renderer, so every error is written next to its field and the field is marked invalid for screen readers. The first version used Django's own password help, a list of four rules that pushed the confirm field off the screen on a phone. I replaced it with one plain line, and renamed "Password confirmation" to "Confirm password".
 
