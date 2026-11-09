@@ -7,7 +7,9 @@ from django.utils import timezone
 from bookings.basket import BasketError
 from bookings.models import Booking, SeatHold
 from bookings.services import (
+    HoldTimeUsedUp,
     SeatsUnavailable,
+    amend_booking,
     cancel_pending_booking,
     hold_seats,
     start_booking,
@@ -170,3 +172,89 @@ class CancelPendingBookingTests(TestCase):
         with self.assertRaises(ValueError):
             cancel_pending_booking(booking)
         self.assertTrue(Booking.objects.exists())
+
+
+@override_settings(SEAT_HOLD_MINUTES=10)
+class AmendBookingTests(TestCase):
+    """Going back and changing anything before paying, without starting
+    again. Journey 2, "Amend"; architecture 4.8 steps 11 and 12."""
+
+    def setUp(self):
+        self.screening, (self.seat_1, self.seat_2) = make_screening()
+        self.seat_3 = Seat.objects.create(
+            screen=self.screening.screen, layout=self.screening.layout,
+            area=Seat.Area.STALLS, number=3, row_index=0, column_index=3,
+        )
+        film = self.screening.film
+        film.age_rating = 'PG'
+        film.save()
+        self.adult = TicketType.objects.get(name='Adult')
+        self.student = TicketType.objects.get(name='Student')
+        self.booking = start_booking(
+            self.screening, [(self.seat_1, self.adult),
+                             (self.seat_2, self.adult)], 0, 'session-a',
+        )
+
+    def amend(self, choices, infants=0):
+        return amend_booking(self.booking, choices, infants, 'session-a')
+
+    def held(self):
+        return {(h.seat, h.ticket_type) for h in self.booking.holds.all()}
+
+    def test_seats_can_be_swapped_in_one_step(self):
+        self.amend([(self.seat_1, self.adult), (self.seat_3, self.adult)])
+        self.assertEqual(self.held(), {(self.seat_1, self.adult),
+                                       (self.seat_3, self.adult)})
+
+    def test_a_removed_seat_is_free_to_others_at_once(self):
+        """Journey 2, "Seats never stuck"."""
+        self.amend([(self.seat_1, self.adult)])
+        hold_seats(self.screening, [(self.seat_2, self.adult)], 'session-b')
+
+    def test_ticket_types_and_infants_can_change(self):
+        self.amend([(self.seat_1, self.student), (self.seat_2, self.adult)],
+                   infants=2)
+        self.booking.refresh_from_db()
+        self.assertEqual(self.booking.infant_count, 2)
+        self.assertIn((self.seat_1, self.student), self.held())
+
+    def test_each_change_restarts_the_timer(self):
+        SeatHold.objects.update(expires_at=timezone.now() + timedelta(
+            minutes=1))
+        before = timezone.now()
+        self.amend([(self.seat_1, self.adult), (self.seat_2, self.adult)])
+        for hold in self.booking.holds.all():
+            self.assertGreater(hold.expires_at,
+                               before + timedelta(minutes=9))
+
+    def test_the_timer_never_runs_past_thirty_minutes(self):
+        Booking.objects.filter(pk=self.booking.pk).update(
+            created_at=timezone.now() - timedelta(minutes=25)
+        )
+        self.booking.refresh_from_db()
+        self.amend([(self.seat_1, self.adult), (self.seat_2, self.adult)])
+        cap = self.booking.created_at + timedelta(minutes=30)
+        for hold in self.booking.holds.all():
+            self.assertLessEqual(hold.expires_at, cap)
+
+    def test_once_the_thirty_minutes_are_up_it_must_start_again(self):
+        Booking.objects.filter(pk=self.booking.pk).update(
+            created_at=timezone.now() - timedelta(minutes=31)
+        )
+        self.booking.refresh_from_db()
+        with self.assertRaises(HoldTimeUsedUp):
+            self.amend([(self.seat_1, self.adult)])
+
+    def test_a_taken_seat_leaves_the_booking_as_it_was(self):
+        hold_seats(self.screening, [(self.seat_3, self.adult)], 'session-b')
+        with self.assertRaises(SeatsUnavailable) as caught:
+            self.amend([(self.seat_1, self.adult), (self.seat_3, self.adult)])
+        self.assertEqual(caught.exception.seats, [self.seat_3])
+        self.assertEqual(self.held(), {(self.seat_1, self.adult),
+                                       (self.seat_2, self.adult)})
+
+    def test_a_broken_rule_leaves_the_booking_as_it_was(self):
+        child = TicketType.objects.get(name='Child')
+        with self.assertRaises(BasketError):
+            self.amend([(self.seat_1, child)])
+        self.assertEqual(len(self.held()), 2)

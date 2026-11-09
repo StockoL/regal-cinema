@@ -19,7 +19,25 @@ class SeatsUnavailable(Exception):
         self.seats = seats
 
 
-def hold_seats(screening, choices, session_key, user=None):
+# The longest a customer can keep seats in total, however often they
+# amend. Fixed, not a venue setting: it matches the shortest session
+# Stripe Checkout allows, so the one extension at Pay always covers a
+# whole session (4.8, 4.23).
+HOLD_CAP_MINUTES = 30
+
+
+class HoldTimeUsedUp(Exception):
+    """The booking has had its 30 minutes, so the customer chooses
+    their seats again from the start."""
+
+
+def check_ticket_types(screening, choices):
+    offered = set(screening.film.ticket_types())
+    if any(ticket_type not in offered for _, ticket_type in choices):
+        raise ValueError("A ticket type isn't offered for this film.")
+
+
+def hold_seats(screening, choices, session_key, user=None, expires_at=None):
     """Hold every chosen seat with its ticket type, or none of them
     (architecture 4.8 step 3). choices is a list of (seat, ticket_type).
 
@@ -28,9 +46,7 @@ def hold_seats(screening, choices, session_key, user=None):
     The database constraint is the final word if two customers race for
     a seat between the check and the insert.
     """
-    offered = set(screening.film.ticket_types())
-    if any(ticket_type not in offered for _, ticket_type in choices):
-        raise ValueError("A ticket type isn't offered for this film.")
+    check_ticket_types(screening, choices)
 
     with transaction.atomic():
         now = timezone.now()
@@ -43,7 +59,8 @@ def hold_seats(screening, choices, session_key, user=None):
         ]
         if unavailable:
             raise SeatsUnavailable(unavailable)
-        expires_at = now + timedelta(minutes=settings.SEAT_HOLD_MINUTES)
+        if expires_at is None:
+            expires_at = now + timedelta(minutes=settings.SEAT_HOLD_MINUTES)
         try:
             with transaction.atomic():
                 return SeatHold.objects.bulk_create([
@@ -112,6 +129,53 @@ def group_label(seat):
     if seat.table_number:
         return f'Stalls, table {seat.table_number}'
     return 'Stalls'
+
+
+def amend_booking(booking, choices, infants, session_key, user=None):
+    """Change a pending booking's seats, ticket types or infants without
+    starting again (4.8 step 11). In one transaction, seats no longer
+    wanted are released, new ones held and kept ones given their new
+    ticket type, so the customer never holds nothing or both. Each
+    change restarts the timer, but never past 30 minutes from when the
+    booking started. Raises BasketError, SeatsUnavailable or
+    HoldTimeUsedUp, and leaves the booking as it was if it does."""
+    check_basket(
+        booking.screening.film,
+        [ticket_type for _, ticket_type in choices], infants,
+    )
+    check_ticket_types(booking.screening, choices)
+    now = timezone.now()
+    cap = booking.created_at + timedelta(minutes=HOLD_CAP_MINUTES)
+    if now >= cap:
+        raise HoldTimeUsedUp()
+    expires_at = min(
+        now + timedelta(minutes=settings.SEAT_HOLD_MINUTES), cap
+    )
+    wanted = {seat.pk: ticket_type for seat, ticket_type in choices}
+
+    with transaction.atomic():
+        Booking.objects.select_for_update().get(pk=booking.pk)
+        booking.holds.exclude(seat__in=list(wanted)).delete()
+        # A hold of theirs that ran out is held again like a new seat,
+        # in case someone else has it now.
+        booking.holds.filter(expires_at__lte=now).delete()
+        kept = list(booking.holds.all())
+        for hold in kept:
+            hold.ticket_type = wanted[hold.seat_id]
+            hold.expires_at = expires_at
+            hold.save(update_fields=['ticket_type', 'expires_at'])
+        kept_seats = {hold.seat_id for hold in kept}
+        added = [(seat, ticket_type) for seat, ticket_type in choices
+                 if seat.pk not in kept_seats]
+        if added:
+            holds = hold_seats(booking.screening, added, session_key,
+                               user=user, expires_at=expires_at)
+            SeatHold.objects.filter(
+                pk__in=[hold.pk for hold in holds]
+            ).update(booking=booking)
+        booking.infant_count = infants
+        booking.save(update_fields=['infant_count'])
+    return booking
 
 
 def cancel_pending_booking(booking):
