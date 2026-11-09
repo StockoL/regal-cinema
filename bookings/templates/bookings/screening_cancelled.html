@@ -1,0 +1,14 @@
+{% extends 'base.html' %}
+
+{% block title %}Screening cancelled{% endblock %}
+
+{% block content %}
+<div class="wrapper region">
+  <div class="center flow">
+    <h1>This screening has been cancelled</h1>
+    <p>{{ screening.film.title }}, {{ screening.date_time|date:"l j F" }} at {{ screening.date_time|time:"g:i a" }}</p>
+    <p>If you had a booking, we've emailed you about a voucher or a refund, and it shows in My bookings.</p>
+    <p><a class="button" data-variant="primary" href="{% url 'screenings:screening_list' %}">See what's on</a></p>
+  </div>
+</div>
+{% endblock %}

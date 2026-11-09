@@ -1,0 +1,25 @@
+{% extends 'base.html' %}
+
+{% block title %}Your booking {{ booking.reference }}{% endblock %}
+
+{% block content %}
+<div class="wrapper region">
+  <div class="center flow">
+    <h1>Your seats are held</h1>
+    <p>Booking reference {{ booking.reference }}: {{ booking.screening.film.title }}, {{ booking.screening.date_time|date:"l j F" }} at {{ booking.screening.date_time|time:"g:i a" }}</p>
+    <ul class="flow" role="list">
+      {% for hold in holds %}
+        <li>{{ hold.seat.label }}, {{ hold.ticket_type.name }}</li>
+      {% endfor %}
+      {% if booking.infant_count %}<li>{{ booking.infant_count }} under 2{{ booking.infant_count|pluralize }}, on a lap</li>{% endif %}
+    </ul>
+    {% if held_until %}<p>We'll keep these seats for you until {{ held_until|time:"g:i a" }}</p>{% endif %}
+    <p><a href="{% url 'bookings:screening_seats' booking.screening.pk %}">Change seats or tickets</a></p>
+    <p>Paying comes next. It isn't built yet.</p>
+    <form method="post" action="{% url 'bookings:booking_cancel' booking.reference %}">
+      {% csrf_token %}
+      <button class="button" type="submit" data-variant="secondary">Cancel and release these seats</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

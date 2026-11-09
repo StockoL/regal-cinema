@@ -1,0 +1,37 @@
+{% extends 'base.html' %}
+{% load screenings_extras %}
+
+{% block title %}Choose tickets: {{ screening.film.title }}{% endblock %}
+
+{% block content %}
+<div class="wrapper region">
+  <div class="center flow">
+    <h1>Choose tickets</h1>
+    <p>{{ screening.film.title }}, {{ screening.date_time|date:"l j F" }} at {{ screening.date_time|time:"g:i a" }}</p>
+    <form class="flow" method="post">
+      {% csrf_token %}
+      {% if error %}<div class="alert" data-status="danger" role="alert"><p>{{ error }}</p></div>{% endif %}
+      {% for seat, label in seats %}
+        <div class="field">
+          <label class="label" for="type_{{ seat.pk }}">{{ label }}</label>
+          <select class="select" id="type_{{ seat.pk }}" name="type_{{ seat.pk }}">
+            <option value="">Choose a ticket type</option>
+            {% for ticket_type, price in ticket_types %}
+              <option value="{{ ticket_type.pk }}"{% if picked|get_item:seat.pk == ticket_type.pk|stringformat:'s' %} selected{% endif %}>{{ ticket_type.name }}, {{ price|pounds }}{% if ticket_type.description %}. {{ ticket_type.description }}{% endif %}</option>
+            {% endfor %}
+          </select>
+        </div>
+      {% endfor %}
+      {% if screening.film.allows_infants %}
+        <div class="field">
+          <label class="label" for="infants">Under 2s on a lap</label>
+          <input class="input" type="number" id="infants" name="infants" min="0" value="{{ infants }}" inputmode="numeric" aria-describedby="infants_hint">
+          <p class="field__hint" id="infants_hint">Under 2s sit on a lap and go free. If they need their own seat, add a Child ticket.</p>
+        </div>
+      {% endif %}
+      <button class="button" type="submit" data-variant="primary">Hold these seats</button>
+    </form>
+    <p><a href="{% url 'bookings:screening_seats' screening.pk %}">Change seats</a></p>
+  </div>
+</div>
+{% endblock %}

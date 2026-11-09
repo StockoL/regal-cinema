@@ -165,7 +165,51 @@ Earlier the same day the live site showed a 500 once, and the next load worked. 
 
 Planned scope: the transactional core of `bookings`: `SeatHold`, `Booking`, `SeatBooking`, the interactive seat map, ticket types and infants, going back to amend, immediate release of seats, and the database-level double-booking protection (4.8). Payment is stubbed at this stage, with bookings marked paid manually, so the seat concurrency logic, the highest-risk part of the project, can be built and tested before Stripe is added.
 
-### To be completed during development
+### 9 November 2026: the double-booking spike
+
+Before writing any seat code, I wanted proof that two customers can't hold the same seat, because everything else in the booking flow rests on it. A seat hold (`SeatHold`, 4.8) is unique on the screening and the seat in the database itself, not just checked in Python, so the database is the final word.
+
+The test starts two threads, each with its own database connection, and holds them at a barrier until both are ready. Then both try to hold the same seat in the same instant. Exactly one gets it and the other is refused cleanly. A second test forces the harder case inside the service that holds seats: the other customer's hold is written but not yet committed when this customer's check runs, so the check passes, and the insert then waits on the database and loses. The service names the seat that went and holds nothing.
+
+```text
+python manage.py test bookings.tests.test_concurrency
+Ran 2 tests in 1.646s
+OK
+```
+
+A test that has always passed doesn't prove much, so I checked both could fail. With the unique constraint dropped in the test database, the first test failed with both customers holding the seat. With the service's race branch made to raise an error on purpose, the second failed with that error. Neither change was committed. These tests are why the project runs on PostgreSQL even on my own machine (24 October above): SQLite locks the whole database on every write, so they'd pass there without telling me anything.
+
+### 9 November 2026: holds, the pending booking and the rules
+
+A hold keeps one seat for one customer for 10 minutes, with the ticket type they chose. Expired holds aren't deleted on a timer. Queries ignore them, and the next hold at that screening clears them, so the project needs no scheduler. When the customer proceeds, a `Booking` is created as pending, with a reference such as RGL-4X8UV, made from characters that are hard to mishear over the phone. The seats stay as holds linked to it until payment is confirmed.
+
+Before anything is held, the basket is checked against the Regal's own rules (4.2): at least one seat, under 2s only on U, PG and 12A films, children and under 2s with someone on a ticket that doesn't need an adult, and each free Companion ticket with someone on a full-price ticket. The rules read each ticket type's flags rather than its name, so a venue can add its own types in the admin, and each rule has its own test. Checking the basket, holding the seats and making the pending booking happen in one transaction, so a broken rule or a taken seat leaves nothing behind.
+
+The customer can go back and change anything before paying. Seats no longer wanted are released and new ones held in the same step, so they never hold nothing or both, and each change restarts the 10 minutes, but never past 30 minutes from when the booking started. That cap isn't a setting: it matches the shortest session Stripe Checkout allows, so the one extension when the customer chooses Pay will always cover a whole session. A customer can also let their seats go at once rather than wait for the hold to run out.
+
+### 9 November 2026: choosing seats without JavaScript
+
+The drawn seat map comes next, so I built the booking flow first as plain forms that work with JavaScript switched off, as wireframe 04 does. Every seat the screening uses is a checkbox, grouped as a customer would look for them: the stalls, or each table, then each circle row. A seat someone else is holding shows as sold, since to anyone else it's simply unavailable (4.17), and the page says the circle is reached by stairs only.
+
+<img src="screenshots/booking/seats-top.png" alt="The seats page on a phone: the film, date and time, the stairs note, and the stalls as a box of checkboxes with the two wheelchair spaces labelled" width="300"> <img src="screenshots/booking/seats-circle.png" alt="Circle row A, with seats 23 and 22 greyed out and marked sold" width="300">
+
+The second step gives each seat a ticket type from the ones the film's rating allows, with its price, and asks about under 2s on films they can see. A broken rule is explained in text with the choices kept. If someone takes a seat while the customer is choosing, they go back to the seats with that seat named and their other choices still ticked.
+
+<img src="screenshots/booking/seats-none-chosen.png" alt="The seats page after continuing with nothing ticked: Choose at least one seat" width="300"> <img src="screenshots/booking/tickets-rule-broken.png" alt="The tickets step refusing three Child tickets: Children and under 2s must come with someone on another ticket type, such as Adult" width="300"> <img src="screenshots/booking/seat-taken.png" alt="Back on the seats page: Circle, row D, seat 12 was taken while you were choosing. Your other seats are still ticked." width="300">
+
+When it works, the seats are held and the customer sees what's held and until when, with links to change it or let it go. Paying comes with Stripe in Phase 3.
+
+<img src="screenshots/booking/tickets.png" alt="The tickets step with an Adult and a Child ticket and one under 2" width="300"> <img src="screenshots/booking/checkout.png" alt="Your seats are held: the reference, both seats with their ticket types, one under 2 on a lap, the time the hold ends, and links to change or cancel" width="300"> <img src="screenshots/booking/released.png" alt="The seats page after cancelling: Your seats have been released" width="300">
+
+An old link to a cancelled screening gets a plain page saying so (4.11), and once online sales have closed the page gives the box office number instead of the seats. Walk-ins can still buy at the till (4.14), since the cut-off only applies online.
+
+<img src="screenshots/booking/screening-cancelled.png" alt="This screening has been cancelled, with a See what is on button" width="300"> <img src="screenshots/booking/sales-closed.png" alt="A screening that has started: Online sales have closed, with the box office number" width="300">
+
+Checking each step in a browser caught a small thing the tests didn't. Django writes times as "6:00 p.m.", so a sentence ending on a time came out as "p.m..". I reworded those sentences so no full stop follows a time, and a test now looks for the doubled one.
+
+<img src="screenshots/booking/checkout-before-time-fix.png" alt="The first checkout page, with 6:00 p.m.. and 4:05 p.m.. each ending in two full stops" width="300"> <img src="screenshots/booking/checkout.png" alt="The checkout page now, with no doubled full stops" width="300">
+
+The ticket list also cuts off the age band on a phone ("Child, £9.00. Aged 2 to 1"). I've left that for the drawn seat map, which will lay ticket types out properly.
 
 </details>
 
