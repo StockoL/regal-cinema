@@ -2,6 +2,8 @@ from django.shortcuts import get_object_or_404, render
 
 from screenings.models import Screening
 
+from .services import seat_plan
+
 
 def screening_seats(request, pk):
     """Choosing seats for one screening (journey 2). A private screening
@@ -15,4 +17,5 @@ def screening_seats(request, pk):
                       {'screening': screening}, status=410)
     return render(request, 'bookings/screening_seats.html', {
         'screening': screening,
+        'seat_groups': seat_plan(screening),
     })

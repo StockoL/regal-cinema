@@ -2,6 +2,7 @@ from datetime import timedelta
 
 from django.conf import settings
 from django.db import IntegrityError, transaction
+from django.db.models import Q
 from django.utils import timezone
 
 from .basket import check_basket
@@ -79,3 +80,35 @@ def start_booking(screening, choices, infants, session_key, user=None):
             booking=booking
         )
     return booking
+
+
+def seat_plan(screening):
+    """The seats a customer can see for a screening, grouped as they'd
+    look for them: the stalls (or each table), then each circle row.
+    Each seat has a status: available, sold (held by anyone or sold),
+    or outside section (an area closed for this screening, 4.1, 4.17).
+    Seats out of use and other layouts' seats aren't shown."""
+    seats = screening.screen.seats.filter(
+        Q(layout__isnull=True) | Q(layout=screening.layout_id),
+        is_active=True,
+    ).order_by('-area', 'row_index', 'column_index')
+    closed = set(screening.closed_areas.values_list('area', flat=True))
+    held = set(screening.holds.live().values_list('seat', flat=True))
+    groups = {}
+    for seat in seats:
+        if seat.area in closed:
+            status = 'outside section'
+        elif seat.pk in held:
+            status = 'sold'
+        else:
+            status = 'available'
+        groups.setdefault(group_label(seat), []).append((seat, status))
+    return list(groups.items())
+
+
+def group_label(seat):
+    if seat.area == seat.Area.CIRCLE:
+        return f'Circle, row {seat.row_label}'
+    if seat.table_number:
+        return f'Stalls, table {seat.table_number}'
+    return 'Stalls'

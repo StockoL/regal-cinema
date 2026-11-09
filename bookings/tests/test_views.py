@@ -4,12 +4,16 @@ from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
 
+from bookings.models import SeatHold
 from screenings.models import (
     Film,
     Screen,
     Screening,
+    ScreeningClosedArea,
+    Seat,
     SeatingLayout,
     TicketClass,
+    TicketType,
 )
 
 
@@ -72,3 +76,97 @@ class ScreeningSeatsPageTests(TestCase):
         self.assertContains(response, 'Online sales have closed')
         self.assertContains(response, '01632 960 123')
         self.assertNotContains(response, '<form')
+
+
+class SeatFormTests(TestCase):
+    """The seats as a plain form that works without JavaScript, grouped
+    the way a customer would look for them (wireframe 04; journey 2)."""
+
+    def setUp(self):
+        self.screening = make_future_screening()
+        screen, layout = self.screening.screen, self.screening.layout
+        self.stalls = [
+            Seat.objects.create(
+                screen=screen, layout=layout, area=Seat.Area.STALLS,
+                number=n, row_index=0, column_index=n,
+            )
+            for n in (1, 2)
+        ]
+        self.circle = Seat.objects.create(
+            screen=screen, area=Seat.Area.CIRCLE, row_label='A', number=24,
+            row_index=0, column_index=0,
+        )
+        self.url = reverse('bookings:screening_seats',
+                           args=[self.screening.pk])
+
+    def page(self):
+        return self.client.get(self.url).content.decode()
+
+    def seat_input(self, seat):
+        html = self.page()
+        start = html.index(f'value="{seat.pk}"')
+        return html[html.rindex('<input', 0, start):html.index('>', start)]
+
+    def test_seats_are_grouped_by_area_and_row(self):
+        html = self.page()
+        self.assertIn('<legend class="legend">Stalls</legend>', html)
+        self.assertIn('<legend class="legend">Circle, row A</legend>', html)
+        self.assertLess(html.index('>Stalls<'), html.index('>Circle, row A<'))
+
+    def test_each_seat_is_a_checkbox(self):
+        self.assertIn('type="checkbox"', self.seat_input(self.circle))
+        self.assertNotIn('disabled', self.seat_input(self.circle))
+
+    def test_a_seat_held_by_someone_else_shows_as_sold(self):
+        """4.17: to anyone else a held seat is simply unavailable."""
+        SeatHold.objects.create(
+            screening=self.screening, seat=self.stalls[0],
+            ticket_type=TicketType.objects.get(name='Adult'),
+            session_key='someone-else',
+            expires_at=timezone.now() + timedelta(minutes=10),
+        )
+        self.assertIn('disabled', self.seat_input(self.stalls[0]))
+        self.assertIn('1, sold', self.page())
+
+    def test_an_expired_hold_leaves_the_seat_free(self):
+        SeatHold.objects.create(
+            screening=self.screening, seat=self.stalls[0],
+            ticket_type=TicketType.objects.get(name='Adult'),
+            session_key='someone-else',
+            expires_at=timezone.now() - timedelta(minutes=1),
+        )
+        self.assertNotIn('disabled', self.seat_input(self.stalls[0]))
+
+    def test_a_closed_area_shows_as_outside_section(self):
+        """Journey 2, "Outside section"."""
+        ScreeningClosedArea.objects.create(
+            screening=self.screening, area=Seat.Area.CIRCLE
+        )
+        self.assertIn('disabled', self.seat_input(self.circle))
+        self.assertIn('24, outside section', self.page())
+
+    def test_a_seat_out_of_use_isnt_offered(self):
+        self.stalls[1].is_active = False
+        self.stalls[1].save()
+        self.assertNotIn(f'value="{self.stalls[1].pk}"', self.page())
+
+    def test_another_layouts_seats_arent_offered(self):
+        tables = SeatingLayout.objects.create(
+            screen=self.screening.screen, name='Tables'
+        )
+        other = Seat.objects.create(
+            screen=self.screening.screen, layout=tables,
+            area=Seat.Area.STALLS, number=9, row_index=0, column_index=9,
+        )
+        self.assertNotIn(f'value="{other.pk}"', self.page())
+
+    def test_tables_are_their_own_groups(self):
+        for seat in self.stalls:
+            seat.table_number = 3
+            seat.save()
+        self.assertIn('<legend class="legend">Stalls, table 3</legend>',
+                      self.page())
+
+    def test_the_page_says_the_circle_is_stairs_only(self):
+        """Journey 2, "Accessibility note"."""
+        self.assertIn('The circle is reached by stairs only.', self.page())

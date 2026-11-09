@@ -11,6 +11,25 @@
     <div class="alert flow" data-status="info">
       <p>Online sales have closed for this screening. Call the box office on <a href="tel:+441632960123">01632 960 123</a>, or ask at the box office if you're already here.</p>
     </div>
+  {% else %}
+    <p>Tick the seats you want, then continue. The circle is reached by stairs only. The stalls are step-free.</p>
+    <form class="flow" method="post">
+      {% csrf_token %}
+      {% for label, seats in seat_groups %}
+        <fieldset class="fieldset card">
+          <legend class="legend">{{ label }}</legend>
+          <div class="card__body cluster">
+            {% for seat, status in seats %}
+              <label class="choice">
+                <input class="choice__input" type="checkbox" name="seats" value="{{ seat.pk }}"{% if status != 'available' %} disabled{% endif %}>
+                {% if seat.label_override %}{{ seat.label_override }}{% else %}{{ seat.number }}{% endif %}{% if status != 'available' %}, {{ status }}{% endif %}{% if seat.is_wheelchair_space %}, wheelchair space{% endif %}
+              </label>
+            {% endfor %}
+          </div>
+        </fieldset>
+      {% endfor %}
+      <button class="button" type="submit" data-variant="primary">Continue</button>
+    </form>
   {% endif %}
 </div>
 {% endblock %}
