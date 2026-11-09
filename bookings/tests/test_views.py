@@ -1,3 +1,4 @@
+import re
 from datetime import timedelta
 
 from django.contrib.auth import get_user_model
@@ -17,6 +18,11 @@ from screenings.models import (
     TicketClass,
     TicketType,
 )
+
+
+def text_of(html):
+    """What's read out: the page with its tags taken away."""
+    return re.sub(r'<[^>]+>', '', html)
 
 
 def make_future_screening(**fields):
@@ -126,7 +132,8 @@ class SeatFormTests(TestCase):
     def test_each_seat_has_its_full_name_for_screen_readers(self):
         """4.17: "Circle, row A, seat 24, available", not a grid
         reference."""
-        self.assertIn('Circle, row A, seat 24, available', self.page())
+        self.assertIn('Circle, row A, seat 24, available',
+                      text_of(self.page()))
 
     def test_each_state_is_marked_for_the_styles(self):
         html = self.page()
@@ -153,7 +160,7 @@ class SeatFormTests(TestCase):
             expires_at=timezone.now() + timedelta(minutes=10),
         )
         self.assertIn('disabled', self.seat_input(self.stalls[0]))
-        self.assertIn('Stalls, seat 1, sold', self.page())
+        self.assertIn('Stalls, seat 1, sold', text_of(self.page()))
 
     def test_an_expired_hold_leaves_the_seat_free(self):
         SeatHold.objects.create(
@@ -171,7 +178,7 @@ class SeatFormTests(TestCase):
         )
         self.assertIn('disabled', self.seat_input(self.circle))
         self.assertIn('Circle, row A, seat 24, outside section',
-                      self.page())
+                      text_of(self.page()))
 
     def test_a_seat_out_of_use_isnt_offered(self):
         self.stalls[1].is_active = False
@@ -192,7 +199,7 @@ class SeatFormTests(TestCase):
         self.stalls[0].is_wheelchair_space = True
         self.stalls[0].save()
         self.assertIn('Stalls, seat 1, available, wheelchair space',
-                      self.page())
+                      text_of(self.page()))
 
     def test_the_page_says_the_circle_is_stairs_only(self):
         """Journey 2, "Accessibility note"."""
@@ -468,7 +475,9 @@ class AmendFromThePagesTests(TestCase):
 
     def test_to_anyone_else_they_are_sold(self):
         self.client.cookies.clear()
-        self.assertContains(self.client.get(self.seats_url), '1, sold')
+        self.assertIn('1, sold', text_of(
+            self.client.get(self.seats_url).content.decode()
+        ))
 
     def test_the_tickets_step_starts_from_the_current_choices(self):
         self.client.post(self.seats_url,
@@ -528,3 +537,20 @@ class SeatMapKeyboardTests(TestCase):
     def test_each_seat_carries_its_place_for_the_arrow_keys(self):
         self.assertIn('data-area="circle" data-row="1" data-col="4"',
                       self.html)
+
+
+class SeatStateWordingTests(TestCase):
+    """A seat the customer has ticked is named as theirs, not as
+    available (architecture 4.17)."""
+
+    def test_a_ticked_seat_is_named_chosen(self):
+        screening = make_future_screening()
+        seat = Seat.objects.create(
+            screen=screening.screen, area=Seat.Area.CIRCLE, row_label='B',
+            number=7, row_index=1, column_index=4,
+        )
+        url = reverse('bookings:screening_seats', args=[screening.pk])
+        self.client.post(url, {'seats': [seat.pk]})
+        html = self.client.get(url).content.decode()
+        self.assertIn('Circle, row B, seat 7, <span class="seat__state">'
+                      'chosen</span>', html)

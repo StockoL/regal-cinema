@@ -21,7 +21,7 @@ seat-map.js adds one tab stop and arrow keys between seats.
           <label class="seat" data-seat-status="{{ status }}"{% if seat.is_wheelchair_space %} data-wheelchair{% endif %} style="--row: {{ seat.row_index|add:1 }}; --col: {{ seat.column_index|add:1 }}">
             <input class="seat__input" type="checkbox" name="seats" value="{{ seat.pk }}" data-area="{{ seat.area }}" data-row="{{ seat.row_index }}" data-col="{{ seat.column_index }}"{% if status != 'available' %} disabled{% elif seat.pk in ticked %} checked{% endif %}>
             <span class="seat__mark" aria-hidden="true">{% if status == 'sold' %}&times;{% elif status == 'outside section' %}&ndash;{% elif seat.is_wheelchair_space %}W{% elif seat.label_override %}{{ seat.label_override }}{% else %}{{ seat.number }}{% endif %}</span>
-            <span class="visually-hidden">{{ seat.label }}, {{ status }}{% if seat.is_wheelchair_space %}, wheelchair space{% endif %}</span>
+            <span class="visually-hidden">{{ seat.label }}, <span class="seat__state">{% if status == 'available' and seat.pk in ticked %}chosen{% else %}{{ status }}{% endif %}</span>{% if seat.is_wheelchair_space %}, wheelchair space{% endif %}</span>
           </label>
         {% endfor %}
       </div>

@@ -65,6 +65,13 @@
 
   makeCurrent(seats.find((seat) => seat.checked) || seats[0]);
 
+  // Keep each seat's spoken state in step: "chosen" once ticked,
+  // "available" again when unticked.
+  map.addEventListener('change', (event) => {
+    const state = event.target.closest('.seat')?.querySelector('.seat__state');
+    if (state) state.textContent = event.target.checked ? 'chosen' : 'available';
+  });
+
   map.addEventListener('focusin', (event) => {
     if (seats.includes(event.target)) makeCurrent(event.target);
   });
