@@ -16,6 +16,8 @@ from pathlib import Path
 import dj_database_url
 from dotenv import load_dotenv
 
+from regal.email_config import email_settings
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -110,6 +112,9 @@ DATABASES = {
 # Custom user with email as the login, set before the first migration
 # (architecture 4.16).
 AUTH_USER_MODEL = 'accounts.User'
+LOGIN_URL = 'accounts:login'
+LOGIN_REDIRECT_URL = 'screenings:screening_list'
+LOGOUT_REDIRECT_URL = 'screenings:screening_list'
 
 
 # LooseLeaf UI renders {{ form }} as labelled, accessible fields (4.17).
@@ -186,8 +191,5 @@ if DEBUG:
 # Email
 # https://docs.djangoproject.com/en/6.1/topics/email/#topic-email-configuration
 
-MAILERS = {
-    'default': {
-        'BACKEND': 'django.core.mail.backends.console.EmailBackend',
-    },
-}
+# Gmail when EMAIL_HOST_PASSWORD is set, the console otherwise.
+globals().update(email_settings(os.environ))

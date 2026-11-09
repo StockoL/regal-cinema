@@ -1,5 +1,6 @@
 # Render blueprint: the web service only. The database is on Neon, and
-# its connection string is entered in the Render dashboard.
+# its connection string is entered in the Render dashboard, like the
+# email settings.
 services:
   - type: web
     name: regal-cinema
@@ -15,6 +16,12 @@ services:
       - key: DEBUG
         value: "False"
       - key: DATABASE_URL
+        sync: false
+      # The project's Gmail address and its app password, both entered
+      # in the Render dashboard.
+      - key: EMAIL_HOST_USER
+        sync: false
+      - key: EMAIL_HOST_PASSWORD
         sync: false
       - key: WEB_CONCURRENCY
         value: "2"

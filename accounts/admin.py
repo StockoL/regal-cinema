@@ -13,7 +13,8 @@ class UserAdmin(BaseUserAdmin):
     add_form = AdminEmailUserCreationForm
     form = EmailUserChangeForm
     ordering = ('email',)
-    list_display = ('email', 'first_name', 'last_name', 'is_staff')
+    list_display = ('email', 'first_name', 'last_name', 'email_verified_at',
+                    'is_staff')
     search_fields = ('email', 'first_name', 'last_name')
     fieldsets = (
         (None, {'fields': ('email', 'password')}),
@@ -22,7 +23,9 @@ class UserAdmin(BaseUserAdmin):
             'is_active', 'is_staff', 'is_superuser',
             'groups', 'user_permissions',
         )}),
-        ('Important dates', {'fields': ('last_login', 'date_joined')}),
+        ('Important dates', {'fields': (
+            'last_login', 'date_joined', 'email_verified_at',
+        )}),
     )
     add_fieldsets = (
         (None, {

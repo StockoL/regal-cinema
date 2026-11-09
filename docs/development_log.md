@@ -95,6 +95,61 @@ The first screenshot I took is on the left, and the same page after the two fixe
 
 <img src="screenshots/catalogue/home-phone-before-layout-fixes.png" alt="The first version of the home page on a phone: the site name a plain blue link in the corner, the menu unstyled, and the day strip, cards and times all indented from the left" width="300"> <img src="screenshots/catalogue/home-phone.png" alt="The same page after the fixes: a styled header with a Menu button, and the day strip and cards lined up with the heading" width="300">
 
+
+### 9 November 2026: registering, logging in and out
+
+Customers can now create an account, log in and log out (journey 4). Registering asks for an email address and a password typed twice, and nothing else, as 4.16 sets out.
+
+<img src="screenshots/accounts/register.png" alt="The empty Create an account page on a phone: email address, password with its hint, and confirm password" width="300">
+
+The register wireframe also had a full name and a terms checkbox, but the design brief says email and password only, and the brief wins over the wireframes. The address is stored in lower case before it's checked, so the same address with different capitals is refused as a duplicate, and the new customer is logged straight in.
+
+Forms render through LooseLeaf's form renderer, so every error is written next to its field and the field is marked invalid for screen readers. The first version used Django's own password help, a list of four rules that pushed the confirm field off the screen on a phone. I replaced it with one plain line, and renamed "Password confirmation" to "Confirm password".
+
+<img src="screenshots/accounts/register-errors-before.png" alt="The first register page with errors: a list of four password rules between the password and confirmation fields" width="300"> <img src="screenshots/accounts/register-errors.png" alt="The register page now: a one-line password hint, Confirm password as the second label, and each error under its field" width="300">
+
+Logging in uses Django's login view with the email address. Its wrong-password message ended "Note that both fields may be case-sensitive", which isn't true here, since email addresses are matched in any case, so I wrote my own.
+
+<img src="screenshots/accounts/login-error-before.png" alt="The first log in error: Please enter a correct email address and password. Note that both fields may be case-sensitive." width="300"> <img src="screenshots/accounts/login-error.png" alt="The log in error now: That email address and password don't match an account. Check them and try again." width="300">
+
+The log in and register pages send anyone already logged in back to What's on, which is a pass requirement. The menu offers Log in and Register to a visitor and Log out to a customer. Logging out changes state, so it's a small form with a button, and visiting its address directly does nothing.
+
+<img src="screenshots/accounts/menu-desktop-visitor.png" alt="The desktop menu for a visitor: What's on, Log in and Register">
+
+<img src="screenshots/accounts/menu-desktop-customer.png" alt="The desktop menu for a logged-in customer: What's on and a Log out button, above the reminder to confirm their email">
+
+<img src="screenshots/accounts/menu-phone-visitor.png" alt="The menu opened on a phone, listing What's on, Log in and Register" width="300">
+
+Two rows of journey 4 wait for the seat map: asking for an account at checkout, and keeping seat holds when a customer logs in mid-checkout.
+
+### 9 November 2026: sending email
+
+Registration (journey 4) needs to send a verification email, and password reset needs to send a link, so the site needed a way to send mail. I set up a Gmail account just for this project rather than use my own. Every email the site sends shows its address, so a personal one would be visible to anyone who registers. Registration also sends mail to whatever address is typed in, so anyone could make the site email strangers from my account. And if the password ever leaked, someone could send mail as me.
+
+Gmail won't let an app log in with the account's normal password. It needs two-step verification switched on and an app password, a separate 16-character password that can only send mail and can be revoked on its own. The address and the app password are two environment variables, `EMAIL_HOST_USER` and `EMAIL_HOST_PASSWORD`. They're set in my local `.env` and in the Render dashboard, never in the repository, and `render.yaml` lists them as values entered in the dashboard, like `DATABASE_URL`. Every email comes from "Regal Cinema" at that address.
+
+Without the password, the site prints each email to the terminal instead of sending it. That's what happens in the tests and on any machine without the variables, so nothing is sent by accident while I'm building.
+
+My first version used Django's `EMAIL_BACKEND` and `EMAIL_HOST` settings, and Django refused to start. Django 6.1 has moved email configuration into a single `MAILERS` setting and won't accept the older settings alongside it. The settings now build `MAILERS` from the two variables, with a test for each case.
+
+This also clears the error `check --deploy` has reported since the first deploy (25 October), which was Django refusing the console email backend in production. That happens once this is deployed with the variables set on Render.
+
+### 9 November 2026: password reset and verification
+
+With email working, the log in page links to a password reset. It emails a link that works once and lasts three days, using Django's own views and signed tokens, so nothing new is stored. The page after asking reads the same whether or not the address has an account, so the form can't be used to find out who's registered.
+
+<img src="screenshots/accounts/reset-request.png" alt="The Reset your password page, asking for an email address" width="300"> <img src="screenshots/accounts/reset-sent.png" alt="The Check your email page, saying a link has been sent if there's an account for that address" width="300"> <img src="screenshots/accounts/reset-bad-link.png" alt="The page for a used or broken reset link, offering to send a new one" width="300">
+
+Registering now sends a verification email too, but the account works straight away. Someone booking a seat for tonight shouldn't wait for an email. The link is signed with the customer and their address and lasts three days, so a link sent to an old address can't confirm a new one. Following it records the date in `User.email_verified_at`, a field I added for this. I put it on `User` rather than waiting for `Profile`, because it describes the address that's already there, and a date says when as well as whether. If the email can't be sent, the failure is logged and registration still goes through.
+
+Until the address is confirmed, a logged-in customer sees a reminder at the top of every page, with a button to send the link again. Django's messages now show on every page as well, which is how "We've sent a new link" appears.
+
+<img src="screenshots/accounts/reminder.png" alt="A film page on a phone with the reminder: Please confirm your email address, and a Send the link again button" width="300"> <img src="screenshots/accounts/reminder-sent.png" alt="The same page after sending again, with a second alert: We've sent a new link" width="300">
+
+<img src="screenshots/accounts/verify-confirmed.png" alt="The Email address confirmed page" width="300"> <img src="screenshots/accounts/verify-bad-link.png" alt="The page for a broken or expired verification link, saying the account still works without it" width="300">
+
+The first time I checked the reminder in a browser, it sat against the header and against the message below it, with its button pressed up under the text. Putting the reminder and the messages in one spaced region fixed it. I took the screenshots as a demo customer in my local database, with sending switched off.
+
 </details>
 
 ## Phase 2: Core booking skeleton, seats and holds

@@ -1,0 +1,18 @@
+{% extends 'base.html' %}
+
+{% block title %}{% if verified %}Email address confirmed{% else %}Link not valid{% endif %}{% endblock %}
+
+{% block content %}
+<div class="wrapper region">
+  <div class="center flow">
+    {% if verified %}
+      <h1>Email address confirmed</h1>
+      <p>Thanks. Your email address is confirmed.</p>
+      <p><a class="button" data-variant="primary" href="{% url 'screenings:screening_list' %}">See what's on</a></p>
+    {% else %}
+      <h1>This link has expired or is broken</h1>
+      <p>Each link lasts three days. Your account still works without it.</p>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
