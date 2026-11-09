@@ -37,6 +37,12 @@ class SeatHold(models.Model):
         settings.AUTH_USER_MODEL, on_delete=models.CASCADE,
         related_name='seat_holds', null=True, blank=True,
     )
+    # The pending booking these seats are for, once the customer has
+    # proceeded to checkout (4.2).
+    booking = models.ForeignKey(
+        'Booking', on_delete=models.CASCADE, related_name='holds',
+        null=True, blank=True,
+    )
     expires_at = models.DateTimeField()
 
     objects = SeatHoldQuerySet.as_manager()

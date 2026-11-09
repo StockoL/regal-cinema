@@ -1,12 +1,15 @@
 import re
+from datetime import timedelta
 
 from django.contrib.auth import get_user_model
 from django.db import IntegrityError
 from django.db.models import ProtectedError
 from django.test import TestCase
+from django.utils import timezone
 
-from bookings.models import Booking
+from bookings.models import Booking, SeatHold
 from bookings.tests.test_holds import make_screening
+from screenings.models import TicketType
 
 
 class BookingTests(TestCase):
@@ -61,3 +64,32 @@ class BookingTests(TestCase):
         user.delete()
         booking.refresh_from_db()
         self.assertIsNone(booking.user)
+
+
+class PendingBookingHoldTests(TestCase):
+    """The seats of a pending booking stay as holds linked to it until
+    payment is confirmed (architecture 4.2, 4.8)."""
+
+    def setUp(self):
+        self.screening, (self.seat, _) = make_screening()
+        self.booking = Booking.objects.create(screening=self.screening)
+        self.hold = SeatHold.objects.create(
+            screening=self.screening, seat=self.seat,
+            ticket_type=TicketType.objects.get(name='Adult'),
+            session_key='session-a', booking=self.booking,
+            expires_at=timezone.now() + timedelta(minutes=10),
+        )
+
+    def test_a_pending_booking_lists_its_holds(self):
+        self.assertEqual(list(self.booking.holds.all()), [self.hold])
+
+    def test_a_hold_can_exist_before_its_booking(self):
+        hold = SeatHold.objects.get()
+        hold.booking = None
+        hold.save()
+        self.assertIsNone(SeatHold.objects.get().booking)
+
+    def test_deleting_a_pending_booking_releases_its_holds(self):
+        """SeatHold is CASCADE on its pending Booking (4.21)."""
+        self.booking.delete()
+        self.assertFalse(SeatHold.objects.exists())
