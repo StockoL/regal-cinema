@@ -6,6 +6,8 @@ from django.test import TestCase, override_settings
 from django.urls import reverse
 from django_looseleaf import tokens
 
+from regal.email_config import email_settings
+
 
 class HealthCheckTests(TestCase):
     """The page cron-job.org requests to keep the Render service awake."""
@@ -112,3 +114,39 @@ def contrast_ratio(first, second):
         (luminance(first), luminance(second)), reverse=True
     )
     return (lighter + 0.05) / (darker + 0.05)
+
+
+class EmailSettingsTests(TestCase):
+    """Email goes through Gmail only when its app password is set in the
+    environment, and prints to the console otherwise, so nothing is sent
+    by accident while building or testing."""
+
+    def test_without_a_password_emails_print_to_the_console(self):
+        mailer = email_settings({})['MAILERS']['default']
+        self.assertEqual(
+            mailer['BACKEND'],
+            'django.core.mail.backends.console.EmailBackend',
+        )
+
+    def test_with_a_password_emails_go_through_gmail(self):
+        mailer = email_settings({
+            'EMAIL_HOST_USER': 'cinema@example.com',
+            'EMAIL_HOST_PASSWORD': 'an-app-password',
+        })['MAILERS']['default']
+        self.assertEqual(
+            mailer['BACKEND'], 'django.core.mail.backends.smtp.EmailBackend'
+        )
+        self.assertEqual(mailer['OPTIONS'], {
+            'host': 'smtp.gmail.com',
+            'port': 587,
+            'use_tls': True,
+            'username': 'cinema@example.com',
+            'password': 'an-app-password',
+        })
+
+    def test_emails_come_from_the_cinema_by_name(self):
+        settings = email_settings({'EMAIL_HOST_USER': 'cinema@example.com'})
+        self.assertEqual(
+            settings['DEFAULT_FROM_EMAIL'],
+            'Regal Cinema <cinema@example.com>',
+        )
