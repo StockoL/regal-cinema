@@ -132,6 +132,9 @@ LOOSELEAF_THEME = 'theme'
 # venue settings record (4.23) exists.
 SCREENING_TRAILER_MINUTES = 20
 SCREENING_TURNAROUND_MINUTES = 15
+# How long chosen seats are kept for a customer (4.8). The 30-minute
+# cap on total hold time is fixed, not a setting.
+SEAT_HOLD_MINUTES = 10
 
 
 # Password validation
