@@ -554,3 +554,29 @@ class SeatStateWordingTests(TestCase):
         html = self.client.get(url).content.decode()
         self.assertIn('Circle, row B, seat 7, <span class="seat__state">'
                       'chosen</span>', html)
+
+
+class SeatMapRowLetterTests(TestCase):
+    """The circle's row letters are drawn at the start of each row, as
+    on the wireframes. The stalls are numbered straight through."""
+
+    def setUp(self):
+        screening = make_future_screening()
+        self.circle = Seat.objects.create(
+            screen=screening.screen, area=Seat.Area.CIRCLE, row_label='B',
+            number=7, row_index=1, column_index=0,
+        )
+        self.html = self.client.get(reverse(
+            'bookings:screening_seats', args=[screening.pk]
+        )).content.decode()
+
+    def test_each_circle_row_has_its_letter_in_the_first_column(self):
+        self.assertIn(
+            '<span class="seat-map__row" style="--row: 2" '
+            'aria-hidden="true">B</span>', self.html,
+        )
+
+    def test_circle_seats_move_over_to_make_room(self):
+        start = self.html.index(f'value="{self.circle.pk}"')
+        label = self.html[self.html.rindex('<label', 0, start):start]
+        self.assertIn('--row: 2; --col: 2', label)

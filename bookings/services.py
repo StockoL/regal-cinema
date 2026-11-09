@@ -124,9 +124,17 @@ def seat_plan(screening, own_booking=None):
         in_area = [seat for seat in seats if seat.area == area]
         if not in_area:
             continue
+        # Lettered rows (the circle) get their letter in the first grid
+        # column, so their seats move over by one.
+        rows = sorted({(seat.row_index + 1, seat.row_label)
+                       for seat in in_area
+                       if seat.row_label and not seat.label_override})
+        first_col = 2 if rows else 1
         areas.append({
             'name': name,
-            'columns': max(seat.column_index for seat in in_area) + 1,
+            'columns': max(seat.column_index for seat in in_area) + first_col,
+            'first_col': first_col,
+            'rows': rows,
             'seats': [(seat, seat_status(seat, closed, held))
                       for seat in in_area],
         })

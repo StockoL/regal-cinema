@@ -58,6 +58,19 @@
   cursor: pointer;
 }
 
+/* A circle row's letter, in the first grid column. Hidden from screen
+   readers, since each seat's name already says its row. */
+.seat-map__row {
+  --row: auto;
+  display: grid;
+  place-items: center;
+  grid-row: var(--row);
+  grid-column: 1;
+  color: var(--color-text-muted);
+  font-size: var(--text-small);
+  font-weight: var(--weight-semibold);
+}
+
 .seat__mark {
   line-height: 1;
 }
