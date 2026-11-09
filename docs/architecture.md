@@ -116,6 +116,7 @@ Staff work from a service list for each screening: seat deliveries in the order 
 
 ## 4.5 `accounts`
 
+- `User`: the custom email-login user (4.16): `email` (unique, stored in lower case), the password and permission fields Django provides, and `email_verified_at` (nullable, when the customer followed the link in the verification email).
 - `Profile`: `user` (1:1 with the custom `User`, see 4.16), `membership_tier` (nullable FK to `MembershipTier`), `membership_expires_at` (nullable, see 4.18).
 
 An earlier draft had `date_of_birth` and `membership_verified` to support demographic discounts, such as confirming someone really was a senior or a student. Discounted showings are now priced per screening through `TicketClass`, and ticket types are checked at the door, so neither field has a purpose. Instead of leaving dead columns in the schema I removed them. A paid membership is valid if `membership_expires_at` is in the future, which is a database check and not a staff judgement.
@@ -333,7 +334,7 @@ Emails are lowercased before they're saved or looked up, so `J.Smith@example.com
 
 Login and registration pages are for anonymous users only. A logged-in user who visits them is redirected away. This is a pass-level requirement, not a nicety.
 
-Email verification is sent but doesn't block. A verification email goes out on registration, but the account works immediately. Someone registering to book a seat in the next five minutes shouldn't be stuck waiting for an email. Verification is a gentle reminder, such as a banner, not a gate. Password reset uses the signed-token approach Django already provides, so I don't need a second token-storage model for verification.
+Email verification is sent but doesn't block. A verification email goes out on registration, but the account works immediately. Someone registering to book a seat in the next five minutes shouldn't be stuck waiting for an email. Verification is a gentle reminder, such as a banner, not a gate. `User.email_verified_at` records when the customer followed the link. It sits on `User`, beside the address it describes, rather than on `Profile`, and a date says when as well as whether. Password reset uses the signed-token approach Django already provides, so I don't need a second token-storage model for verification.
 
 Registration is required to complete an online checkout, but not to browse or select seats, and not for an in-venue card sale. These are two rules for two real-world contexts, not an inconsistency. Browsing and picking seats works anonymously, but finishing an online purchase needs an account, which gives the clear reason to register that the assessment criteria ask for, since booking history and the membership discount both depend on having one. In-venue sales stay guest-friendly (4.14) because a walk-up customer at a box office was never going to be asked to create an account first.
 
