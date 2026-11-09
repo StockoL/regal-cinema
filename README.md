@@ -64,7 +64,7 @@ To deploy your own copy:
 1. Create a project on [Neon](https://neon.tech) with PostgreSQL 17 in AWS Europe Central (Frankfurt). Under Connect, turn connection pooling off and copy the connection string. Django needs the direct connection, not the pooled one.
 2. Fork or clone this repository to your own GitHub account.
 3. In Render, choose New, then Blueprint, and connect the repository on the `main` branch. Render reads `render.yaml`.
-4. When Render asks for `DATABASE_URL`, paste the Neon connection string. Render generates `SECRET_KEY` itself, and `render.yaml` sets `DEBUG` to `False`.
+4. When Render asks for `DATABASE_URL`, paste the Neon connection string. It also asks for `EMAIL_HOST_USER` and `EMAIL_HOST_PASSWORD`: the project's own Gmail address and a Gmail app password for it, never a personal account or the account's normal password. The reasons are in the [development log](docs/development_log.md#9-november-2026-sending-email). Render generates `SECRET_KEY` itself, and `render.yaml` sets `DEBUG` to `False`.
 5. Apply the blueprint and wait for the first build. The build log shows the migrations running against Neon.
 6. Open `/health/` on the new site. It should return `ok`.
 7. Create an admin account. The free plan has no shell on Render, so run `createsuperuser` from your own machine with `DATABASE_URL` set to the Neon string for that terminal session only. Real environment variables take priority over `.env`.
@@ -102,7 +102,7 @@ The project runs on PostgreSQL locally as well as in production, never SQLite. T
    pip install -r requirements.txt
    ```
 
-4. Copy `.env.example` to `.env` in the project root and fill it in, with your own `SECRET_KEY` and the password from step 2 in `DATABASE_URL`. This file is never committed.
+4. Copy `.env.example` to `.env` in the project root and fill it in, with your own `SECRET_KEY` and the password from step 2 in `DATABASE_URL`. `EMAIL_HOST_PASSWORD` can stay empty: the site then prints each email to the terminal instead of sending it. This file is never committed.
 
    ```text
    DATABASE_URL=postgres://regal:choose-a-password@localhost:5432/regal_cinema
