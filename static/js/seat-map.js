@@ -65,6 +65,12 @@
 
   makeCurrent(seats.find((seat) => seat.checked) || seats[0]);
 
+  // On a phone the room is wider than the screen. Open it centred, with
+  // the screen and the stalls in view, or on the customer's own seats.
+  map.scrollLeft = (map.scrollWidth - map.clientWidth) / 2;
+  const chosen = seats.find((seat) => seat.checked);
+  if (chosen) chosen.closest('.seat').scrollIntoView({ block: 'nearest', inline: 'center' });
+
   // Keep each seat's spoken state in step: "chosen" once ticked,
   // "available" again when unticked.
   map.addEventListener('change', (event) => {
