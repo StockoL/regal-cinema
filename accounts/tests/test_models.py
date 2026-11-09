@@ -1,6 +1,7 @@
 from django.contrib.auth import get_user_model
 from django.db import IntegrityError
 from django.test import TestCase
+from django.utils import timezone
 
 User = get_user_model()
 
@@ -68,3 +69,15 @@ class UserModelTests(TestCase):
     def test_string_is_the_email(self):
         user = User.objects.create_user(email='customer@example.com')
         self.assertEqual(str(user), 'customer@example.com')
+
+    def test_a_new_account_is_not_yet_verified(self):
+        """Verification is a reminder, never a gate (4.16)."""
+        user = User.objects.create_user('new@example.com', 'a-long-pw-1')
+        self.assertIsNone(user.email_verified_at)
+        self.assertFalse(user.email_verified)
+
+    def test_an_account_is_verified_once_it_has_a_date(self):
+        user = User.objects.create_user(
+            'new@example.com', 'a-long-pw-1', email_verified_at=timezone.now()
+        )
+        self.assertTrue(user.email_verified)
