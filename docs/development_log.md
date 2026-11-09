@@ -211,6 +211,37 @@ Checking each step in a browser caught a small thing the tests didn't. Django wr
 
 The ticket list also cuts off the age band on a phone ("Child, £9.00. Aged 2 to 1"). I've left that for the drawn seat map, which will lay ticket types out properly.
 
+### 9 November 2026: the seat map
+
+The plain form from the entry above became a drawn seat map. It's the first block I've written for this project rather than taken from LooseLeaf, which has no seat map: `.seat-map` in `static/css/block/`, using LooseLeaf's tokens for every colour, size and space. Each area is a grid, and each seat sits at the row and column the seat plan gives it, so aisles and gaps are just empty cells and nothing on the page has to know the room's shape. Each seat is still the checkbox from the form, hidden inside a label that draws the seat, so the page works exactly as before without JavaScript.
+
+<img src="screenshots/booking/seats-circle.png" alt="The plain form version: circle row A as a box of checkboxes" width="300"> <img src="screenshots/seat-map/map-phone.png" alt="The seat map on a phone: the key, the stalls with W for the wheelchair spaces, and the circle with seat C14 chosen in gold" width="300">
+
+No state relies on colour (4.17). A sold seat shows a cross, a seat in a closed area a dash with a dashed edge, a chosen seat is filled in, and a wheelchair space shows W with a heavier edge. The key above the map says each in words. Each seat also has its full name for a screen reader, such as "Circle, row A, seat 24, available", and the circle's row letters are drawn at the start of each row for everyone else.
+
+<img src="screenshots/seat-map/map-desktop.png" alt="The seat map at desktop width: the stalls under the screen, and the circle in three blocks with rows A to E, seats A21 and A20 chosen beside A23 and A22 sold">
+
+<img src="screenshots/seat-map/map-circle-closed.png" alt="A quiet screening with the circle closed: every circle seat shows a dash in a dashed outline, and the stalls are open">
+
+Seats are 28 pixels square, above the WCAG 2.2 minimum of 24. The circle is 30 seats wide, which doesn't fit a phone at that size, so on a phone each area scrolls sideways inside its own frame rather than shrinking the seats. The wireframes show the circle as three blocks you tap into instead, which I may add later.
+
+The map is one tab stop, and the arrow keys move between free seats (4.17). A short script, `seat-map.js`, does it with a roving tabindex: only the seat with focus is in the tab order. Down runs on from the back of the stalls into the circle, Home and End reach the ends of a row, and Enter chooses a seat as well as Space. There's no JavaScript test runner in the project, so the Django tests check the markup the script relies on, and I drove the keys in a browser:
+
+```text
+seats in the tab order: 1
+Tab lands on: Stalls, seat 1, available, wheelchair space
+Right: Stalls, seat 2, available
+End: Stalls, seat 10, available, wheelchair space
+Down x4 (back row of stalls): Stalls, seat 41, available
+Down into the circle: Circle, row A, seat 28, available
+Enter chose it: true
+Tab leaves the map to: BUTTON Continue
+```
+
+<img src="screenshots/seat-map/map-keyboard-focus.png" alt="A close-up of the seat map with the focus ring on circle B19, after moving with the arrow keys">
+
+Looking at it in a browser caught three things. The chosen seat showed the browser's own checkbox, because LooseLeaf's visually-hidden class reveals an element when it has focus, which suits a skip link but not a seat, so the seat's checkbox now has its own hiding. On a phone the whole page was 992 pixels wide, because a fieldset won't shrink below its contents by default, so the map pushed the page out instead of scrolling in its frame. And a chosen seat was still read out as "available", so its state word now says "chosen", and the script keeps it in step as seats are ticked.
+
 </details>
 
 ## Phase 3: Payment integration
