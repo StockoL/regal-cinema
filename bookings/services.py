@@ -99,18 +99,22 @@ def start_booking(screening, choices, infants, session_key, user=None):
     return booking
 
 
-def seat_plan(screening):
+def seat_plan(screening, own_booking=None):
     """The seats a customer can see for a screening, grouped as they'd
     look for them: the stalls (or each table), then each circle row.
     Each seat has a status: available, sold (held by anyone or sold),
     or outside section (an area closed for this screening, 4.1, 4.17).
-    Seats out of use and other layouts' seats aren't shown."""
+    The customer's own held seats count as available to them. Seats out
+    of use and other layouts' seats aren't shown."""
     seats = screening.screen.seats.filter(
         Q(layout__isnull=True) | Q(layout=screening.layout_id),
         is_active=True,
     ).order_by('-area', 'row_index', 'column_index')
     closed = set(screening.closed_areas.values_list('area', flat=True))
-    held = set(screening.holds.live().values_list('seat', flat=True))
+    held = screening.holds.live()
+    if own_booking is not None:
+        held = held.exclude(booking=own_booking)
+    held = set(held.values_list('seat', flat=True))
     groups = {}
     for seat in seats:
         if seat.area in closed:

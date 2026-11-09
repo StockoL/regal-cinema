@@ -14,6 +14,7 @@
       {% if booking.infant_count %}<li>{{ booking.infant_count }} under 2{{ booking.infant_count|pluralize }}, on a lap</li>{% endif %}
     </ul>
     {% if held_until %}<p>We'll keep these seats for you until {{ held_until|time:"g:i a" }}</p>{% endif %}
+    <p><a href="{% url 'bookings:screening_seats' booking.screening.pk %}">Change seats or tickets</a></p>
     <p>Paying comes next. It isn't built yet.</p>
     <form method="post" action="{% url 'bookings:booking_cancel' booking.reference %}">
       {% csrf_token %}

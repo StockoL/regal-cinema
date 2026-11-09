@@ -412,3 +412,70 @@ class CancelPendingBookingTests(TestCase):
         self.client.cookies.clear()
         self.assertEqual(self.client.post(self.url).status_code, 404)
         self.assertTrue(SeatHold.objects.exists())
+
+
+@override_settings(SEAT_HOLD_MINUTES=10)
+class AmendFromThePagesTests(TestCase):
+    """Going back from checkout to change anything. Journey 2, "Amend";
+    architecture 4.8 step 11."""
+
+    def setUp(self):
+        test = TicketTypesTests('setUp')
+        test.client = self.client
+        test.setUp()
+        test.submit(first='Adult', second='Child', infants=1)
+        self.test = test
+        self.screening, self.seats = test.screening, test.seats
+        self.booking = Booking.objects.get()
+        self.seats_url = test.seats_url
+
+    def test_the_checkout_page_links_back_to_change(self):
+        page = self.client.get(reverse('bookings:booking_checkout',
+                                       args=[self.booking.reference]))
+        self.assertContains(page, 'Change seats or tickets')
+        self.assertContains(page, self.seats_url)
+
+    def test_your_own_held_seats_are_ticked_not_sold(self):
+        page = self.client.get(self.seats_url)
+        self.assertEqual(page.context['ticked'],
+                         {seat.pk for seat in self.seats})
+        self.assertNotContains(page, ', sold')
+
+    def test_to_anyone_else_they_are_sold(self):
+        self.client.cookies.clear()
+        self.assertContains(self.client.get(self.seats_url), '1, sold')
+
+    def test_the_tickets_step_starts_from_the_current_choices(self):
+        self.client.post(self.seats_url,
+                         {'seats': [seat.pk for seat in self.seats]})
+        page = self.client.get(self.test.url)
+        self.assertEqual(page.context['infants'], 1)
+        self.assertEqual(
+            page.context['picked'][self.seats[1].pk],
+            str(self.test.types['Child'].pk),
+        )
+
+    def test_changing_updates_the_same_booking(self):
+        self.client.post(self.seats_url, {'seats': [self.seats[0].pk]})
+        response = self.test.submit(first='Adult', second=None)
+        self.assertRedirects(
+            response, reverse('bookings:booking_checkout',
+                              args=[self.booking.reference]),
+        )
+        self.assertEqual(Booking.objects.count(), 1)
+        self.assertEqual(
+            [h.seat for h in self.booking.holds.all()], [self.seats[0]]
+        )
+
+    def test_after_thirty_minutes_the_customer_chooses_again(self):
+        Booking.objects.update(
+            created_at=timezone.now() - timedelta(minutes=31)
+        )
+        self.client.post(self.seats_url,
+                         {'seats': [seat.pk for seat in self.seats]})
+        response = self.test.submit()
+        self.assertRedirects(response, self.seats_url,
+                             fetch_redirect_response=False)
+        self.assertFalse(Booking.objects.exists())
+        self.assertContains(self.client.get(self.seats_url),
+                            'longest we can keep them')

@@ -9,7 +9,9 @@ from screenings.models import Screening
 from .basket import BasketError
 from .models import Booking
 from .services import (
+    HoldTimeUsedUp,
     SeatsUnavailable,
+    amend_booking,
     cancel_pending_booking,
     seat_plan,
     start_booking,
@@ -37,6 +39,24 @@ def chosen_seats(request, screening):
     ))
 
 
+def owner_filter(request):
+    """Matches bookings this browser or account made."""
+    owner = Q(holds__session_key=request.session.session_key or '-')
+    if request.user.is_authenticated:
+        owner |= Q(user=request.user)
+    return owner
+
+
+def own_pending_booking(request, screening):
+    """This customer's pending booking for the screening, if they've
+    already held seats and come back to change them (4.8 step 11)."""
+    return (
+        Booking.objects.filter(owner_filter(request), screening=screening,
+                               status=Booking.Status.PENDING)
+        .distinct().order_by('-created_at').first()
+    )
+
+
 def screening_seats(request, pk):
     """Choosing seats for one screening (journey 2). A cancelled
     screening says so plainly (4.11)."""
@@ -51,10 +71,14 @@ def screening_seats(request, pk):
             request.session[session_key_for(screening)] = ids
             return redirect('bookings:screening_tickets', pk=screening.pk)
         error = 'Choose at least one seat.'
+    booking = own_pending_booking(request, screening)
+    ticked = {seat.pk for seat in chosen_seats(request, screening)}
+    if not ticked and booking:
+        ticked = set(booking.holds.values_list('seat', flat=True))
     return render(request, 'bookings/screening_seats.html', {
         'screening': screening,
-        'seat_groups': seat_plan(screening),
-        'ticked': {seat.pk for seat in chosen_seats(request, screening)},
+        'seat_groups': seat_plan(screening, own_booking=booking),
+        'ticked': ticked,
         'error': error,
     })
 
@@ -81,10 +105,19 @@ def screening_tickets(request, pk):
     offered = offered_ticket_types(screening)
     types_by_id = {str(ticket_type.pk): ticket_type
                    for ticket_type, _ in offered}
-    picked = {seat.pk: request.POST.get(f'type_{seat.pk}', '')
-              for seat in seats}
-    infants = request.POST.get('infants', '0')
-    infants = int(infants) if infants.isdigit() else 0
+    booking = own_pending_booking(request, screening)
+    held_types = {}
+    if booking:
+        held_types = {hold.seat_id: str(hold.ticket_type_id)
+                      for hold in booking.holds.all()}
+    if request.method == 'POST':
+        picked = {seat.pk: request.POST.get(f'type_{seat.pk}', '')
+                  for seat in seats}
+        infants = request.POST.get('infants', '0')
+        infants = int(infants) if infants.isdigit() else 0
+    else:
+        picked = {seat.pk: held_types.get(seat.pk, '') for seat in seats}
+        infants = booking.infant_count if booking else 0
     error = None
 
     if request.method == 'POST' and screening.online_sales_closed:
@@ -99,10 +132,18 @@ def screening_tickets(request, pk):
                 request.session.save()
             user = request.user if request.user.is_authenticated else None
             try:
-                booking = start_booking(
-                    screening, choices, infants,
-                    request.session.session_key, user=user,
-                )
+                if booking:
+                    booking = amend_booking(
+                        booking, choices, infants,
+                        request.session.session_key, user=user,
+                    )
+                else:
+                    booking = start_booking(
+                        screening, choices, infants,
+                        request.session.session_key, user=user,
+                    )
+            except HoldTimeUsedUp:
+                return hold_time_used_up(request, screening, booking)
             except BasketError as rule:
                 error = str(rule)
             except SeatsUnavailable as taken:
@@ -120,6 +161,18 @@ def screening_tickets(request, pk):
         'infants': infants,
         'error': error,
     })
+
+
+def hold_time_used_up(request, screening, booking):
+    """The booking has had its 30 minutes: let the seats go and start
+    again from the seats, which stay ticked if they're still free."""
+    cancel_pending_booking(booking)
+    messages.info(
+        request,
+        "You've had these seats for 30 minutes, the longest we can keep "
+        'them. Please choose them again.',
+    )
+    return redirect('bookings:screening_seats', pk=screening.pk)
 
 
 def seats_taken(request, screening, seats, taken):
@@ -141,11 +194,8 @@ def owned_pending_booking(request, reference):
     """The pending booking with this reference, if this browser or
     account made it. Anyone else gets a 404, so a guessed reference
     shows nothing."""
-    owner = Q(holds__session_key=request.session.session_key or '-')
-    if request.user.is_authenticated:
-        owner |= Q(user=request.user)
     booking = (
-        Booking.objects.filter(owner, reference=reference,
+        Booking.objects.filter(owner_filter(request), reference=reference,
                                status=Booking.Status.PENDING)
         .select_related('screening__film').distinct().first()
     )
