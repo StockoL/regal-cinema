@@ -580,3 +580,31 @@ class SeatMapRowLetterTests(TestCase):
         start = self.html.index(f'value="{self.circle.pk}"')
         label = self.html[self.html.rindex('<label', 0, start):start]
         self.assertIn('--row: 2; --col: 2', label)
+
+
+class SeatMapRoomTests(TestCase):
+    """The screen and every area share one box as wide as the widest
+    area, so they line up on one centre line and scroll together on a
+    phone (wireframe 05)."""
+
+    def setUp(self):
+        screening = make_future_screening()
+        for area, row in ((Seat.Area.STALLS, ''), (Seat.Area.CIRCLE, 'A')):
+            Seat.objects.create(
+                screen=screening.screen, area=area, row_label=row,
+                number=1, row_index=0, column_index=0,
+                layout=screening.layout if area == Seat.Area.STALLS
+                else None,
+            )
+        self.html = self.client.get(reverse(
+            'bookings:screening_seats', args=[screening.pk]
+        )).content.decode()
+
+    def test_the_whole_room_scrolls_in_one_frame(self):
+        self.assertEqual(self.html.count('class="seat-map-frame"'), 1)
+
+    def test_the_screen_and_both_areas_are_in_the_same_room(self):
+        room = self.html[self.html.index('class="seat-map-room"'):]
+        room = room[:room.index('</form>')]
+        self.assertLess(room.index('Screen'), room.index('>Stalls<'))
+        self.assertLess(room.index('>Stalls<'), room.index('>Circle<'))
