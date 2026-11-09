@@ -9,4 +9,6 @@ urlpatterns = [
          name='screening_seats'),
     path('screenings/<int:pk>/tickets/', views.screening_tickets,
          name='screening_tickets'),
+    path('booking/<str:reference>/', views.booking_checkout,
+         name='booking_checkout'),
 ]

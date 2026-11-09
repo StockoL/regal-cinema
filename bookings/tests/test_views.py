@@ -1,15 +1,17 @@
 from datetime import timedelta
 
-from django.test import TestCase
+from django.contrib.auth import get_user_model
+from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 
-from bookings.models import SeatHold
+from bookings.models import Booking, SeatHold
 from screenings.models import (
     Film,
     Screen,
     Screening,
     ScreeningClosedArea,
+    ScreeningPrice,
     Seat,
     SeatingLayout,
     TicketClass,
@@ -230,3 +232,139 @@ class ChooseSeatsTests(TestCase):
 
     def test_the_tickets_step_needs_seats_first(self):
         self.assertRedirects(self.client.get(self.tickets_url), self.url)
+
+
+@override_settings(SEAT_HOLD_MINUTES=10)
+class TicketTypesTests(TestCase):
+    """A ticket type for each seat, any infants, then the seats are held
+    and a pending booking made (journey 2; 4.8 step 3)."""
+
+    def setUp(self):
+        self.screening = make_future_screening()
+        self.seats = [
+            Seat.objects.create(
+                screen=self.screening.screen, layout=self.screening.layout,
+                area=Seat.Area.STALLS, number=n, row_index=0, column_index=n,
+            )
+            for n in (1, 2)
+        ]
+        self.types = {t.name: t for t in TicketType.objects.all()}
+        for name, pence in (('Adult', 900), ('Child', 650),
+                            ('Companion', 0)):
+            ScreeningPrice.objects.create(
+                screening=self.screening, ticket_type=self.types[name],
+                price_pence=pence,
+            )
+        self.seats_url = reverse('bookings:screening_seats',
+                                 args=[self.screening.pk])
+        self.url = reverse('bookings:screening_tickets',
+                           args=[self.screening.pk])
+        self.client.post(self.seats_url,
+                         {'seats': [seat.pk for seat in self.seats]})
+
+    def submit(self, first='Adult', second='Child', infants=0):
+        data = {'infants': infants}
+        for seat, name in zip(self.seats, (first, second)):
+            if name:
+                data[f'type_{seat.pk}'] = self.types[name].pk
+        return self.client.post(self.url, data)
+
+    def test_only_priced_types_the_film_allows_are_offered(self):
+        film = self.screening.film
+        film.age_rating = '15'
+        film.save()
+        offered = self.client.get(self.url).context['ticket_types']
+        self.assertEqual([t.name for t, _ in offered],
+                         ['Adult', 'Companion'])
+
+    def test_each_type_shows_its_price(self):
+        self.assertContains(self.client.get(self.url), 'Child, £6.50')
+
+    def test_the_infant_counter_is_only_offered_where_infants_can_come(self):
+        self.assertContains(self.client.get(self.url), 'name="infants"')
+        film = self.screening.film
+        film.age_rating = '15'
+        film.save()
+        self.assertNotContains(self.client.get(self.url), 'name="infants"')
+
+    def test_continuing_holds_the_seats_in_a_pending_booking(self):
+        response = self.submit(infants=1)
+        booking = Booking.objects.get()
+        self.assertRedirects(
+            response, reverse('bookings:booking_checkout',
+                              args=[booking.reference])
+        )
+        self.assertEqual(booking.infant_count, 1)
+        self.assertEqual(
+            {(h.seat, h.ticket_type.name) for h in booking.holds.all()},
+            {(self.seats[0], 'Adult'), (self.seats[1], 'Child')},
+        )
+
+    def test_a_logged_in_customer_owns_the_booking(self):
+        user = get_user_model().objects.create_user(
+            'customer@example.com', 'a-long-pw-1'
+        )
+        self.client.force_login(user)
+        self.client.post(self.seats_url,
+                         {'seats': [seat.pk for seat in self.seats]})
+        self.submit()
+        self.assertEqual(Booking.objects.get().user, user)
+
+    def test_every_seat_needs_a_ticket_type(self):
+        response = self.submit(second=None)
+        self.assertContains(response, 'Choose a ticket type for each seat.')
+        self.assertFalse(Booking.objects.exists())
+
+    def test_a_broken_rule_is_explained_and_choices_kept(self):
+        response = self.submit(first='Child', second='Child')
+        self.assertContains(response, 'must come with')
+        self.assertContains(response, 'selected')
+        self.assertFalse(SeatHold.objects.exists())
+
+    def test_a_seat_taken_meanwhile_is_named_and_the_rest_kept(self):
+        """Journey 2, "Conflict"."""
+        SeatHold.objects.create(
+            screening=self.screening, seat=self.seats[1],
+            ticket_type=self.types['Adult'], session_key='someone-else',
+            expires_at=timezone.now() + timedelta(minutes=10),
+        )
+        response = self.submit(first='Adult', second='Adult')
+        self.assertRedirects(response, self.seats_url,
+                             fetch_redirect_response=False)
+        page = self.client.get(self.seats_url)
+        self.assertContains(page, 'Stalls, seat 2 was taken')
+        self.assertEqual(page.context['ticked'], {self.seats[0].pk})
+        self.assertFalse(Booking.objects.exists())
+
+    def test_nothing_is_booked_once_online_sales_close(self):
+        self.screening.date_time = timezone.now() - timedelta(minutes=1)
+        self.screening.save()
+        self.submit()
+        self.assertFalse(Booking.objects.exists())
+
+
+@override_settings(SEAT_HOLD_MINUTES=10)
+class CheckoutPlaceholderTests(TestCase):
+    """Where a pending booking goes next. Payment comes later; for now
+    it shows what's held and until when."""
+
+    def setUp(self):
+        test = TicketTypesTests('setUp')
+        test.client = self.client
+        test.setUp()
+        test.submit()
+        self.booking = Booking.objects.get()
+        self.url = reverse('bookings:booking_checkout',
+                           args=[self.booking.reference])
+
+    def test_shows_the_held_seats_and_when_the_hold_ends(self):
+        response = self.client.get(self.url)
+        self.assertContains(response, self.booking.reference)
+        self.assertContains(response, 'Stalls, seat 1, Adult')
+        self.assertContains(response, 'keep these seats for you until')
+        self.assertNotContains(response, 'm..')
+
+    def test_another_visitor_cant_see_it(self):
+        self.client.logout()
+        self.client.cookies.clear()
+        self.assertEqual(self.client.get(self.url).status_code, 404)

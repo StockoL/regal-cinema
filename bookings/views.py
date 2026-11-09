@@ -1,8 +1,13 @@
+from django.contrib import messages
+from django.db.models import Q
+from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render
 
 from screenings.models import Screening
 
-from .services import seat_plan
+from .basket import BasketError
+from .models import Booking
+from .services import SeatsUnavailable, seat_plan, start_booking
 
 
 def public_screening(pk):
@@ -48,13 +53,104 @@ def screening_seats(request, pk):
     })
 
 
+def offered_ticket_types(screening):
+    """The ticket types the film's rating allows that have a price at
+    this screening, each with its price in pence."""
+    allowed = set(screening.film.ticket_types())
+    return [
+        (price.ticket_type, price.price_pence)
+        for price in screening.prices.select_related('ticket_type')
+        .order_by('ticket_type__name')
+        if price.ticket_type in allowed
+    ]
+
+
 def screening_tickets(request, pk):
-    """A ticket type for each chosen seat (journey 2, "Ticket types")."""
+    """A ticket type for each chosen seat and any infants, then the
+    seats are held in a pending booking (journey 2; 4.8 step 3)."""
     screening = public_screening(pk)
     seats = chosen_seats(request, screening)
-    if not seats:
+    if not seats or screening.is_cancelled:
         return redirect('bookings:screening_seats', pk=screening.pk)
+    offered = offered_ticket_types(screening)
+    types_by_id = {str(ticket_type.pk): ticket_type
+                   for ticket_type, _ in offered}
+    picked = {seat.pk: request.POST.get(f'type_{seat.pk}', '')
+              for seat in seats}
+    infants = request.POST.get('infants', '0')
+    infants = int(infants) if infants.isdigit() else 0
+    error = None
+
+    if request.method == 'POST' and screening.online_sales_closed:
+        return redirect('bookings:screening_seats', pk=screening.pk)
+    if request.method == 'POST':
+        choices = [(seat, types_by_id.get(picked[seat.pk]))
+                   for seat in seats]
+        if any(ticket_type is None for _, ticket_type in choices):
+            error = 'Choose a ticket type for each seat.'
+        else:
+            if not request.session.session_key:
+                request.session.save()
+            user = request.user if request.user.is_authenticated else None
+            try:
+                booking = start_booking(
+                    screening, choices, infants,
+                    request.session.session_key, user=user,
+                )
+            except BasketError as rule:
+                error = str(rule)
+            except SeatsUnavailable as taken:
+                return seats_taken(request, screening, seats, taken.seats)
+            else:
+                del request.session[session_key_for(screening)]
+                return redirect('bookings:booking_checkout',
+                                reference=booking.reference)
+
     return render(request, 'bookings/screening_tickets.html', {
         'screening': screening,
         'seats': [(seat, seat.label) for seat in seats],
+        'picked': picked,
+        'ticket_types': offered,
+        'infants': infants,
+        'error': error,
+    })
+
+
+def seats_taken(request, screening, seats, taken):
+    """Back to the seats with the taken ones named and unticked, and the
+    customer's other choices kept (4.8 step 4)."""
+    request.session[session_key_for(screening)] = [
+        seat.pk for seat in seats if seat not in taken
+    ]
+    names = ', '.join(seat.label for seat in taken)
+    messages.error(
+        request,
+        f'{names} was taken while you were choosing. Your other seats '
+        'are still ticked.',
+    )
+    return redirect('bookings:screening_seats', pk=screening.pk)
+
+
+def booking_checkout(request, reference):
+    """Where a pending booking goes next. Only the browser or account
+    that made it can see it, so a guessed reference shows nothing.
+    Payment comes with Stripe (4.13)."""
+    owner = Q(holds__session_key=request.session.session_key or '-')
+    if request.user.is_authenticated:
+        owner |= Q(user=request.user)
+    booking = (
+        Booking.objects.filter(owner, reference=reference,
+                               status=Booking.Status.PENDING)
+        .select_related('screening__film').distinct().first()
+    )
+    if booking is None:
+        raise Http404('No such booking.')
+    holds = booking.holds.select_related('seat', 'ticket_type').order_by(
+        '-seat__area', 'seat__row_index', 'seat__column_index'
+    )
+    expiries = [hold.expires_at for hold in holds]
+    return render(request, 'bookings/booking_checkout.html', {
+        'booking': booking,
+        'holds': holds,
+        'held_until': min(expiries) if expiries else None,
     })
