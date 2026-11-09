@@ -12,6 +12,7 @@
       <input type="hidden" name="next" value="{{ next }}">
       <button class="button" type="submit" data-variant="primary">Log in</button>
     </form>
+    <p><a href="{% url 'accounts:password_reset' %}">Forgotten your password?</a></p>
     <p>New to Regal Cinema? <a href="{% url 'accounts:register' %}">Create an account</a></p>
   </div>
 </div>

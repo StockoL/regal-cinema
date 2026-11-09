@@ -2,6 +2,7 @@ from django import forms
 from django.contrib.auth.forms import (
     AdminUserCreationForm,
     AuthenticationForm,
+    SetPasswordForm,
     UserChangeForm,
     UserCreationForm,
 )
@@ -66,3 +67,16 @@ class LoginForm(AuthenticationForm):
             'Check them and try again.'
         ),
     }
+
+
+class NewPasswordForm(SetPasswordForm):
+    """Choosing a new password from a reset link, with the same plain
+    hint as registering."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['new_password1'].help_text = (
+            'At least 8 characters. Not a common password, and not only '
+            'numbers.'
+        )
+        self.fields['new_password2'].label = 'Confirm new password'

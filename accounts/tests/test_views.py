@@ -1,4 +1,7 @@
+import re
+
 from django.contrib.auth import get_user_model
+from django.core import mail
 from django.test import TestCase
 from django.urls import reverse
 
@@ -189,3 +192,77 @@ class AccountMenuTests(TestCase):
         self.assertIn(f'action="{reverse("accounts:logout")}"', menu)
         self.assertIn('<button', menu)
         self.assertNotIn(f'href="{reverse("accounts:login")}"', menu)
+
+
+class PasswordResetTests(TestCase):
+    """Choosing a new password from a link in an email. Uses Django's
+    signed tokens, so nothing new is stored (architecture 4.16)."""
+
+    def setUp(self):
+        self.user = User.objects.create_user(
+            'customer@example.com', 'the-old-password'
+        )
+
+    def request_link(self, email='customer@example.com'):
+        return self.client.post(
+            reverse('accounts:password_reset'), {'email': email}
+        )
+
+    def link_from_email(self):
+        body = mail.outbox[-1].body
+        return re.search(r'https?://\S+(/account/password-reset/\S+/)',
+                         body).group(1)
+
+    def test_the_log_in_page_links_to_resetting(self):
+        self.assertContains(
+            self.client.get(reverse('accounts:login')),
+            reverse('accounts:password_reset'),
+        )
+
+    def test_asking_sends_one_email_with_a_link(self):
+        response = self.request_link()
+        self.assertRedirects(response, reverse('accounts:password_reset_done'))
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertEqual(mail.outbox[0].to, ['customer@example.com'])
+        self.assertIn('Reset your Regal Cinema password',
+                      mail.outbox[0].subject)
+        self.assertTrue(self.link_from_email())
+
+    def test_an_unknown_address_gets_the_same_page_and_no_email(self):
+        """The page never says whether an account exists."""
+        response = self.request_link('nobody@example.com')
+        self.assertRedirects(response, reverse('accounts:password_reset_done'))
+        self.assertEqual(len(mail.outbox), 0)
+
+    def test_the_link_lets_the_customer_choose_a_new_password(self):
+        self.request_link()
+        form_page = self.client.get(self.link_from_email(), follow=True)
+        self.assertContains(form_page, 'Choose a new password')
+        response = self.client.post(form_page.redirect_chain[-1][0], {
+            'new_password1': 'a-brand-new-password',
+            'new_password2': 'a-brand-new-password',
+        })
+        self.assertRedirects(
+            response, reverse('accounts:password_reset_complete')
+        )
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.check_password('a-brand-new-password'))
+
+    def test_a_tampered_link_is_refused(self):
+        self.request_link()
+        link = self.link_from_email().replace('/set-password/', '/')
+        tampered = link[:-2] + 'x/'
+        response = self.client.get(tampered, follow=True)
+        self.assertContains(response, 'This link has expired or been used')
+
+    def test_a_link_only_works_once(self):
+        self.request_link()
+        link = self.link_from_email()
+        form_page = self.client.get(link, follow=True)
+        self.client.post(form_page.redirect_chain[-1][0], {
+            'new_password1': 'a-brand-new-password',
+            'new_password2': 'a-brand-new-password',
+        })
+        self.client.logout()
+        response = self.client.get(link, follow=True)
+        self.assertContains(response, 'This link has expired or been used')
