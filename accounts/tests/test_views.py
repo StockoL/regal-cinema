@@ -75,3 +75,73 @@ class RegisterTests(TestCase):
         response = self.register(email='taken@example.com')
         self.assertContains(response, 'aria-invalid="true"')
         self.assertContains(response, 'class="field__error"')
+
+
+class LoginTests(TestCase):
+    """Logging in with an email address. Journey 4; architecture 4.16."""
+
+    url = reverse('accounts:login')
+
+    def setUp(self):
+        User.objects.create_user('customer@example.com', 'a-long-password')
+
+    def log_in(self, email='customer@example.com',
+               password='a-long-password', **extra):
+        return self.client.post(
+            self.url, {'username': email, 'password': password, **extra}
+        )
+
+    def test_the_address_is_under_account(self):
+        self.assertEqual(self.url, '/account/login/')
+
+    def test_the_form_asks_for_an_email_address(self):
+        self.assertContains(self.client.get(self.url), 'Email address')
+
+    def test_logging_in_goes_to_whats_on(self):
+        self.assertRedirects(
+            self.log_in(), reverse('screenings:screening_list')
+        )
+        self.assertIn('_auth_user_id', self.client.session)
+
+    def test_the_email_can_be_typed_with_any_capitals(self):
+        self.log_in(email='Customer@Example.com')
+        self.assertIn('_auth_user_id', self.client.session)
+
+    def test_a_wrong_password_is_refused_in_text(self):
+        response = self.log_in(password='not-the-password')
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(
+            response, 'match an account. Check them and try again.'
+        )
+        self.assertNotContains(response, 'case-sensitive')
+        self.assertNotIn('_auth_user_id', self.client.session)
+
+    def test_logging_in_returns_to_the_page_that_asked(self):
+        film_page = '/films/nosferatu/'
+        self.assertRedirects(
+            self.log_in(next=film_page), film_page,
+            fetch_redirect_response=False,
+        )
+
+    def test_the_page_links_to_registering(self):
+        self.assertContains(
+            self.client.get(self.url), reverse('accounts:register')
+        )
+
+
+class AnonymousOnlyTests(TestCase):
+    """Log in and register are for visitors who aren't logged in.
+    Journey 4, "Anonymous-only pages"."""
+
+    def setUp(self):
+        self.client.force_login(
+            User.objects.create_user('customer@example.com', 'a-long-pw-1')
+        )
+
+    def test_a_logged_in_customer_is_sent_away(self):
+        for name in ('accounts:login', 'accounts:register'):
+            with self.subTest(page=name):
+                self.assertRedirects(
+                    self.client.get(reverse(name)),
+                    reverse('screenings:screening_list'),
+                )

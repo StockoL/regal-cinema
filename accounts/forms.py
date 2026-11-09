@@ -1,6 +1,7 @@
 from django import forms
 from django.contrib.auth.forms import (
     AdminUserCreationForm,
+    AuthenticationForm,
     UserChangeForm,
     UserCreationForm,
 )
@@ -52,3 +53,16 @@ class RegisterForm(UserCreationForm):
                 'Log in instead, or use another address.'
             )
         return email
+
+
+class LoginForm(AuthenticationForm):
+    """Django's login form, without its hint that the email might be
+    case-sensitive: here it never is (4.16)."""
+
+    error_messages = {
+        **AuthenticationForm.error_messages,
+        'invalid_login': (
+            "That email address and password don't match an account. "
+            'Check them and try again.'
+        ),
+    }

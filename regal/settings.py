@@ -110,6 +110,8 @@ DATABASES = {
 # Custom user with email as the login, set before the first migration
 # (architecture 4.16).
 AUTH_USER_MODEL = 'accounts.User'
+LOGIN_URL = 'accounts:login'
+LOGIN_REDIRECT_URL = 'screenings:screening_list'
 
 
 # LooseLeaf UI renders {{ form }} as labelled, accessible fields (4.17).
