@@ -1,6 +1,7 @@
 import re
 from pathlib import Path
 
+from django.conf import settings as django_settings
 from django.contrib.staticfiles import finders
 from django.test import TestCase, override_settings
 from django.urls import reverse
@@ -150,3 +151,14 @@ class EmailSettingsTests(TestCase):
             settings['DEFAULT_FROM_EMAIL'],
             'Regal Cinema <cinema@example.com>',
         )
+
+
+class DatabaseSettingsTests(TestCase):
+    """Neon's free plan suspends the database after a few idle minutes
+    and drops open connections. A kept connection must be checked before
+    reuse, or the first request after a quiet spell fails with a 500."""
+
+    def test_kept_connections_are_checked_before_reuse(self):
+        database = django_settings.DATABASES['default']
+        self.assertGreater(database['CONN_MAX_AGE'], 0)
+        self.assertTrue(database['CONN_HEALTH_CHECKS'])

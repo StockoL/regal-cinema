@@ -103,8 +103,12 @@ WSGI_APPLICATION = 'regal.wsgi.application'
 # https://docs.djangoproject.com/en/6.1/ref/settings/#databases
 
 DATABASES = {
+    # Connections are kept for ten minutes, and checked before each
+    # reuse: Neon suspends after a few idle minutes and drops them, and
+    # a dropped one would fail the next request with a 500.
     'default': dj_database_url.parse(
-        os.environ['DATABASE_URL'], conn_max_age=600
+        os.environ['DATABASE_URL'], conn_max_age=600,
+        conn_health_checks=True,
     ),
 }
 
