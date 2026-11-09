@@ -170,3 +170,63 @@ class SeatFormTests(TestCase):
     def test_the_page_says_the_circle_is_stairs_only(self):
         """Journey 2, "Accessibility note"."""
         self.assertIn('The circle is reached by stairs only.', self.page())
+
+
+class ChooseSeatsTests(TestCase):
+    """Continuing with the chosen seats. They're kept in the session and
+    not held yet: holding needs a ticket type for each (4.8 step 3)."""
+
+    def setUp(self):
+        self.screening = make_future_screening()
+        self.seats = [
+            Seat.objects.create(
+                screen=self.screening.screen, layout=self.screening.layout,
+                area=Seat.Area.STALLS, number=n, row_index=0, column_index=n,
+            )
+            for n in (1, 2, 3)
+        ]
+        self.url = reverse('bookings:screening_seats',
+                           args=[self.screening.pk])
+        self.tickets_url = reverse('bookings:screening_tickets',
+                                   args=[self.screening.pk])
+
+    def choose(self, *seats):
+        return self.client.post(self.url,
+                                {'seats': [seat.pk for seat in seats]})
+
+    def test_continuing_goes_to_the_ticket_types(self):
+        response = self.choose(self.seats[0], self.seats[2])
+        self.assertRedirects(response, self.tickets_url)
+        page = self.client.get(self.tickets_url)
+        self.assertContains(page, 'Stalls, seat 1')
+        self.assertContains(page, 'Stalls, seat 3')
+        self.assertNotContains(page, 'Stalls, seat 2')
+
+    def test_choosing_doesnt_hold_anything_yet(self):
+        self.choose(self.seats[0])
+        self.assertFalse(SeatHold.objects.exists())
+
+    def test_choosing_nothing_says_so(self):
+        response = self.choose()
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Choose at least one seat.')
+
+    def test_a_seat_from_another_screen_is_ignored(self):
+        other = Seat.objects.create(
+            screen=Screen.objects.create(name='Screen 2'),
+            area=Seat.Area.STALLS, number=9, row_index=0, column_index=0,
+        )
+        self.choose(self.seats[0], other)
+        page = self.client.get(self.tickets_url)
+        self.assertEqual([s for s, _ in page.context['seats']],
+                         [self.seats[0]])
+
+    def test_going_back_keeps_the_seats_ticked(self):
+        """Journey 2, "Amend": going back loses nothing."""
+        self.choose(self.seats[1])
+        html = self.client.get(self.url).content.decode()
+        start = html.index(f'value="{self.seats[1].pk}"')
+        self.assertIn('checked', html[start:html.index('>', start)])
+
+    def test_the_tickets_step_needs_seats_first(self):
+        self.assertRedirects(self.client.get(self.tickets_url), self.url)

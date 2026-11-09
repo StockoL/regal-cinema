@@ -1,0 +1,16 @@
+{% extends 'base.html' %}
+
+{% block title %}Choose tickets: {{ screening.film.title }}{% endblock %}
+
+{% block content %}
+<div class="wrapper region flow">
+  <h1>Choose tickets</h1>
+  <p>{{ screening.film.title }}, {{ screening.date_time|date:"l j F" }} at {{ screening.date_time|time:"g:i a" }}</p>
+  <ul class="flow" role="list">
+    {% for seat, label in seats %}
+      <li>{{ label }}</li>
+    {% endfor %}
+  </ul>
+  <p><a href="{% url 'bookings:screening_seats' screening.pk %}">Change seats</a></p>
+</div>
+{% endblock %}
