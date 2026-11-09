@@ -150,6 +150,12 @@ Until the address is confirmed, a logged-in customer sees a reminder at the top 
 
 The first time I checked the reminder in a browser, it sat against the header and against the message below it, with its button pressed up under the text. Putting the reminder and the messages in one spaced region fixed it. I took the screenshots as a demo customer in my local database, with sending switched off.
 
+### 9 November 2026: deploying the accounts, and a 500
+
+The account pages, password reset, verification and email went live in one deploy, and every page I checked loaded. Django's deployment check (`check --deploy`) no longer reports the error from the first deploy now that email has a real backend. Two warnings remain, both asking for HSTS on every subdomain and for the site to go on browsers' preload list. I've left them off on purpose: the site lives on `onrender.com`, which Render shares between all its customers, so its subdomains aren't mine to make promises about. That would change with a domain of my own.
+
+Earlier the same day the live site showed a 500 once, and the next load worked. I couldn't reproduce it locally, even with `DEBUG` off and the static files collected the way Render does it, and every page and admin page loaded. The likeliest cause is the database connection. Django kept each connection open for ten minutes and reused it without checking it, but Neon's free plan suspends the database after a few idle minutes and drops its connections. The cron ping keeps the web service awake without touching the database, so the database still goes to sleep, and the first request after a quiet spell could reuse a dead connection. Django now checks a kept connection before using it (`conn_health_checks`) and opens a new one if it has gone, with a test. If it happens again, Render's logs should show the traceback.
+
 </details>
 
 ## Phase 2: Core booking skeleton, seats and holds
