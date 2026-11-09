@@ -112,6 +112,7 @@ DATABASES = {
 AUTH_USER_MODEL = 'accounts.User'
 LOGIN_URL = 'accounts:login'
 LOGIN_REDIRECT_URL = 'screenings:screening_list'
+LOGOUT_REDIRECT_URL = 'screenings:screening_list'
 
 
 # LooseLeaf UI renders {{ form }} as labelled, accessible fields (4.17).

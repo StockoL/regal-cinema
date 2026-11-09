@@ -145,3 +145,47 @@ class AnonymousOnlyTests(TestCase):
                     self.client.get(reverse(name)),
                     reverse('screenings:screening_list'),
                 )
+
+
+class LogoutTests(TestCase):
+    """Logging out changes state, so it's a form with a button, never a
+    plain link (ux design, 3.IV)."""
+
+    url = reverse('accounts:logout')
+
+    def setUp(self):
+        self.client.force_login(
+            User.objects.create_user('customer@example.com', 'a-long-pw-1')
+        )
+
+    def test_logging_out_goes_to_whats_on(self):
+        response = self.client.post(self.url)
+        self.assertRedirects(response, reverse('screenings:screening_list'))
+        self.assertNotIn('_auth_user_id', self.client.session)
+
+    def test_a_plain_link_cannot_log_anyone_out(self):
+        self.assertEqual(self.client.get(self.url).status_code, 405)
+        self.assertIn('_auth_user_id', self.client.session)
+
+
+class AccountMenuTests(TestCase):
+    """The main menu offers what fits the visitor (ux design, 3.IV)."""
+
+    def menu(self):
+        html = self.client.get('/').content.decode()
+        return html[html.index('<nav id="main-nav"'):html.index('</nav>')]
+
+    def test_a_visitor_sees_log_in_and_register(self):
+        menu = self.menu()
+        self.assertIn(f'href="{reverse("accounts:login")}"', menu)
+        self.assertIn(f'href="{reverse("accounts:register")}"', menu)
+        self.assertNotIn('Log out', menu)
+
+    def test_a_customer_sees_log_out_as_a_button(self):
+        self.client.force_login(
+            User.objects.create_user('customer@example.com', 'a-long-pw-1')
+        )
+        menu = self.menu()
+        self.assertIn(f'action="{reverse("accounts:logout")}"', menu)
+        self.assertIn('<button', menu)
+        self.assertNotIn(f'href="{reverse("accounts:login")}"', menu)

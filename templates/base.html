@@ -22,6 +22,16 @@
         {% with current=request.resolver_match.view_name %}
         <nav id="main-nav" class="navbar__menu" aria-label="Main">
           <a class="navbar__link" href="{% url 'screenings:screening_list' %}"{% if current == 'screenings:screening_list' %} aria-current="page"{% endif %}>What's on</a>
+          {% if user.is_authenticated %}
+            {# Logging out changes state, so it's a form, not a link. #}
+            <form method="post" action="{% url 'accounts:logout' %}">
+              {% csrf_token %}
+              <button class="button" type="submit" data-variant="ghost">Log out</button>
+            </form>
+          {% else %}
+            <a class="navbar__link" href="{% url 'accounts:login' %}"{% if current == 'accounts:login' %} aria-current="page"{% endif %}>Log in</a>
+            <a class="navbar__link" href="{% url 'accounts:register' %}"{% if current == 'accounts:register' %} aria-current="page"{% endif %}>Register</a>
+          {% endif %}
         </nav>
         {% endwith %}
       </div>
