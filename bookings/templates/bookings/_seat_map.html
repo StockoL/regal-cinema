@@ -10,6 +10,7 @@ seat-map.js adds one tab stop and arrow keys between seats.
   <li class="seat-key__item"><span class="seat" data-seat-status="outside section" aria-hidden="true"><span class="seat__mark">&ndash;</span></span> Outside section</li>
   <li class="seat-key__item"><span class="seat" data-seat-status="available" data-wheelchair aria-hidden="true"><span class="seat__mark">W</span></span> Wheelchair space</li>
 </ul>
+<div class="flow" data-seat-map>
 {% for area in seat_areas %}
   <fieldset class="fieldset seat-map-area">
     <legend class="legend">{{ area.name }}</legend>
@@ -18,7 +19,7 @@ seat-map.js adds one tab stop and arrow keys between seats.
       <div class="seat-map" style="--columns: {{ area.columns }}">
         {% for seat, status in area.seats %}
           <label class="seat" data-seat-status="{{ status }}"{% if seat.is_wheelchair_space %} data-wheelchair{% endif %} style="--row: {{ seat.row_index|add:1 }}; --col: {{ seat.column_index|add:1 }}">
-            <input class="seat__input" type="checkbox" name="seats" value="{{ seat.pk }}"{% if status != 'available' %} disabled{% elif seat.pk in ticked %} checked{% endif %}>
+            <input class="seat__input" type="checkbox" name="seats" value="{{ seat.pk }}" data-area="{{ seat.area }}" data-row="{{ seat.row_index }}" data-col="{{ seat.column_index }}"{% if status != 'available' %} disabled{% elif seat.pk in ticked %} checked{% endif %}>
             <span class="seat__mark" aria-hidden="true">{% if status == 'sold' %}&times;{% elif status == 'outside section' %}&ndash;{% elif seat.is_wheelchair_space %}W{% elif seat.label_override %}{{ seat.label_override }}{% else %}{{ seat.number }}{% endif %}</span>
             <span class="visually-hidden">{{ seat.label }}, {{ status }}{% if seat.is_wheelchair_space %}, wheelchair space{% endif %}</span>
           </label>
@@ -27,3 +28,4 @@ seat-map.js adds one tab stop and arrow keys between seats.
     </div>
   </fieldset>
 {% endfor %}
+</div>

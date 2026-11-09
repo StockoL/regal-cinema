@@ -1,5 +1,9 @@
 {% extends 'base.html' %}
 
+{% load static %}
+
+{% block scripts %}<script src="{% static 'js/seat-map.js' %}" defer></script>{% endblock %}
+
 {% block title %}Choose seats: {{ screening.film.title }}{% endblock %}
 
 {% block content %}

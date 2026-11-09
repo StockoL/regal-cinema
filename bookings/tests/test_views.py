@@ -504,3 +504,27 @@ class AmendFromThePagesTests(TestCase):
         self.assertFalse(Booking.objects.exists())
         self.assertContains(self.client.get(self.seats_url),
                             'longest we can keep them')
+
+
+class SeatMapKeyboardTests(TestCase):
+    """What seat-map.js relies on: one tab stop and arrow keys between
+    seats (architecture 4.17). The keys themselves are checked in a
+    browser."""
+
+    def setUp(self):
+        self.screening = make_future_screening()
+        self.seat = Seat.objects.create(
+            screen=self.screening.screen, area=Seat.Area.CIRCLE,
+            row_label='B', number=7, row_index=1, column_index=4,
+        )
+        self.html = self.client.get(reverse(
+            'bookings:screening_seats', args=[self.screening.pk]
+        )).content.decode()
+
+    def test_the_page_loads_the_script(self):
+        self.assertIn('src="/static/js/seat-map.js"', self.html)
+        self.assertIn('defer', self.html[self.html.index('seat-map.js'):][:40])
+
+    def test_each_seat_carries_its_place_for_the_arrow_keys(self):
+        self.assertIn('data-area="circle" data-row="1" data-col="4"',
+                      self.html)
