@@ -6,6 +6,8 @@ from django.db.models import Q
 from django.utils import timezone
 
 from .basket import check_basket
+from screenings.models import Seat
+
 from .models import Booking, SeatHold
 
 
@@ -100,39 +102,51 @@ def start_booking(screening, choices, infants, session_key, user=None):
 
 
 def seat_plan(screening, own_booking=None):
-    """The seats a customer can see for a screening, grouped as they'd
-    look for them: the stalls (or each table), then each circle row.
-    Each seat has a status: available, sold (held by anyone or sold),
-    or outside section (an area closed for this screening, 4.1, 4.17).
-    The customer's own held seats count as available to them. Seats out
-    of use and other layouts' seats aren't shown."""
+    """The seats a customer can see for a screening, area by area (the
+    stalls, then the circle), each with how many grid columns it spans.
+    Each seat has a status: available, sold (held by anyone else or
+    sold) or outside section (an area closed for this screening, 4.1,
+    4.17). The customer's own held seats count as available to them.
+    Seats out of use and other layouts' seats aren't shown, so they
+    leave a gap in the grid."""
     seats = screening.screen.seats.filter(
         Q(layout__isnull=True) | Q(layout=screening.layout_id),
         is_active=True,
-    ).order_by('-area', 'row_index', 'column_index')
+    ).order_by('row_index', 'column_index')
     closed = set(screening.closed_areas.values_list('area', flat=True))
     held = screening.holds.live()
     if own_booking is not None:
         held = held.exclude(booking=own_booking)
     held = set(held.values_list('seat', flat=True))
-    groups = {}
-    for seat in seats:
-        if seat.area in closed:
-            status = 'outside section'
-        elif seat.pk in held:
-            status = 'sold'
-        else:
-            status = 'available'
-        groups.setdefault(group_label(seat), []).append((seat, status))
-    return list(groups.items())
+    areas = []
+    for area, name in ((Seat.Area.STALLS, 'Stalls'),
+                       (Seat.Area.CIRCLE, 'Circle')):
+        in_area = [seat for seat in seats if seat.area == area]
+        if not in_area:
+            continue
+        # Lettered rows (the circle) get their letter in the first grid
+        # column, so their seats move over by one.
+        rows = sorted({(seat.row_index + 1, seat.row_label)
+                       for seat in in_area
+                       if seat.row_label and not seat.label_override})
+        first_col = 2 if rows else 1
+        areas.append({
+            'name': name,
+            'columns': max(seat.column_index for seat in in_area) + first_col,
+            'first_col': first_col,
+            'rows': rows,
+            'seats': [(seat, seat_status(seat, closed, held))
+                      for seat in in_area],
+        })
+    return areas
 
 
-def group_label(seat):
-    if seat.area == seat.Area.CIRCLE:
-        return f'Circle, row {seat.row_label}'
-    if seat.table_number:
-        return f'Stalls, table {seat.table_number}'
-    return 'Stalls'
+def seat_status(seat, closed_areas, held_seats):
+    if seat.area in closed_areas:
+        return 'outside section'
+    if seat.pk in held_seats:
+        return 'sold'
+    return 'available'
 
 
 def amend_booking(booking, choices, infants, session_key, user=None):

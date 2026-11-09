@@ -4,3 +4,4 @@
    file here is imported into one of them, so its place in the cascade
    is set by the layer, not by specificity. */
 @import url("global/lists.css") layer(global);
+@import url("block/seat-map.css") layer(blocks);

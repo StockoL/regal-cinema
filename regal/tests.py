@@ -72,13 +72,19 @@ class StylesheetTests(TestCase):
         self.assertIn('ul[role="list"]', styles)
         self.assertIn('padding-inline-start: 0', styles)
 
-    def test_every_token_used_is_defined_by_looseleaf(self):
+    def test_every_token_used_is_defined(self):
         """A misspelt custom property fails silently in the browser."""
         looseleaf = Path(
             finders.find('looseleaf/looseleaf.css')
         ).read_text(encoding='utf-8')
         defined = set(re.findall(r'(--[\w-]+):', looseleaf))
-        for path in Path(finders.find('css')).rglob('*.css'):
+        project = list(Path(finders.find('css')).rglob('*.css'))
+        for path in project:
+            # A block's own variables, declared with a default.
+            defined |= set(re.findall(
+                r'(--[\w-]+):', path.read_text(encoding='utf-8')
+            ))
+        for path in project:
             used = set(re.findall(
                 r'var\((--[\w-]+)\)', path.read_text(encoding='utf-8')
             ))
