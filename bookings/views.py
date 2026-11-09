@@ -2,12 +2,18 @@ from django.contrib import messages
 from django.db.models import Q
 from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render
+from django.views.decorators.http import require_POST
 
 from screenings.models import Screening
 
 from .basket import BasketError
 from .models import Booking
-from .services import SeatsUnavailable, seat_plan, start_booking
+from .services import (
+    SeatsUnavailable,
+    cancel_pending_booking,
+    seat_plan,
+    start_booking,
+)
 
 
 def public_screening(pk):
@@ -131,10 +137,10 @@ def seats_taken(request, screening, seats, taken):
     return redirect('bookings:screening_seats', pk=screening.pk)
 
 
-def booking_checkout(request, reference):
-    """Where a pending booking goes next. Only the browser or account
-    that made it can see it, so a guessed reference shows nothing.
-    Payment comes with Stripe (4.13)."""
+def owned_pending_booking(request, reference):
+    """The pending booking with this reference, if this browser or
+    account made it. Anyone else gets a 404, so a guessed reference
+    shows nothing."""
     owner = Q(holds__session_key=request.session.session_key or '-')
     if request.user.is_authenticated:
         owner |= Q(user=request.user)
@@ -145,6 +151,13 @@ def booking_checkout(request, reference):
     )
     if booking is None:
         raise Http404('No such booking.')
+    return booking
+
+
+def booking_checkout(request, reference):
+    """Where a pending booking goes next. Payment comes with Stripe
+    (4.13)."""
+    booking = owned_pending_booking(request, reference)
     holds = booking.holds.select_related('seat', 'ticket_type').order_by(
         '-seat__area', 'seat__row_index', 'seat__column_index'
     )
@@ -154,3 +167,14 @@ def booking_checkout(request, reference):
         'holds': holds,
         'held_until': min(expiries) if expiries else None,
     })
+
+
+@require_POST
+def booking_cancel(request, reference):
+    """Let the held seats go now (journey 2, "Cancel")."""
+    booking = owned_pending_booking(request, reference)
+    screening = booking.screening
+    cancel_pending_booking(booking)
+    request.session.pop(session_key_for(screening), None)
+    messages.success(request, 'Your seats have been released.')
+    return redirect('bookings:screening_seats', pk=screening.pk)

@@ -368,3 +368,47 @@ class CheckoutPlaceholderTests(TestCase):
         self.client.logout()
         self.client.cookies.clear()
         self.assertEqual(self.client.get(self.url).status_code, 404)
+
+
+@override_settings(SEAT_HOLD_MINUTES=10)
+class CancelPendingBookingTests(TestCase):
+    """Letting held seats go before paying. Journey 2, "Cancel" and
+    "Seats never stuck"; architecture 4.8 step 6."""
+
+    def setUp(self):
+        test = TicketTypesTests('setUp')
+        test.client = self.client
+        test.setUp()
+        test.submit()
+        self.screening = test.screening
+        self.booking = Booking.objects.get()
+        self.url = reverse('bookings:booking_cancel',
+                           args=[self.booking.reference])
+
+    def test_the_checkout_page_offers_to_cancel(self):
+        page = self.client.get(reverse('bookings:booking_checkout',
+                                       args=[self.booking.reference]))
+        self.assertContains(page, f'action="{self.url}"')
+
+    def test_cancelling_releases_the_seats_at_once(self):
+        response = self.client.post(self.url)
+        self.assertRedirects(
+            response,
+            reverse('bookings:screening_seats', args=[self.screening.pk]),
+            fetch_redirect_response=False,
+        )
+        self.assertFalse(Booking.objects.exists())
+        self.assertFalse(SeatHold.objects.exists())
+
+    def test_cancelling_says_so(self):
+        response = self.client.post(self.url, follow=True)
+        self.assertContains(response, 'Your seats have been released.')
+
+    def test_a_plain_link_cant_cancel(self):
+        self.assertEqual(self.client.get(self.url).status_code, 405)
+        self.assertTrue(Booking.objects.exists())
+
+    def test_another_visitor_cant_cancel_it(self):
+        self.client.cookies.clear()
+        self.assertEqual(self.client.post(self.url).status_code, 404)
+        self.assertTrue(SeatHold.objects.exists())

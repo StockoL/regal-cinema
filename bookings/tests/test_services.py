@@ -8,6 +8,7 @@ from bookings.basket import BasketError
 from bookings.models import Booking, SeatHold
 from bookings.services import (
     SeatsUnavailable,
+    cancel_pending_booking,
     hold_seats,
     start_booking,
 )
@@ -155,3 +156,17 @@ class StartBookingTests(TestCase):
                         (self.seat_2, self.adult)])
         self.assertFalse(Booking.objects.exists())
         self.assertEqual(SeatHold.objects.count(), 1)
+
+
+class CancelPendingBookingTests(TestCase):
+
+    def test_only_a_pending_booking_can_be_let_go(self):
+        """A paid booking is cancelled through staff, with a record of
+        who and why (4.22), never by deleting it."""
+        screening, _ = make_screening()
+        booking = Booking.objects.create(
+            screening=screening, status=Booking.Status.PAID
+        )
+        with self.assertRaises(ValueError):
+            cancel_pending_booking(booking)
+        self.assertTrue(Booking.objects.exists())

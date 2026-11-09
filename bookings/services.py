@@ -112,3 +112,12 @@ def group_label(seat):
     if seat.table_number:
         return f'Stalls, table {seat.table_number}'
     return 'Stalls'
+
+
+def cancel_pending_booking(booking):
+    """Let a pending booking's seats go at once rather than waiting for
+    the holds to run out. Nothing was charged, so the booking is deleted
+    and its holds with it (4.2, 4.8 step 6)."""
+    if booking.status != booking.Status.PENDING:
+        raise ValueError('Only a pending booking can be let go like this.')
+    booking.delete()
