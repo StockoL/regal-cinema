@@ -95,6 +95,19 @@ The first screenshot I took is on the left, and the same page after the two fixe
 
 <img src="screenshots/catalogue/home-phone-before-layout-fixes.png" alt="The first version of the home page on a phone: the site name a plain blue link in the corner, the menu unstyled, and the day strip, cards and times all indented from the left" width="300"> <img src="screenshots/catalogue/home-phone.png" alt="The same page after the fixes: a styled header with a Menu button, and the day strip and cards lined up with the heading" width="300">
 
+
+### 9 November 2026: sending email
+
+Registration (journey 4) needs to send a verification email, and password reset needs to send a link, so the site needed a way to send mail. I set up a Gmail account just for this project rather than use my own. Every email the site sends shows its address, so a personal one would be visible to anyone who registers. Registration also sends mail to whatever address is typed in, so anyone could make the site email strangers from my account. And if the password ever leaked, someone could send mail as me.
+
+Gmail won't let an app log in with the account's normal password. It needs two-step verification switched on and an app password, a separate 16-character password that can only send mail and can be revoked on its own. The address and the app password are two environment variables, `EMAIL_HOST_USER` and `EMAIL_HOST_PASSWORD`. They're set in my local `.env` and in the Render dashboard, never in the repository, and `render.yaml` lists them as values entered in the dashboard, like `DATABASE_URL`. Every email comes from "Regal Cinema" at that address.
+
+Without the password, the site prints each email to the terminal instead of sending it. That's what happens in the tests and on any machine without the variables, so nothing is sent by accident while I'm building.
+
+My first version used Django's `EMAIL_BACKEND` and `EMAIL_HOST` settings, and Django refused to start. Django 6.1 has moved email configuration into a single `MAILERS` setting and won't accept the older settings alongside it. The settings now build `MAILERS` from the two variables, with a test for each case.
+
+This also clears the error `check --deploy` has reported since the first deploy (25 October), which was Django refusing the console email backend in production. That happens once this is deployed with the variables set on Render.
+
 </details>
 
 ## Phase 2: Core booking skeleton, seats and holds
