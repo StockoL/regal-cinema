@@ -4,7 +4,8 @@ from django.conf import settings
 from django.db import IntegrityError, transaction
 from django.utils import timezone
 
-from .models import SeatHold
+from .basket import check_basket
+from .models import Booking, SeatHold
 
 
 class SeatsUnavailable(Exception):
@@ -59,3 +60,22 @@ def hold_seats(screening, choices, session_key, user=None):
             raise SeatsUnavailable(
                 [seat for seat, _ in choices if seat.pk in taken]
             ) from None
+
+
+def start_booking(screening, choices, infants, session_key, user=None):
+    """Proceed to checkout: check the basket, hold the seats and make
+    the pending booking that holds everything else, in one transaction,
+    so a refusal at any step leaves nothing behind (4.2, 4.8 step 3).
+    Raises BasketError or SeatsUnavailable."""
+    check_basket(
+        screening.film, [ticket_type for _, ticket_type in choices], infants
+    )
+    with transaction.atomic():
+        holds = hold_seats(screening, choices, session_key, user=user)
+        booking = Booking.objects.create(
+            screening=screening, user=user, infant_count=infants,
+        )
+        SeatHold.objects.filter(pk__in=[hold.pk for hold in holds]).update(
+            booking=booking
+        )
+    return booking

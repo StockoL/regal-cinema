@@ -4,8 +4,13 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase, override_settings
 from django.utils import timezone
 
-from bookings.models import SeatHold
-from bookings.services import SeatsUnavailable, hold_seats
+from bookings.basket import BasketError
+from bookings.models import Booking, SeatHold
+from bookings.services import (
+    SeatsUnavailable,
+    hold_seats,
+    start_booking,
+)
 from bookings.tests.test_holds import make_screening
 from screenings.models import ScreeningClosedArea, Seat, TicketType
 
@@ -99,3 +104,54 @@ class HoldSeatsTests(TestCase):
         with self.assertRaises(ValueError):
             self.hold([(self.seat_1, child)])
         self.assertFalse(SeatHold.objects.exists())
+
+
+@override_settings(SEAT_HOLD_MINUTES=10)
+class StartBookingTests(TestCase):
+    """Proceeding to checkout: the basket is checked, the seats held and
+    a pending booking made, all in one step or not at all (architecture
+    4.8 step 3)."""
+
+    def setUp(self):
+        self.screening, (self.seat_1, self.seat_2) = make_screening()
+        film = self.screening.film
+        film.age_rating = 'PG'
+        film.save()
+        self.adult = TicketType.objects.get(name='Adult')
+        self.child = TicketType.objects.get(name='Child')
+
+    def start(self, choices, infants=0, **kwargs):
+        return start_booking(self.screening, choices, infants,
+                             'session-a', **kwargs)
+
+    def test_makes_a_pending_booking_holding_the_seats(self):
+        user = get_user_model().objects.create_user(
+            'customer@example.com', 'a-long-pw-1'
+        )
+        booking = self.start([(self.seat_1, self.adult),
+                              (self.seat_2, self.child)], infants=1,
+                             user=user)
+        self.assertEqual(booking.status, Booking.Status.PENDING)
+        self.assertEqual((booking.user, booking.infant_count), (user, 1))
+        self.assertEqual(
+            {(h.seat, h.ticket_type) for h in booking.holds.all()},
+            {(self.seat_1, self.adult), (self.seat_2, self.child)},
+        )
+
+    def test_a_basket_that_breaks_a_rule_makes_nothing(self):
+        with self.assertRaises(BasketError):
+            self.start([(self.seat_1, self.child)])
+        self.assertFalse(Booking.objects.exists())
+        self.assertFalse(SeatHold.objects.exists())
+
+    def test_a_taken_seat_makes_nothing(self):
+        SeatHold.objects.create(
+            screening=self.screening, seat=self.seat_2,
+            ticket_type=self.adult, session_key='session-b',
+            expires_at=timezone.now() + timedelta(minutes=10),
+        )
+        with self.assertRaises(SeatsUnavailable):
+            self.start([(self.seat_1, self.adult),
+                        (self.seat_2, self.adult)])
+        self.assertFalse(Booking.objects.exists())
+        self.assertEqual(SeatHold.objects.count(), 1)
