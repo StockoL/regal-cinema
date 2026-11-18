@@ -339,7 +339,7 @@ Success: the number of customer outcomes (voucher or refund) always equals the n
 | Step               | Scenario                                                                                                                                                                     | MoSCoW |
 | ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ |
 | Batch              | Given a screening with bookings is cancelled, when it is triggered, then every booking is cancelled and its seats released.                                                  | Must   |
-| Customer's choice  | Given the batch has run, when each customer is contacted, then a voucher is issued by default, a card refund is available, and the choice is recorded on the `Cancellation`. | Must   |
+| Customer's choice  | Given the batch has run, when each customer is contacted, then a refund to the original payment is made by default, a voucher is available instead, and the choice is recorded on the `Cancellation`. | Must   |
 | One log entry each | Given the batch completes, when it is reviewed, then one audit entry exists per affected booking.                                                                            | Must   |
 | No bookings        | Given a screening has none, when it is cancelled, then it simply cancels.                                                                                                    | Should |
 | Fee                | Given a customer cancels and the venue sets a fee, when the voucher is issued, then the fee is deducted and recorded.                                                        | Could  |
