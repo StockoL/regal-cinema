@@ -102,7 +102,7 @@ Limitations I've accepted on purpose, as opposed to things yet to be discovered:
 - No dual authorisation for large refunds (4.12): one person with the refund permission can refund any amount. A second sign-off is a future consideration.
 - Reporting queries run against the primary database (4.12): at very high volume the dashboard queries could compete with customer traffic. A read replica is a future consideration and isn't needed at this scale.
 - Cancellation inside the cutoff is by phone (4.22): there's no online route inside the window, by design.
-- Older iPhones and iPads aren't supported: LooseLeaf UI needs Chrome 117, Safari 17.4 or Firefox 129 or later, so on Apple devices that means iOS and iPadOS 17.4 or later. A customer on an older device is told to call the box office. Whether that's acceptable for a cinema's audience is still open.
+- Older iPhones and iPads aren't supported: LooseLeaf UI needs Chrome 117, Safari 17.4 or Firefox 129 or later, so on Apple devices that means iOS and iPadOS 17.4 or later. Whether that's acceptable for a cinema's audience is still to be decided.
 
 ## 10. Failure modes
 
