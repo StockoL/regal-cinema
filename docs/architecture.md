@@ -661,7 +661,7 @@ Rate limits (4.29) use Django's database cache, because `render.yaml` runs two w
 ## 4.35 Choices I didn't make
 
 - Django REST Framework: there's no public API yet, and the logic already lives in services the views call.
-- Celery and Redis: an outbox and one cron command give retries without running a separate worker.
+- Celery and Redis: an outbox and one scheduled endpoint give retries without running a separate worker.
 - A JavaScript framework: pages are rendered on the server, with a few small scripts I wrote by hand.
 - Websockets: the service list's conditional refresh every 20 seconds is enough.
 - Raw SQL: the ORM covers every query the site needs.
