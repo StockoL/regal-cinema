@@ -107,8 +107,9 @@ Ticket types with `requires_proof` show "Bring proof of age or status" at checko
 
 ## 4.3 `concessions`
 
-- `Product`: `name`, `price_pence`, `category` (drink or snack), `vat_rate_percent` (default 20), `min_age` (nullable, 18 for alcohol), `allergens` (text), `is_available` (default true, switched off when an item has sold out for the day), `is_active` (false once a product is retired).
+- `Product`: `name`, `price_pence`, `category` (drink or snack), `vat_rate_percent` (default 20), `min_age` (nullable, 18 for alcohol), `allergens` (text), `is_available` (default true, switched off when an item has sold out for the day), `low_stock_threshold` (nullable), `is_active` (false once a product is retired).
 - `OrderItem`: `booking` (FK), `product` (FK), `quantity`, `unit_price_pence` (a snapshot of the product's price when the order was placed), `vat_rate_percent` (a snapshot of the product's rate), `status` (ordered, preparing or delivered).
+- `StockMovement`: `product` (FK), `quantity` (signed: positive for a delivery, negative for waste), `reason` (restock, waste or count), `created_by` (FK to `User`), `created_at`.
 
 Food and drink is the venue's selling point, not an add-on: order ahead, sit down, and have it brought to you during the adverts. An order belongs to a `Booking`, so to one screening on any future date, and is paid in the same Checkout Session as the tickets (4.13). The food step comes after the ticket types and before the order check. It's optional and can be skipped, and it works as a plain form with no JavaScript. Orders close a set number of minutes before the start (`food_order_cutoff_minutes`, 90 by default, 4.23).
 
@@ -117,6 +118,8 @@ The customer chooses once per booking how to get it, stored as `Booking.food_ful
 An age-restricted product can go in the basket whatever the film's rating. ID is checked on delivery or collection, and the product, the order check and the confirmation all say so. Each product's allergens are shown on the order screen behind a visible link. Front of House can mark an item sold out for today, which takes it off the online menu until it's switched back on. Retiring a product for good is `is_active`, a Manager's job.
 
 Staff work from a service list for each screening: seat deliveries in the order staff walk the room, stalls front to back and then the circle, and bar collections by booking reference. Each item moves from ordered to preparing to delivered, and every change is logged with the staff member's name and the time (4.9). Cancelling a booking cancels its food, and the voucher covers the whole booking total (4.22). An item already marked preparing can't be cancelled without a Manager's note.
+
+Stock is a ledger, never a counter. A product's available quantity is worked out each time: its movements added up, less the quantities in paid bookings that aren't cancelled, less those in pending bookings that haven't expired. A tracked product shows as sold out at zero or below, which replaces the manual switch for it. A product with no movements isn't tracked, and keeps the manual sold-out switch. Staff get a stock screen with a low-stock flag and a restock form, and every movement writes an audit entry.
 
 The service list keeps itself current. It asks for its list every 20 seconds and the server answers "not modified" when nothing has changed, using an ETag built from one cheap query (the latest change and the count). Only the list itself is replaced, scroll position and focus are kept, it pauses while the tab is hidden, and a changed count is announced politely to screen readers. Without JavaScript, the page refreshes itself every 60 seconds instead.
 
