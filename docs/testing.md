@@ -31,7 +31,9 @@ The edge cases identified during design, to be checked by hand once built:
 - Reports (4.28): attendance and occupancy match a count by hand on seeded data; each Excel download holds the same rows as its page.
 - Personal data (4.30): the download holds the account and its bookings and nothing about anyone else; a deleted account leaves its bookings in place with no user.
 - Backups (4.31): a dump restores into an empty database, and the row counts match the original.
-- Query counts: `assertNumQueries` fixes the number of queries on the seat map, the showtimes page and the service list, and the numbers are recorded here.
+- Query counts: `assertNumQueries` fixes the number of queries on the seat map, the showtimes page, the service list and each report, and the numbers are recorded here. The seat map's occupancy is two queries whatever the size of the room (4.33).
+- Caching (4.33): a listing is served from the cache within 60 seconds, a seat's availability never is, and a booking or staff page sends `private, no-store`.
+- Service list refresh (4.3): an unchanged list answers "not modified", and a changed one keeps the scroll position and announces the new count.
 - Accessibility (4.17): the seat map is fully operable by keyboard alone, with one tab stop and arrow keys between seats; a seat-hold conflict is announced by the live region; seat states are distinguishable without colour; every seat button is at least 24 by 24 CSS pixels.
 
 ## 2. User story testing (behaviour-driven verification)
