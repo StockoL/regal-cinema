@@ -40,6 +40,8 @@ Customer-facing:
 - Seat selection with a short-lived hold (see [4.8](architecture.md#48-core-flow-seat-selection-and-holds))
 - Going back to amend seats, ticket types, infants or food and drink before paying
 - Checkout: seats, concessions and voucher or discount, then Stripe payment
+- A promo code on check-your-order, for tickets only, which never stacks with membership: each ticket gets the lower price ([4.10](architecture.md#410-business-rule-discount-and-voucher-order))
+- Resending their own booking confirmation, limited to a few times
 - Order confirmation showing the booking reference, which works as a ticket on a phone, and booking history with cancellation requests on their profile
 - As a stretch, a QR code on the confirmation holding only the reference, and an "Add to calendar" file
 
@@ -56,6 +58,10 @@ Staff-facing:
 - Front of House: deactivate a customer account with a reason, and see every booking under one email address
 - Front of House: one search box for a reference, whatever its case or look-alike characters, or part of an email address, and a timeline on each booking
 - Manager: move a paid booking to other seats in the same screening, with a reason
+- Manager: refund individual tickets or food lines, with a reason ([4.32](architecture.md#432-when-things-go-wrong))
+- Manager: issue complimentary tickets through in-venue booking, with a required reason ([4.14](architecture.md#414-in-venue-bookings-staff-assisted-card-only))
+- Front of House: close the day's till reconciliation against the card terminal's total, for a Manager to sign off
+- Front of House: see a dispute flag on a booking, and resend any email
 
 ## 5.3 `concessions`
 
@@ -71,6 +77,7 @@ Staff-facing:
 - Front of House: the service list for each screening, seat deliveries in walking order and bar collections by reference, moving each item from ordered to preparing to delivered, with every change logged. It refreshes itself every 20 seconds, keeping the place on the page ([4.3](architecture.md#43-concessions))
 - Front of House: mark an item sold out for today, which takes it off the online menu until it's switched back on
 - Manager: manage the product catalogue (add, edit or retire items, prices, allergens and age limits)
+- Front of House: a stock screen with low-stock flags and a restock form, every movement logged ([4.3](architecture.md#43-concessions))
 - Manager: turn seat delivery off for one screening, such as a live event ([4.1](architecture.md#41-screenings))
 
 ## 5.4 `membership`
@@ -87,6 +94,7 @@ Staff-facing:
 - Front of House: view a member's tier and expiry if a query comes up
 - Front of House: view a gift voucher's status and remaining balance, but not issue or refund it
 - Manager: issue a voucher by hand
+- Manager: create and manage promo codes and their eligibility rules, every change logged ([4.4](architecture.md#44-membership))
 - Manager: refund a membership or an unspent gift voucher within 14 days of purchase, under the rule in [4.22](architecture.md#422-customer-cancellations-and-refunds). A refunded membership resets the member's tier and expiry
 
 ## 5.5 `venue`
@@ -100,13 +108,13 @@ Customer-facing:
 Staff-facing:
 
 - Front of House: view and update the status of enquiries (new, contacted, booked, declined), and see which `Screening` an enquiry became ([4.19](architecture.md#419-private-hire-and-screening-visibility))
-- Manager, in the admin: edit the venue settings (cancellation cutoff and fee, withdrawal period, hold length, online sales cut-off, trailer and turnaround times, gift voucher limits, food order cutoff, bar collection lead time, seat delivery default, phone number, address and opening hours) ([4.23](architecture.md#423-venue-settings-and-what-is-law-versus-policy))
+- Manager, in the admin: edit the venue settings (cancellation cutoff and fee, withdrawal period, hold length, online sales cut-off, trailer and turnaround times, gift voucher limits, food order cutoff, bar collection lead time, seat delivery default, most tickets per booking, pausing online sales, phone number, address and opening hours) ([4.23](architecture.md#423-venue-settings-and-what-is-law-versus-policy))
 
 ## 5.6 `staff`
 
 - Manager: sales overview with revenue by day, week and month, revenue and occupancy by screening, tickets sold by type, top-selling concessions, and total vouchers redeemed
 - Manager: audit log, a searchable and filterable list of refunds, cancellations and vouchers issued, with who did it and why
-- Manager: attendance and occupancy reports, each filtered by date and downloadable as an Excel file ([4.28](architecture.md#428-reports-and-exports))
+- Manager: attendance, occupancy, reconciliation and payment cost reports, each filtered by date and downloadable as an Excel file, with reconciliation also as an accounting CSV ([4.28](architecture.md#428-reports-and-exports))
 - Front of House and Manager: the needs-attention page, with its count in the staff menu ([4.32](architecture.md#432-when-things-go-wrong))
 - This app has nothing customer-facing. It exists to support the other apps.
 
