@@ -86,6 +86,8 @@ Success: no seat is ever double-booked under concurrent access, shown by an auto
 | Cancel                    | Given the customer decides not to continue, when they choose Cancel, then the hold is released immediately.                                                                                                                 | Must   |
 | Expired mid-checkout      | Given a hold has expired, when payment is attempted, then the customer returns to the seat map with a plain explanation.                                                                                                    | Must   |
 | Back button               | Given the browser's back button is used, when the seat grid reappears, then it re-fetches live state.                                                                                                                       | Should |
+| Accessible seating        | Given a customer needs a wheelchair space or a companion seat, when they choose Accessible seating, then the map shows only those seats. | Should |
+| Best available            | Given a number of tickets, when the customer chooses Best available, then the best free seats are held for them, and it works as a plain form post. | Should |
 
 The seat map on a phone: the whole room, one circle block, and the room again with the chosen seats badged.
 
@@ -184,6 +186,7 @@ Success: the customer is never told a payment succeeded unless Stripe has confir
 | Double submit              | Given the customer presses Pay twice, when the second request arrives, then no second Checkout Session is made. | Must   |
 | Confirmed once             | Given a confirmation fails halfway, when the booking is checked, then nothing partial was saved, and confirming a paid booking again changes nothing. | Must   |
 | Already booked             | Given a customer already has a paid booking for the screening, when they reach check-your-order, then a notice links to it without stopping them. | Could  |
+| Phone ticket               | Given a paid booking, when the confirmation shows, then it has a QR code holding only the reference and an Add to calendar file. | Could  |
 
 The order check, then the four pages a customer can land on after Stripe: confirming, not completed, seats lost and refunded, and booking confirmed.
 
@@ -304,6 +307,7 @@ Success: `stripe_payment_intent_id` stays empty on every in-venue booking, so th
 | Anonymous sale  | Given the customer gives no details, when the sale completes, then the booking has no user.                                                                            | Must   |
 | Check-in        | Given a customer arrives with their reference, when staff find the booking and check the party in, then the booking records who did it and when, and the action is logged. | Must   |
 | Guest list      | Given a screening, when staff open its guest list, then every booking is listed with seats, ticket types, proof reminders, food and check-in, ready to print or download. | Should |
+| Find a booking  | Given a reference typed in any case, with spaces or with a look-alike character, or part of an email address, when staff search, then the booking is found with its status, seats and actions. | Must   |
 
 Check-in on a phone: finding a booking by its reference. The till itself isn't drawn yet.
 
