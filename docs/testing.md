@@ -30,6 +30,15 @@ The edge cases identified during design, to be checked by hand once built:
 - Abuse controls (4.29): going over each rate limit gives the 429 page; a staff account is asked for its second step and a customer isn't; the production settings pass Django's deployment check.
 - Reports (4.28): attendance and occupancy match a count by hand on seeded data; each Excel download holds the same rows as its page.
 - Personal data (4.30): the download holds the account and its bookings and nothing about anyone else; a deleted account leaves its bookings in place with no user.
+- Promo codes (4.4, 4.10): each eligibility rule refuses with its own plain reason; usage counts include unexpired pending bookings; a ticket never gets both a promo and a membership discount, only the lower price.
+- Stock (4.3): available stock matches the ledger less paid and unexpired pending orders; two customers racing for the last item can't both have it.
+- Email (4.2): a confirmation is written to the outbox with its booking and sent after the commit; a failed send is retried up to five times; a booking never gets two confirmations.
+- Refunds (4.2, 4.32): a part refund makes one row for the snapshotted amount; a failed refund is retried with the same idempotency key and never pays twice; the amount refunded is the total of succeeded rows.
+- VAT (4.10): net, VAT and gross worked out per line add up to the report's totals with no penny lost to rounding.
+- Reconciliation (4.28): the report's totals equal the sum of the bookings it covers.
+- Venue settings (4.23): with online sales paused, no new hold starts but a pending booking can still be paid; a session can't hold more seats than the ticket limit.
+- Till reconciliation (4.14): a closed day can't be edited, and closing it writes an audit entry.
+- Membership (4.4): a free ticket goes on the cheapest eligible ticket, counts only once paid, and comes back when the booking is cancelled.
 - Backups (4.31): a dump restores into an empty database, and the row counts match the original.
 - Query counts: `assertNumQueries` fixes the number of queries on the seat map, the showtimes page, the service list and each report, and the numbers are recorded here. The seat map's occupancy is two queries whatever the size of the room (4.33).
 - Caching (4.33): a listing is served from the cache within 60 seconds, a seat's availability never is, and a booking or staff page sends `private, no-store`.
@@ -110,6 +119,8 @@ Each way a payment can go wrong has a named test, run against the fake payment p
 | The webhook arrives late | Confirmed when it arrives, or earlier by the scheduled check | `test_a_late_webhook_confirms_once` |
 | The webhook never arrives | `reconcile_pending` or Check with Stripe confirms it | `test_a_missing_webhook_is_recovered` |
 | Confirming fails halfway | Nothing partial is saved | `test_a_failed_confirmation_saves_nothing` |
+| A refund fails | Stored as failed, retried by the scheduled job with the same key, and listed for staff | `test_a_failed_refund_is_retried_once` |
+| An email can't be sent | The booking stands, the email is retried, and after five tries it's listed for staff | `test_a_failed_email_is_retried_then_listed` |
 
 ## 11. Load testing
 
