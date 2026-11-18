@@ -27,6 +27,7 @@ The order follows when each screen is needed. Screens 1 to 9 are this week's. Th
 | 15 | Staff: check-in                                   | 6 Dec  | 14       | Done  | To do   |
 | 16 | Staff: screening setup (admin)                    | 21 Dec | 12       | To do | Done    |
 | 17 | Staff: venue settings (admin)                     | 21 Dec |          | To do | Done    |
+| 18 | Staff: reports                                    | 21 Dec | 17       | To do | To do   |
 
 ## Shared layout
 
@@ -253,6 +254,14 @@ Four staff screens the first brief didn't list. The service list and check-in ar
 - A note that changes apply to new bookings only, and that every change is recorded with the old and new value (4.9).
 
 <img src="wireframes/24-tablet-staff-venue-settings.png" alt="Tablet wireframe of venue settings: seat hold length, sales close, cancellation cutoff and fee, voucher limits, food and drink timings, and the box office phone and hours">
+
+## Still to draw
+
+### 18. Staff: reports
+
+- Attendance and occupancy, each a table per screening, film or day, with a date range above it (4.28).
+- A download button for the Excel file of the same rows.
+- Until it's drawn, it's built plain from LooseLeaf's table, form and card blocks.
 
 ---
 
