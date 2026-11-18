@@ -28,6 +28,8 @@ The order follows when each screen is needed. Screens 1 to 9 are this week's. Th
 | 16 | Staff: screening setup (admin)                    | 21 Dec | 12       | To do | Done    |
 | 17 | Staff: venue settings (admin)                     | 21 Dec |          | To do | Done    |
 | 18 | Staff: reports                                    | 21 Dec | 17       | To do | To do   |
+| 19 | Staff: what needs attention                       | 21 Dec | 11       | To do | To do   |
+| 20 | Staff: guest list                                 | 21 Dec | 14       | To do | To do   |
 
 ## Shared layout
 
@@ -262,6 +264,16 @@ Four staff screens the first brief didn't list. The service list and check-in ar
 - Attendance and occupancy, each a table per screening, film or day, with a date range above it (4.28).
 - A download button for the Excel file of the same rows.
 - Until it's drawn, it's built plain from LooseLeaf's table, form and card blocks.
+
+### 19. Staff: what needs attention
+
+- A count at the top, and one row per item with its action beside it: an old pending booking with Check with Stripe, and a refunded duplicate payment (4.32).
+- The staff menu's badge links here.
+
+### 20. Staff: guest list
+
+- One screening's bookings: reference, email, seats, ticket types, proof reminders, food and how it's handed over, and checked in or not.
+- A print stylesheet and a download, so the door works without the site.
 
 ---
 
