@@ -334,7 +334,7 @@ This reuses the existing booking flow. The same `SeatHold` to `SeatBooking` mech
 
 This is available to anyone holding `create_in_venue_booking`, which Front of House has by default. It is a routine box-office sale, not a discretionary override.
 
-`TillReconciliation`: `business_date` (unique), `expected_card_pence` (worked out from that day's `card_in_person` bookings), `terminal_total_pence` (the card terminal's end-of-day total, typed in), `note`, `closed_by` and `signed_off_by` (FKs to `User`), `closed_at` and `signed_off_at`. The difference is worked out, not stored. A member of staff closes the day and a Manager signs it off. Closing writes an audit entry, and a closed day can't be edited. The venue stays cashless, so there's no cash to count, and this isn't a till replacement: it only checks that the site and the card terminal agree.
+`TillReconciliation`: `terminal` (short text, default "Box office"), `business_date`, unique together, `expected_card_pence` (worked out from that day's `card_in_person` bookings on that terminal, tickets and food), `terminal_total_pence` (the card terminal's end-of-day total, typed in), `note`, `closed_by` and `signed_off_by` (FKs to `User`), `closed_at` and `signed_off_at`. There's one record per card terminal per day. The difference is worked out, not stored. A member of staff closes the day and a Manager signs it off. Closing writes an audit entry, and a closed day can't be edited. The venue stays cashless, so there's no cash to count, and this isn't a till replacement: it only checks that the site and the card terminal agree.
 
 ## 4.15 TMDb integration
 
