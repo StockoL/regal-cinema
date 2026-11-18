@@ -48,6 +48,7 @@ Within each app, logic goes in one place per kind. Models hold the data rules an
 - [4.30 Personal data](#430-personal-data)
 - [4.31 Backups and restoring](#431-backups-and-restoring)
 - [4.32 When things go wrong](#432-when-things-go-wrong)
+- [4.33 Performance](#433-performance)
 
 ## 4.1 `screenings`
 
@@ -97,7 +98,7 @@ The basket is checked against three rules before checkout, taken from the Regal'
 - A Companion ticket needs at least one ticket in the same booking that is neither `requires_adult` nor `is_companion`, and companions can't outnumber those tickets. A companion can sit in any seat, because a blind or autistic cardholder has no wheelchair space for their companion to sit beside.
 - A booking needs at least one seated ticket.
 
-Ticket types with `requires_proof` show "Bring proof of age or status" at checkout and on the confirmation, and Front of House see the same note on the booking. The confirmation shows the booking reference and works as a ticket on a phone. Front of House can find a booking by its reference or the customer's email, as the real venue accepts either the card or the reference at the door. Checking the party in sets `checked_in_at` and `checked_in_by` and writes an audit entry (4.9), so the venue knows who has arrived and who let them in. The check-in page also shows what staff need on the night: the food order and where it's going, and any ticket that needs proof or an adult with it.
+Ticket types with `requires_proof` show "Bring proof of age or status" at checkout and on the confirmation, and Front of House see the same note on the booking. The confirmation shows the booking reference and works as a ticket on a phone. A reference is made from letters and digits without 0, O, 1, I or L, which are easy to mishear when it's read out. As a stretch, the confirmation also shows a QR code, drawn on the server as an SVG (`segno`) and holding only the reference, with no personal data, and offers an "Add to calendar" file. Front of House can find a booking by its reference or the customer's email, as the real venue accepts either the card or the reference at the door. Checking the party in sets `checked_in_at` and `checked_in_by` and writes an audit entry (4.9), so the venue knows who has arrived and who let them in. The check-in page also shows what staff need on the night: the food order and where it's going, and any ticket that needs proof or an adult with it.
 
 `user` is nullable. A walk-up customer paying by card at the venue doesn't need an account, in the same way buying a ticket at a real box office doesn't. If they want their membership discount, staff look their account up (by email, for example) and link the booking to it. Otherwise it is a guest sale with no discount. See 4.14.
 
@@ -367,6 +368,10 @@ The seat map is the most complex interactive component, so it gets specific trea
 - The key and the film page both say "The circle is reached by stairs only. The stalls are step-free."
 - Seats beside a wheelchair space carry `is_companion_seat` (4.1). When a customer picks a wheelchair space, the map prompts "Choose a seat for your companion" and offers those seats first. If the companion ends up elsewhere, a one-line notice says so and nothing is blocked. To everyone else they're ordinary seats, never held back.
 - When a seat-hold conflict happens (4.8) and the page updates inline, the change is announced through an ARIA live region. A sighted user sees the seat change. A screen reader user has to be told it became unavailable, or the inline-update design from 4.8 fails for them.
+- An "Accessible seating" filter shows only wheelchair spaces and the companion seats beside them.
+- A "Best available" button holds the best free seats for the number of tickets chosen. It's a plain form post, so it works without the map at all.
+
+An accessibility statement page gives the conformance target, the known issues and the box office phone number for anyone the site doesn't work for.
 
 Forms (registration, checkout, enquiries, staff tools). Every input has a real, associated `<label>`. Validation errors are stated in text, not colour alone, and tied to their field so a screen reader announces which field the error belongs to.
 
@@ -534,6 +539,8 @@ Every call to Stripe goes through one payments module with a small interface: cr
 
 Money stays in integer pence throughout. I haven't checked whether Stripe returns its fee when a payment is refunded, so a refund records the amount refunded and doesn't assume the fee comes back.
 
+Payments, email and TMDb each sit behind a small interface of their own, and views call services, never a provider directly, so swapping one is a change in one place. A booking's reference never changes once it's made. For now the Excel exports (4.28) are how another system takes data out. There's no public API.
+
 ## 4.28 Reports and exports
 
 The sales overview (4.9) grows into reports a venue would actually run, each computed from existing rows so no figure is stored twice:
@@ -554,6 +561,10 @@ Any account with a staff permission signs in with a second step, a code from an 
 ## 4.30 Personal data
 
 A privacy page says in plain English what the site holds, why, how long it keeps it, and who it's shared with: Stripe for payments and the email provider for sending mail. A logged-in customer can download their data as a file holding their account details and their bookings. Deleting an account follows 4.21: the account is removed, and the bookings and financial rows stay with no customer attached. The privacy page states how long each kind of record is kept, and the code keeps them for exactly that long.
+
+Cookies are essential only: the session, CSRF and the theme preference. There are no analytics, no advertising pixels and no third-party scripts on the site's pages (Stripe's hosted page is Stripe's own), so there's no consent banner, and the privacy page says why. Nothing that sets another cookie or loads an outside script goes in without the privacy page changing first.
+
+The site asks for as little as it can: no phone number, date of birth or address. Logs and audit entries hold ids and reasons, never personal or card details. Financial records are kept for six years, which I believe is the requirement but haven't checked, so the privacy page doesn't state it as law. The privacy page lists who processes data for the site: Stripe for payments, Google's Gmail for sending email, Render for hosting, and Neon for the database, both in Frankfurt.
 
 ## 4.31 Backups and restoring
 
@@ -584,6 +595,12 @@ What needs attention. A staff page behind `view_attention`, held by both default
 Customer accounts. Staff can deactivate a customer's account, with a reason and an audit entry, which stops it logging in and keeps its bookings. They can also see every booking under one email address.
 
 Testing failures on purpose. The fake payment provider (4.27) can be set to decline, time out, send a webhook twice or late, or never send it. Each failure here has a named test, listed in the testing doc.
+
+Finding a booking quickly. One staff search box, behind `view_bookings`, matches a reference whatever its case, spacing or look-alike characters, or part of an email address, optionally narrowed to a screening date. Each result shows its status, screening, seats, what was paid and whether it's checked in, with the actions available. A booking's own page shows a timeline of its audit entries and payment events in time order.
+
+## 4.33 Performance
+
+The film page, a screening's seats page and the seat map each aim for 90 or more in every mobile Lighthouse category once warm, with the largest contentful paint at or under 2.5 seconds and layout shift at or under 0.1. Posters have an explicit width and height, load lazily below the fold, and use a small TMDb size cached when the film is added. Static files have hashed names and long cache lifetimes. Listings and film pages are cached for 60 seconds, but seat availability and anything specific to one customer never is. When two people race for a seat, the one who loses is told those seats were just taken and sees the map refreshed (4.8 step 4).
 
 ---
 
