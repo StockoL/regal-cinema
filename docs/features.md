@@ -19,6 +19,7 @@ Customer-facing:
 - Browse current and upcoming screenings, filterable by date, each showing its ticket class (for example Silver Screen or Family Super Saver) and prices by ticket type
 - Film detail page (synopsis, trailer, age rating, captioned and audio-described indicators)
 - Seat selection on an interactive seating plan of stalls and circle, with a ticket type for each seat
+- An "Accessible seating" filter for wheelchair spaces and companion seats, and "Best available" for a number of tickets, which works as a plain form ([4.17](architecture.md#417-accessibility-implementation))
 - Priority screenings shown greyed out with who can book them and when
 - Cancelled screenings left out of every listing, with a plain "This screening has been cancelled" page for anyone following an old link ([4.11](architecture.md#411-business-rule-screening-cancellation))
 
@@ -40,6 +41,7 @@ Customer-facing:
 - Going back to amend seats, ticket types, infants or food and drink before paying
 - Checkout: seats, concessions and voucher or discount, then Stripe payment
 - Order confirmation showing the booking reference, which works as a ticket on a phone, and booking history with cancellation requests on their profile
+- As a stretch, a QR code on the confirmation holding only the reference, and an "Add to calendar" file
 
 Staff-facing:
 
@@ -52,6 +54,7 @@ Staff-facing:
 - Front of House: "Check with Stripe" on a pending booking whose Checkout Session is more than five minutes old ([4.32](architecture.md#432-when-things-go-wrong))
 - Front of House: a guest list for each screening, to print or download for the door
 - Front of House: deactivate a customer account with a reason, and see every booking under one email address
+- Front of House: one search box for a reference, whatever its case or look-alike characters, or part of an email address, and a timeline on each booking
 - Manager: move a paid booking to other seats in the same screening, with a reason
 
 ## 5.3 `concessions`
@@ -90,7 +93,7 @@ Staff-facing:
 
 Customer-facing:
 
-- Static pages: About, Accessibility policy, Membership terms
+- Static pages: About, an accessibility statement with its known issues and the box office number, Membership terms
 - Private hire and event enquiry form
 - A privacy page in plain English, and from the account page, downloading your data or deleting your account ([4.30](architecture.md#430-personal-data))
 
