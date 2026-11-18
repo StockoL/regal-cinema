@@ -47,6 +47,7 @@ Within each app, logic goes in one place per kind. Models hold the data rules an
 - [4.29 Abuse controls and staff sign-in](#429-abuse-controls-and-staff-sign-in)
 - [4.30 Personal data](#430-personal-data)
 - [4.31 Backups and restoring](#431-backups-and-restoring)
+- [4.32 When things go wrong](#432-when-things-go-wrong)
 
 ## 4.1 `screenings`
 
@@ -557,6 +558,32 @@ A privacy page says in plain English what the site holds, why, how long it keeps
 ## 4.31 Backups and restoring
 
 A management command dumps the database to a file, and the steps to restore it are written down and tested by doing it. The free Neon plan isn't a production backup plan, and I don't treat it as one. Indexes cover the lookups the busiest pages make: a screening's start time, a booking's reference (already unique) and the seats sold for a screening.
+
+## 4.32 When things go wrong
+
+I'm designing on the assumption that things will sometimes go wrong: a payment fails, a customer pays twice, a webhook never arrives, a booking needs changing, a refund is asked for. The site should handle those as calmly as it handles an ordinary booking.
+
+One confirmation function. Everything that has to happen together when a booking is paid lives in `confirm_booking(booking, payment)`, inside one transaction: lock the booking, return quietly if it's already paid, turn the holds into `SeatBooking` rows, set the paid fields and snapshot the prices, discounts and tier. If the seats were lost it takes the automatic refund path from 4.13. Calling it twice changes nothing. Looking up the payment fee and sending the confirmation email happen after the commit, so either can fail without undoing the booking. A test forces a failure halfway through and checks that nothing partial was saved.
+
+Checkout can't be created twice. A Checkout Session is created with a Stripe idempotency key built from the pending booking and what's in its basket, so a repeated request returns the same session. A booking has at most one live session: when the basket changes, the old one is expired or replaced. The Pay button shows LooseLeaf's loading state, and the server ignores a second submit.
+
+Paying twice. If a payment arrives for a booking that another payment has already paid for, the second one is refunded automatically, the same way as a payment that arrives after the seats were lost, and it's listed for staff. On check-your-order, a customer who already has a paid booking for the same screening sees a notice linking to it, which doesn't stop them booking again.
+
+A webhook that never arrives. `recheck_payment(booking)` asks Stripe for the Checkout Session and, if it's been paid, confirms it through `confirm_booking`, so it's safe to run alongside the webhook. Staff have a "Check with Stripe" action on any pending booking whose session is more than five minutes old. The confirming page checks a few times and then says the payment is still being confirmed and an email will follow, with a plain refresh link that works without JavaScript.
+
+Scheduled work. One management command, `reconcile_pending`, runs on a Render cron job. It does the same check for sessions between 10 minutes and 24 hours old and writes an audit entry for each booking it confirms. It's the only scheduled job: holds still expire lazily (4.8), and nothing else depends on a timer.
+
+Moving a customer's seats. A staff action moves a paid booking to other seats in the same screening: the same tickets at the same prices, the old `SeatBooking` rows kept with `released_at` set, behind its own permission, with an audit entry and a reason, and a new confirmation email. Anything bigger, another screening or other ticket types, is a cancellation and a new booking, as 4.22 already sets out.
+
+Error pages. Plain custom 403, 404, 500 and 503 pages give the box office phone number from the venue settings, so a customer always has somewhere to turn.
+
+The guest list. A staff page for each screening lists every booking with its reference, the customer's email, seats, ticket types, any proof reminders, the food order and how it's handed over, and whether the party has checked in. It prints cleanly and downloads, so staff can take it to the door if the site is down. It needs `view_bookings`.
+
+What needs attention. A staff page behind `view_attention`, held by both default groups, counts what needs a person and lists each item with its action beside it: pending bookings with an old Checkout Session, and duplicate payments refunded in the last seven days. The staff menu shows the total as a badge.
+
+Customer accounts. Staff can deactivate a customer's account, with a reason and an audit entry, which stops it logging in and keeps its bookings. They can also see every booking under one email address.
+
+Testing failures on purpose. The fake payment provider (4.27) can be set to decline, time out, send a webhook twice or late, or never send it. Each failure here has a named test, listed in the testing doc.
 
 ---
 
