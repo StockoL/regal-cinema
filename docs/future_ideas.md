@@ -18,7 +18,7 @@ Points would also need an expiry rule, so that a balance from years ago doesn't 
 
 - `NewsletterSubscriber`: `email` (unique), `user` (nullable FK, linked automatically if the email matches a registered account), `opt_in_deals`, `opt_in_digest` (both boolean, default `False`), `subscribed_at`, `is_active`. It isn't part of `Profile`, because anyone could subscribe from the site footer without an account.
 - `NewsletterCampaign`: `subject`, `body`, `campaign_type` (`one_off_deal` or `monthly_digest`), `status` (`draft` or `sent`), `created_by` (FK to staff), `sent_at`.
-- `PromoCode`: `code`, `discount_percent`, `valid_from`, `valid_until`, `max_total_redemptions` (nullable, unlimited if blank), `times_redeemed`, `is_active`. This is a shared, rule-based marketing code, modelled separately from `Voucher`. A `Voucher` is a personal balance spent down by one holder over time, while a promo code is redeemed by potentially hundreds of subscribers, once each, within a date window. Forcing that into a balance would let the first few customers drain a "balance" meant to serve everyone.
+- Promo codes are now part of the design (4.4). A one-off deal would link to one of those, rather than to a separate model of its own.
 
 Consent. There would be two separate opt-in checkboxes at subscribe time, for deals and for the monthly digest, both unticked by default. Having an account would never imply consent to marketing email, in line with UK PECR rules on marketing communications.
 
