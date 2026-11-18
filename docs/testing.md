@@ -88,6 +88,23 @@ Limitations I've accepted on purpose, as opposed to things yet to be discovered:
 - Reporting queries run against the primary database (4.12): at very high volume the dashboard queries could compete with customer traffic. A read replica is a future consideration and isn't needed at this scale.
 - Cancellation inside the cutoff is by phone (4.22): there's no online route inside the window, by design.
 
+## 10. Failure modes
+
+Each way a payment can go wrong has a named test, run against the fake payment provider (4.27, 4.32). The names are planned and get filled in as the tests are written.
+
+| Failure | Expected behaviour | Test |
+| :------ | :----------------- | :--- |
+| A payment arrives after the hold expired and the seats were sold | Refunded automatically, and the customer is told (4.13) | `test_a_payment_after_the_seats_went_is_refunded` |
+| The webhook arrives before the customer is back from Stripe | Confirmed once, and the success page shows the booking | `test_a_webhook_before_the_redirect_confirms_once` |
+| The customer presses Pay twice | One Checkout Session, and the second submit is ignored | `test_a_double_submit_makes_one_session` |
+| A second payment for a booking already paid | The second payment is refunded and listed for staff | `test_a_second_payment_is_refunded` |
+| The card is declined | Stripe shows it, and the booking stays pending | `test_a_declined_card_leaves_the_booking_pending` |
+| Stripe times out | Nothing is confirmed, and the customer can try again | `test_a_timeout_confirms_nothing` |
+| The same webhook arrives twice | Handled once, through `StripeEvent` | `test_a_repeated_webhook_changes_nothing` |
+| The webhook arrives late | Confirmed when it arrives, or earlier by the scheduled check | `test_a_late_webhook_confirms_once` |
+| The webhook never arrives | `reconcile_pending` or Check with Stripe confirms it | `test_a_missing_webhook_is_recovered` |
+| Confirming fails halfway | Nothing partial is saved | `test_a_failed_confirmation_saves_nothing` |
+
 ---
 
 [← 6. Development log and engineering phases](development_log.md) · [README](../README.md) · [8. Marketing development thoughts (future business ideas) →](future_ideas.md)
