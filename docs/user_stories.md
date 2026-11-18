@@ -179,6 +179,11 @@ Success: the customer is never told a payment succeeded unless Stripe has confir
 | Payment after seats lost   | Given a payment succeeds after the holds were lost and the seats resold, when the webhook is processed, then it is refunded automatically and the customer is told.                                                                                                                                                    | Should |
 | Zero total                 | Given a voucher covers the full total, when checkout completes, then the booking is marked paid without contacting Stripe, with an identical confirmation screen.                                                                                                                                                      | Must   |
 | Dropped connection         | Given the customer returns and the booking is still pending, when they try again, then the Checkout Session's real status is checked with Stripe first, so no one is charged twice.                                                                                                                                    | Should |
+| Paid twice                 | Given a booking already paid, when a second payment arrives for it, then the second is refunded automatically and listed for staff. | Must   |
+| Lost webhook               | Given a pending booking whose session was paid but no webhook arrived, when staff choose Check with Stripe or the scheduled check runs, then it is confirmed exactly once. | Must   |
+| Double submit              | Given the customer presses Pay twice, when the second request arrives, then no second Checkout Session is made. | Must   |
+| Confirmed once             | Given a confirmation fails halfway, when the booking is checked, then nothing partial was saved, and confirming a paid booking again changes nothing. | Must   |
+| Already booked             | Given a customer already has a paid booking for the screening, when they reach check-your-order, then a notice links to it without stopping them. | Could  |
 
 The order check, then the four pages a customer can land on after Stripe: confirming, not completed, seats lost and refunded, and booking confirmed.
 
@@ -254,6 +259,8 @@ Success: no customer-facing page ever links to staff tooling, checked by crawlin
 | No public link        | Given any customer page, when it is rendered, then nothing links to `/staff/`.                                                            | Must   |
 | Rate limits           | Given repeated attempts at logging in, registering, resetting a password, holding seats or entering a voucher code, when a limit is passed, then a plain 429 page explains it in one line. | Should |
 | Staff second step     | Given an account with any staff permission, when it logs in, then it is asked for a code from an authenticator app, and customers never are. | Could  |
+| Needs attention       | Given pending bookings with an old session or refunded duplicate payments, when staff open the needs-attention page, then each is listed with its action, and the staff menu shows the total. | Should |
+| Deactivate an account | Given a customer account, when staff deactivate it with a reason, then it can't log in, its bookings stay, and the action is logged. | Could  |
 
 ## Journey 12: Create or edit a screening
 
@@ -296,6 +303,7 @@ Success: `stripe_payment_intent_id` stays empty on every in-venue booking, so th
 | Member discount | Given the customer wants their discount, when staff look up their account by email, then the booking links to it.                                                      | Should |
 | Anonymous sale  | Given the customer gives no details, when the sale completes, then the booking has no user.                                                                            | Must   |
 | Check-in        | Given a customer arrives with their reference, when staff find the booking and check the party in, then the booking records who did it and when, and the action is logged. | Must   |
+| Guest list      | Given a screening, when staff open its guest list, then every booking is listed with seats, ticket types, proof reminders, food and check-in, ready to print or download. | Should |
 
 Check-in on a phone: finding a booking by its reference. The till itself isn't drawn yet.
 
@@ -314,6 +322,7 @@ Success: every cancellation or refund has a required reason and a named staff me
 | Seats released       | Given the cancellation is confirmed before the screening, when it completes, then the seats are released immediately (`released_at` is set) and can be booked again.     | Must   |
 | After the screening  | Given the screening has already happened, when a goodwill refund is made, then the money is handled and no seat is released.                                             | Could  |
 | Any time             | Given a booking inside the customer cutoff, when a staff member cancels it at the customer's request by phone, then it works, since the cutoff only limits self-service. | Must   |
+| Move seats           | Given a paid booking, when staff move it to other seats in the same screening with a reason, then the tickets and prices stay the same, the old seats are released and a new confirmation is sent. | Should |
 
 The cancellation queue on a tablet, with the manager-only refund and the recent decisions from the audit log.
 
