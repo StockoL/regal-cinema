@@ -47,7 +47,7 @@ Customer-facing:
 
 Staff-facing:
 
-- Front of House: create a booking for a walk-up customer by card, with no email or account needed, using the same seat map, ticket types, concessions and discount rules as the online flow ([4.14](architecture.md#414-in-venue-bookings-staff-assisted-card-only))
+- Front of House: create a booking for a walk-up customer by card, with no email or account needed, using the same seat map, ticket types, concessions and discount rules as the online flow ([4.14](architecture.md#414-payment-methods-and-till-reconciliation))
 - Front of House: view the bookings for a screening, for door and headcount purposes
 - Front of House: view a single booking in full (seats, ticket types, concessions, payment status), to resolve a customer query at the door or by phone
 - Front of House: find a booking by its reference or the customer's email, and check the party in, which records who did it and when ([4.2](architecture.md#42-bookings))
@@ -59,7 +59,7 @@ Staff-facing:
 - Front of House: one search box for a reference, whatever its case or look-alike characters, or part of an email address, and a timeline on each booking
 - Manager: move a paid booking to other seats in the same screening, with a reason
 - Manager: refund individual tickets or food lines, with a reason ([4.32](architecture.md#432-when-things-go-wrong))
-- Manager: issue complimentary tickets through in-venue booking, with a required reason ([4.14](architecture.md#414-in-venue-bookings-staff-assisted-card-only))
+- Manager: issue complimentary tickets through in-venue booking, with a required reason ([4.14](architecture.md#414-payment-methods-and-till-reconciliation))
 - Front of House: close the day's till reconciliation against the card terminal's total, for a Manager to sign off
 - Front of House: see a dispute flag on a booking, and resend any email
 

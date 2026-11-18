@@ -29,7 +29,7 @@ Within each app, logic goes in one place per kind. Models hold the data rules an
 - [4.11 Business rule: screening cancellation](#411-business-rule-screening-cancellation)
 - [4.12 Note: staff system separation beyond this submission](#412-note-staff-system-separation-beyond-this-submission)
 - [4.13 Business rule: payment lifecycle (online)](#413-business-rule-payment-lifecycle-online)
-- [4.14 In-venue bookings (staff-assisted, card only)](#414-in-venue-bookings-staff-assisted-card-only)
+- [4.14 Payment methods and till reconciliation](#414-payment-methods-and-till-reconciliation)
 - [4.15 TMDb integration](#415-tmdb-integration)
 - [4.16 Authentication and registration flow](#416-authentication-and-registration-flow)
 - [4.17 Accessibility implementation](#417-accessibility-implementation)
@@ -318,7 +318,7 @@ Once a booking is confirmed, the payments module looks up Stripe's balance trans
 
 There's one known limitation I'm not solving. A voucher's balance isn't held the way a seat is. If the same code were entered in two simultaneous checkouts, there's a narrow window where both could succeed against the same balance before either payment confirms. A voucher has to be typed in by hand, so this is unlikely and low in severity, and fixing it properly would need a second holding mechanism like `SeatHold`, which is out of proportion to the risk. It's listed under [Known issues](testing.md#9-known-issues).
 
-## 4.14 In-venue bookings (staff-assisted, card only)
+## 4.14 Payment methods and till reconciliation
 
 A walk-up customer should be able to book much the same way an online customer does, with the same seat map, concessions and discounts, while a member of staff completes it for them. The real Regal is cashless, so this project is card only, in the venue as well as online.
 
