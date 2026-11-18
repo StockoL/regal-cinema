@@ -27,6 +27,11 @@ The edge cases identified during design, to be checked by hand once built:
 - Private hire (4.19): a private screening is absent from public listings and public booking is blocked; it still blocks a public screening from being scheduled in the same slot.
 - TMDb integration (4.15): a search with no results; a timeout or error during the add-film flow giving a clear message; the manual path for events with no TMDb page.
 - Authentication (4.16): a session's seat holds reassign to the logged-in user despite Django's session rotation on login; registering an already-used email is rejected, including the same address with different capitals; `createsuperuser` asks for an email and not a username.
+- Abuse controls (4.29): going over each rate limit gives the 429 page; a staff account is asked for its second step and a customer isn't; the production settings pass Django's deployment check.
+- Reports (4.28): attendance and occupancy match a count by hand on seeded data; each Excel download holds the same rows as its page.
+- Personal data (4.30): the download holds the account and its bookings and nothing about anyone else; a deleted account leaves its bookings in place with no user.
+- Backups (4.31): a dump restores into an empty database, and the row counts match the original.
+- Query counts: `assertNumQueries` fixes the number of queries on the seat map, the showtimes page and the service list, and the numbers are recorded here.
 - Accessibility (4.17): the seat map is fully operable by keyboard alone, with one tab stop and arrow keys between seats; a seat-hold conflict is announced by the live region; seat states are distinguishable without colour; every seat button is at least 24 by 24 CSS pixels.
 
 ## 2. User story testing (behaviour-driven verification)
@@ -39,6 +44,7 @@ Each Given/When/Then scenario in [section 1](user_stories.md) is a pass or fail 
 - CSS validated with the W3C Jigsaw CSS validator.
 - Python checked against PEP 8 with a linter such as `flake8`.
 - JavaScript checked with a linter such as ESLint, for the small amount of hand-written JS (mainly the seat map, 4.8).
+- Dependencies checked for known vulnerabilities with `pip-audit`, with the output recorded here (4.29).
 
 ## 4. Lighthouse testing
 
