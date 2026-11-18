@@ -10,6 +10,8 @@ Staff don't use Django's built-in `/admin` for day-to-day work. It exposes every
 
 Anything financial or sensitive (a refund, a cancellation, a voucher issued) is recorded in the audit log with who did it and why. See [4.9](architecture.md#49-staff).
 
+Staff accounts sign in with a second step, a code from an authenticator app, and repeated attempts at signing in are rate limited for everyone ([4.29](architecture.md#429-abuse-controls-and-staff-sign-in)).
+
 ## 5.1 `screenings`
 
 Customer-facing:
@@ -86,6 +88,7 @@ Customer-facing:
 
 - Static pages: About, Accessibility policy, Membership terms
 - Private hire and event enquiry form
+- A privacy page in plain English, and from the account page, downloading your data or deleting your account ([4.30](architecture.md#430-personal-data))
 
 Staff-facing:
 
@@ -96,6 +99,7 @@ Staff-facing:
 
 - Manager: sales overview with revenue by day, week and month, revenue and occupancy by screening, tickets sold by type, top-selling concessions, and total vouchers redeemed
 - Manager: audit log, a searchable and filterable list of refunds, cancellations and vouchers issued, with who did it and why
+- Manager: attendance and occupancy reports, each filtered by date and downloadable as an Excel file ([4.28](architecture.md#428-reports-and-exports))
 - This app has nothing customer-facing. It exists to support the other apps.
 
 ---
