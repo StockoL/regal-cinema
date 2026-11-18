@@ -4,7 +4,7 @@ What happens if the site, its database, the payment provider or email stops work
 
 ## What is backed up
 
-The database is the only thing that needs backing up. The code is on GitHub, the static files are rebuilt on every deploy, and the theme is in the repository. A management command dumps the whole database to a file, and I keep a dump from before every release that changes the data model.
+The database is the only thing that needs backing up. The code is on GitHub, the static files are rebuilt on every deploy, and the theme is in the repository. A management command dumps the whole database to a file. The routine I'm aiming for is a dump before every release that changes the data model. That's a target: the command isn't built yet, so no dump has been taken.
 
 The database is on Neon's free plan. How often Neon keeps its own copies on that plan, and for how long, is something I haven't checked, so I don't rely on it. The dumps are the backup.
 
@@ -14,7 +14,7 @@ Anything since the last dump. Payments are the exception: Stripe keeps its own r
 
 ## How long to be back
 
-The aim is under an hour from deciding to restore to the site taking bookings again. I'll time the restore once and record it in the development log.
+The target is under an hour from deciding to restore to the site taking bookings again. No restore has been run or timed yet. When I've run one, I'll record how long it took in the development log, and this section will give that time instead of a target.
 
 ## Restoring
 
@@ -29,6 +29,6 @@ The aim is under an hour from deciding to restore to the site taking bookings ag
 
 ## While something is down
 
-- The site is down: staff print each screening's guest list in advance as routine, so the door works from paper. Walk-up customers are sold seats at the counter through in-venue booking once the site is back, or turned away if the screening is full on the printed list.
+- The site is down: the routine I'm aiming for is that staff print each screening's guest list before the show, so the door works from paper. Walk-up customers are sold seats at the counter through in-venue booking once the site is back, or turned away if the screening is full on the printed list.
 - Stripe is down: pause online sales. In-venue card sales still work, since the card terminal doesn't depend on Stripe.
 - Email is down: bookings still go through, and every email waits in the outbox and is retried. The needs-attention page shows anything that failed for good, and staff resend it once email is back.
