@@ -588,7 +588,7 @@ Every report can be filtered by a date range and downloaded as an Excel file (`.
 
 ## 4.29 Abuse controls and staff sign-in
 
-Logging in, registering, resetting a password, holding seats and entering a voucher code are rate limited through Django's cache. Anyone who goes over a limit gets a plain page with a one-line message and a 429 status, and nothing is tracked about them.
+Logging in, registering, resetting a password, holding seats and entering a voucher code are rate limited through Django's database cache, so the two workers in `render.yaml` share the same counts. Anyone who goes over a limit gets a plain page with a one-line message and a 429 status, and nothing is tracked about them.
 
 The site never sees or stores card details. Payment happens on Stripe's own page, and Stripe's fraud checks and 3D Secure stay switched on in every Checkout Session. In production the session and CSRF cookies are secure, HSTS is on, Render redirects plain HTTP to HTTPS (development log, 25 October), and pages send a basic content security policy. Dependencies are checked with `pip-audit`, and the result is recorded in the testing doc.
 
@@ -648,7 +648,7 @@ WhiteNoise serves static files compressed with hashed names, `ConditionalGetMidd
 
 ## 4.34 Scaling notes
 
-Rate limits (4.29) and the listing cache (4.33) use Django's default cache, which lives inside each worker process. `render.yaml` runs two workers, so each worker counts its own requests, and a limit is effectively per worker rather than per site. That's acceptable for a course project on one small instance. A real venue would want a shared cache such as Redis, pooled database connections, an always-on paid instance with more workers, and a proper worker for background jobs instead of a cron command.
+Rate limits (4.29) use Django's database cache, because `render.yaml` runs two workers and the default cache lives inside each one: a limit kept there would count per worker, letting through twice as many attempts. The listing cache (4.33) stays in each worker's memory, which only means a page might be built once per worker. That's acceptable for a course project on one small instance. A real venue would want a shared cache such as Redis, pooled database connections, an always-on paid instance with more workers, and a proper worker for background jobs instead of a scheduled endpoint.
 
 ## 4.35 Choices I didn't make
 
