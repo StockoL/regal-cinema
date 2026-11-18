@@ -626,6 +626,8 @@ Scheduled work. Two management commands, `send_reminders` and `reconcile_pending
 
 Moving a customer's seats. A staff action moves a paid booking to other seats in the same screening: the same tickets at the same prices, the old `SeatBooking` rows kept with `released_at` set, behind its own permission, with an audit entry and a reason, and a new confirmation email. Anything bigger, another screening or other ticket types, is a cancellation and a new booking, as 4.22 already sets out.
 
+Refunding part of a booking. Staff can refund individual tickets or food lines, with the amount taken from their snapshotted prices, a required reason and an audit entry. Each is its own `Refund` row (4.2). A refund that fails is stored as failed, retried by the scheduled job with the same idempotency key, and listed on the needs-attention page.
+
 Error pages. Plain custom 403, 404, 500 and 503 pages give the box office phone number from the venue settings, so a customer always has somewhere to turn.
 
 The guest list. A staff page for each screening lists every booking with its reference, the customer's email, seats, ticket types, any proof reminders, the food order and how it's handed over, and whether the party has checked in. It prints cleanly and downloads, so staff can take it to the door if the site is down. It needs `view_bookings`.
