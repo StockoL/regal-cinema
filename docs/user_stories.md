@@ -88,6 +88,7 @@ Success: no seat is ever double-booked under concurrent access, shown by an auto
 | Back button               | Given the browser's back button is used, when the seat grid reappears, then it re-fetches live state.                                                                                                                       | Should |
 | Accessible seating        | Given a customer needs a wheelchair space or a companion seat, when they choose Accessible seating, then the map shows only those seats. | Should |
 | Best available            | Given a number of tickets, when the customer chooses Best available, then the best free seats are held for them, and it works as a plain form post. | Should |
+| Sales paused              | Given online sales are paused, when a customer tries to hold seats, then they are told sales are paused and given the box office number, while pending bookings can still finish. | Should |
 
 The seat map on a phone: the whole room, one circle block, and the room again with the chosen seats badged.
 
@@ -122,6 +123,7 @@ Success: every `OrderItem` belongs to exactly one finalised booking, with the pr
 | Survives payment | Given payment succeeds, when the booking is finalised, then every item is recorded with its unit price at that moment.                           | Must   |
 | Service list     | Given a screening has orders, when staff open its service list, then each item is shown in walking order and moves through ordered, preparing and delivered, with each change logged. | Must   |
 | Suggested items  | Given a film's page, when the food step loads, then a short list of popular items is offered first.                                              | Could  |
+| Stock ledger     | Given a tracked product, when its movements and orders leave none, then it shows as sold out, and two customers can't both buy the last one. | Should |
 
 Food and drink on a phone, and the service list staff use on a tablet during the screening.
 
@@ -157,6 +159,8 @@ Success: a voucher's balance never goes negative and only ever decreases when pa
 | Used-up code     | Given a voucher's balance is zero, when it is entered, then it is rejected with that reason.                                                                       | Must              |
 | Partial cover    | Given a voucher covers only part of the total, when checkout completes, then the remainder is charged to Stripe and the voucher decreases only after confirmation. | Must              |
 | Simultaneous use | Given one code is entered in two checkouts at once, when both pay, then the documented race window applies (see Known Issues).                                     | Won't (this time) |
+| Promo code       | Given a valid promo code, when it is entered on check-your-order, then each ticket gets whichever is lower, the membership price or the promo price, rounded per ticket. | Should |
+| Promo refused    | Given a code that has expired, been used up or doesn't apply to this booking, when it is entered, then it is refused with a plain reason. | Should |
 
 The order check with a voucher applied and the balance left on it.
 
@@ -187,6 +191,7 @@ Success: the customer is never told a payment succeeded unless Stripe has confir
 | Confirmed once             | Given a confirmation fails halfway, when the booking is checked, then nothing partial was saved, and confirming a paid booking again changes nothing. | Must   |
 | Already booked             | Given a customer already has a paid booking for the screening, when they reach check-your-order, then a notice links to it without stopping them. | Could  |
 | Phone ticket               | Given a paid booking, when the confirmation shows, then it has a QR code holding only the reference and an Add to calendar file. | Could  |
+| Email sent once            | Given a confirmation is due, when it can't be sent, then the booking still stands, the email is retried, and only one confirmation is ever sent. | Must   |
 
 The order check, then the four pages a customer can land on after Stripe: confirming, not completed, seats lost and refunded, and booking confirmed.
 
@@ -226,6 +231,7 @@ Success: membership validity is always a plain expiry-date check, never a staff 
 | Lapsed        | Given the expiry has passed, when the customer views their profile, then a renewal prompt appears and nothing is charged automatically.                      | Must   |
 | Not completed | Given a purchase isn't completed on Stripe's page, when the customer returns, then the same pattern as journey 6 applies.                                    | Should |
 | Withdrawal    | Given a membership was bought in the last 14 days and no booking has used it, when staff refund it, then the card is refunded and the tier and expiry reset. | Should |
+| Free ticket   | Given a member with a free ticket left this year, when they book, then the cheapest eligible ticket is free, counted once paid and given back if the booking is cancelled. | Should |
 
 ## Journey 9: Book in a priority window
 
@@ -308,6 +314,8 @@ Success: `stripe_payment_intent_id` stays empty on every in-venue booking, so th
 | Check-in        | Given a customer arrives with their reference, when staff find the booking and check the party in, then the booking records who did it and when, and the action is logged. | Must   |
 | Guest list      | Given a screening, when staff open its guest list, then every booking is listed with seats, ticket types, proof reminders, food and check-in, ready to print or download. | Should |
 | Find a booking  | Given a reference typed in any case, with spaces or with a look-alike character, or part of an email address, when staff search, then the booking is found with its status, seats and actions. | Must   |
+| Till reconciliation | Given a day's in-venue card sales, when staff type in the terminal's total and close the day, then the difference shows, a Manager signs it off, and it can't be edited after. | Could  |
+| Complimentary   | Given a ticket to give away, when a permitted staff member issues it with a reason, then the booking is complimentary, nothing is charged and the action is logged. | Could  |
 
 Check-in on a phone: finding a booking by its reference. The till itself isn't drawn yet.
 
@@ -327,6 +335,7 @@ Success: every cancellation or refund has a required reason and a named staff me
 | After the screening  | Given the screening has already happened, when a goodwill refund is made, then the money is handled and no seat is released.                                             | Could  |
 | Any time             | Given a booking inside the customer cutoff, when a staff member cancels it at the customer's request by phone, then it works, since the cutoff only limits self-service. | Must   |
 | Move seats           | Given a paid booking, when staff move it to other seats in the same screening with a reason, then the tickets and prices stay the same, the old seats are released and a new confirmation is sent. | Should |
+| Part refund          | Given a paid booking, when staff refund some tickets or food lines with a reason, then a `Refund` row is made for the snapshotted amount, and a failed one is retried and listed for staff. | Should |
 
 The cancellation queue on a tablet, with the manager-only refund and the recent decisions from the audit log.
 
@@ -359,6 +368,8 @@ Success: figures can never drift from the underlying data, because nothing is st
 | Attendance        | Given screenings with checked-in bookings, when the attendance report loads, then tickets checked in, tickets sold and the no-show rate show per screening, film and day. | Should |
 | Occupancy         | Given a screening, when the occupancy report loads, then seats sold show against bookable seats, leaving out closed areas and seats out of use. | Should |
 | Excel export      | Given any report, when it is downloaded for a date range, then the `.xlsx` file holds the same rows as the page. | Should |
+| Reconciliation    | Given a date range, when the reconciliation report loads, then its totals equal the sum of the bookings it covers, with fees, refunds and disputes shown. | Should |
+| Accounting CSV    | Given the reconciliation report, when it is downloaded as CSV, then each ticket, food line and refund is a row with net, VAT and gross that add up to the totals. | Could  |
 
 ## Journey 18: Buy a gift voucher
 
