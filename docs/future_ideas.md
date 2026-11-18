@@ -65,6 +65,26 @@ The enquiry form (4.6) asks for the event type, date and party size, and staff r
 
 A seat's area doesn't affect its price (4.1): the real venue charges the same wherever you sit. If a venue priced the sofas, the boxes or the front of the circle differently, `ScreeningPrice` would need a seat type alongside the ticket type, and the live summary would show the seat's price as well as the ticket's. That reverses a deliberate decision, so it only happens if a venue actually prices that way.
 
+## 8.9 Braintree, or another payment provider
+
+Payments sit behind one interface (4.27) that fits Braintree as well as Stripe, because a venue may already take payments through it. I haven't built a Braintree version. It would mean a second implementation of the same small interface and its own webhook handling, worth doing only for a venue that actually uses it.
+
+## 8.10 Pay by Bank
+
+Paying straight from a bank account costs a venue less than a card payment. It waits because Stripe Checkout and the refund rules in 4.22 are built around cards, and a second way to pay doubles the refund and reconciliation cases to test.
+
+## 8.11 Stored credit
+
+A balance held on an account, topped up and spent across bookings. Vouchers already cover most of what it would do (4.4), and an account balance is money the venue owes, which raises accounting questions I'd want a venue to answer first.
+
+## 8.12 More than one venue
+
+Everything here assumes one venue with its own settings record (4.23). Several venues would need a venue on screens, settings, staff permissions and reports, which is a change to almost every model, so it waits until there's a second venue to design for.
+
+## 8.13 Staff rotas, clock-in and payroll
+
+A venue manager would like these, but they're a separate system with its own legal rules. The site is designed so they don't get in the way: staff accounts and permissions (4.9) could link to a rota system later without changing how bookings work.
+
 ---
 
 [← 7. Testing and quality assurance](testing.md) · [README](../README.md)
