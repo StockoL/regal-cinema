@@ -49,6 +49,10 @@ Staff-facing:
 - Front of House: find a booking by its reference or the customer's email, and check the party in, which records who did it and when ([4.2](architecture.md#42-bookings))
 - Front of House: review customer cancellation requests, and approve them with a voucher or decline them, with a note required either way. Both are logged ([4.22](architecture.md#422-customer-cancellations-and-refunds))
 - Manager: refund to the original card, including the exception for a cancellation the customer started, and cancel or refund any booking. Seats are released immediately and the action is logged
+- Front of House: "Check with Stripe" on a pending booking whose Checkout Session is more than five minutes old ([4.32](architecture.md#432-when-things-go-wrong))
+- Front of House: a guest list for each screening, to print or download for the door
+- Front of House: deactivate a customer account with a reason, and see every booking under one email address
+- Manager: move a paid booking to other seats in the same screening, with a reason
 
 ## 5.3 `concessions`
 
@@ -100,6 +104,7 @@ Staff-facing:
 - Manager: sales overview with revenue by day, week and month, revenue and occupancy by screening, tickets sold by type, top-selling concessions, and total vouchers redeemed
 - Manager: audit log, a searchable and filterable list of refunds, cancellations and vouchers issued, with who did it and why
 - Manager: attendance and occupancy reports, each filtered by date and downloadable as an Excel file ([4.28](architecture.md#428-reports-and-exports))
+- Front of House and Manager: the needs-attention page, with its count in the staff menu ([4.32](architecture.md#432-when-things-go-wrong))
 - This app has nothing customer-facing. It exists to support the other apps.
 
 ---
