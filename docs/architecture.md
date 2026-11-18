@@ -176,6 +176,8 @@ Booking ──FK── Screening ──FK── Film
    ├──1:N── OrderItem ──FK── Product    [status moves along the service list, see 4.3]
    ├──1:N── Cancellation                  [one row per cancellation, see 4.2]
    ├──1:N── Refund                        [one row per refund, see 4.2]
+   ├──1:N── OutboundEmail                 [booking is nullable: not every email is about one]
+   ├──FK (nullable)── PromoCode          [the code used, with its discount snapshotted]
    ├──FK (nullable)── Voucher            [1 Voucher : N Bookings, balance drawn down over time]
    └──FK (nullable)── MembershipTier     [snapshot at time of booking, see 4.2]
 
@@ -192,6 +194,12 @@ AuditLogEntry ──FK (nullable)── Booking   (related_booking)
 EnquiryRequest ──FK (nullable)── Screening  (resulting_screening)
 
 StripeEvent   (stands alone: the IDs of Stripe events already handled)
+
+Product ──1:N── StockMovement ──FK── User   (created_by)
+
+PromoCode ──FK (nullable)── Film, Screening
+
+TillReconciliation ──FK── User   (closed_by, signed_off_by)
 ```
 
 This is the one place every relationship in the schema appears together.
