@@ -85,6 +85,18 @@ Everything here assumes one venue with its own settings record (4.23). Several v
 
 A venue manager would like these, but they're a separate system with its own legal rules. The site is designed so they don't get in the way: staff accounts and permissions (4.9) could link to a rota system later without changing how bookings work.
 
+## 8.14 Connecting to other systems
+
+Outbound webhooks, an accounting connection and a link to a venue's existing ticketing system would each need a stable, documented contract. The pieces are there: payments, email and TMDb already sit behind interfaces, a booking's reference never changes, and the Excel exports show what a feed would hold. None of them is built.
+
+## 8.15 Camera check-in and wallet passes
+
+The phone ticket's QR code can be typed or pasted at check-in for now. Scanning it with a camera, or adding it to Apple or Google Wallet, needs device testing and, for wallets, signed passes from each platform, which is more than a course project needs.
+
+## 8.16 A waiting room for big on-sales
+
+A queue that lets visitors in a few at a time would protect the seat map on a very popular on-sale. The load test (testing, section 11) shows where the site would need it. At this venue's size it doesn't.
+
 ---
 
 [← 7. Testing and quality assurance](testing.md) · [README](../README.md)
