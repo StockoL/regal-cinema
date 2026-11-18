@@ -610,6 +610,8 @@ The site asks for as little as it can: no phone number, date of birth or address
 
 A management command dumps the database to a file, and the steps to restore it are written down and tested by doing it. The free Neon plan isn't a production backup plan, and I don't treat it as one. Indexes cover the lookups the busiest pages make: a screening's start time, a booking's reference (already unique) and the seats sold for a screening.
 
+The steps, what could be lost and what staff do while something is down are in the [recovery plan](recovery.md).
+
 ## 4.32 When things go wrong
 
 I'm designing on the assumption that things will sometimes go wrong: a payment fails, a customer pays twice, a webhook never arrives, a booking needs changing, a refund is asked for. The site should handle those as calmly as it handles an ordinary booking.
