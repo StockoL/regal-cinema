@@ -650,7 +650,7 @@ The seat map's layout, the screen's fixed seats plus its layout's seats with the
 
 The Stripe webhook handler stays small: it checks the signature, records the `StripeEvent`, calls `confirm_booking` and returns. Looking up the fee and sending email happen after the commit, so nothing slow runs while Stripe waits for an answer.
 
-Reports add up in the database with `Sum` and `Count`, never in Python loops, and each has an `assertNumQueries` test. Indexes cover a screening's start time and the holds for a screening by expiry time, as well as the booking lookups in 4.31. Django Debug Toolbar runs in development only, to catch a query inside a loop before it reaches a page.
+Reports add up in the database with `Sum` and `Count`, never in Python loops, and each has an `assertNumQueries` test. Indexes cover `Screening.date_time`, the holds for a screening by expiry time, `Booking.paid_at` for the reports by payment date, `OutboundEmail` by status and creation time for the retries, and `Refund.status` for the needs-attention page, as well as the booking lookups in 4.31. Django Debug Toolbar runs in development only, to catch a query inside a loop before it reaches a page.
 
 WhiteNoise serves static files compressed with hashed names, `ConditionalGetMiddleware` answers repeat requests with "not modified", scripts are deferred, and the cached template loader is on in production. Film and listing pages send `Cache-Control: public, max-age=60`. Booking, account and staff pages, and any page with a CSRF token, send `private, no-store`.
 
