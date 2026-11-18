@@ -592,7 +592,7 @@ The reconciliation report also downloads as a plain CSV ledger, one row per tick
 
 ## 4.29 Abuse controls and staff sign-in
 
-Logging in, registering, resetting a password, holding seats and entering a voucher code are rate limited through Django's database cache, so the two workers in `render.yaml` share the same counts. Anyone who goes over a limit gets a plain page with a one-line message and a 429 status, and nothing is tracked about them.
+Logging in, registering, resetting a password, holding seats and entering a promo or voucher code are rate limited through Django's database cache, so the two workers in `render.yaml` share the same counts. Anyone who goes over a limit gets a plain page with a one-line message and a 429 status, and nothing is tracked about them.
 
 The site never sees or stores card details. Payment happens on Stripe's own page, and Stripe's fraud checks and 3D Secure stay switched on in every Checkout Session. In production the session and CSRF cookies are secure, HSTS is on, Render redirects plain HTTP to HTTPS (development log, 25 October), and pages send a basic content security policy. Dependencies are checked with `pip-audit`, and the result is recorded in the testing doc.
 

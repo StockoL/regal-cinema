@@ -266,7 +266,7 @@ Success: no customer-facing page ever links to staff tooling, checked by crawlin
 | Direct access blocked | Given any staff URL, when it is requested while logged out, then the user is redirected to the staff login.                               | Must   |
 | Permission-gated      | Given a logged-in staff member lacking a permission, when they request that action, then it is refused, not just hidden in the interface. | Must   |
 | No public link        | Given any customer page, when it is rendered, then nothing links to `/staff/`.                                                            | Must   |
-| Rate limits           | Given repeated attempts at logging in, registering, resetting a password, holding seats or entering a voucher code, when a limit is passed, then a plain 429 page explains it in one line. | Should |
+| Rate limits           | Given repeated attempts at logging in, registering, resetting a password, holding seats or entering a promo or voucher code, when a limit is passed, then a plain 429 page explains it in one line. | Should |
 | Staff second step     | Given an account with any staff permission, when it logs in, then it is asked for a code from an authenticator app, and customers never are. | Could  |
 | Needs attention       | Given pending bookings with an old session or refunded duplicate payments, when staff open the needs-attention page, then each is listed with its action, and the staff menu shows the total. | Should |
 | Deactivate an account | Given a customer account, when staff deactivate it with a reason, then it can't log in, its bookings stay, and the action is logged. | Could  |
