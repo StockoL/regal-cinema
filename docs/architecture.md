@@ -583,8 +583,12 @@ The sales overview (4.9) grows into reports a venue would actually run, each com
 
 - Attendance: tickets on checked-in bookings against tickets sold, per screening, film and day, with the no-show rate.
 - Occupancy: seats sold against bookable seats, per screening, film and day. Bookable seats are a screening's seats from 4.1, which already leave out closed areas and seats out of use.
+- Reconciliation, by payment date: bookings, card takings, the amount paid by voucher, refunds, Stripe fees, the net and disputes. Its totals must equal the sum of the bookings it covers, and a test proves it.
+- Payment cost: the effective fee rate by month, by order size and by payment method, with refunds and disputes shown separately.
 
 Every report can be filtered by a date range and downloaded as an Excel file (`.xlsx`, written with `openpyxl`) holding the same rows as the page. Access stays behind `view_sales_dashboard` (4.9).
+
+The reconciliation report also downloads as a plain CSV ledger, one row per ticket, food line and refund: date, reference, description, net, VAT, gross, payment fee and method. No accounting software is connected, and the layout is written down so a connection could follow.
 
 ## 4.29 Abuse controls and staff sign-in
 
