@@ -49,6 +49,8 @@ Within each app, logic goes in one place per kind. Models hold the data rules an
 - [4.31 Backups and restoring](#431-backups-and-restoring)
 - [4.32 When things go wrong](#432-when-things-go-wrong)
 - [4.33 Performance](#433-performance)
+- [4.34 Scaling notes](#434-scaling-notes)
+- [4.35 Choices I didn't make](#435-choices-i-didnt-make)
 
 ## 4.1 `screenings`
 
@@ -114,6 +116,8 @@ The customer chooses once per booking how to get it, stored as `Booking.food_ful
 An age-restricted product can go in the basket whatever the film's rating. ID is checked on delivery or collection, and the product, the order check and the confirmation all say so. Each product's allergens are shown on the order screen behind a visible link. Front of House can mark an item sold out for today, which takes it off the online menu until it's switched back on. Retiring a product for good is `is_active`, a Manager's job.
 
 Staff work from a service list for each screening: seat deliveries in the order staff walk the room, stalls front to back and then the circle, and bar collections by booking reference. Each item moves from ordered to preparing to delivered, and every change is logged with the staff member's name and the time (4.9). Cancelling a booking cancels its food, and the voucher covers the whole booking total (4.22). An item already marked preparing can't be cancelled without a Manager's note.
+
+The service list keeps itself current. It asks for its list every 20 seconds and the server answers "not modified" when nothing has changed, using an ETag built from one cheap query (the latest change and the count). Only the list itself is replaced, scroll position and focus are kept, it pauses while the tab is hidden, and a changed count is announced politely to screen readers. Without JavaScript, the page refreshes itself every 60 seconds instead.
 
 ## 4.4 `membership`
 
@@ -582,7 +586,7 @@ Paying twice. If a payment arrives for a booking that another payment has alread
 
 A webhook that never arrives. `recheck_payment(booking)` asks Stripe for the Checkout Session and, if it's been paid, confirms it through `confirm_booking`, so it's safe to run alongside the webhook. Staff have a "Check with Stripe" action on any pending booking whose session is more than five minutes old. The confirming page checks a few times and then says the payment is still being confirmed and an email will follow, with a plain refresh link that works without JavaScript.
 
-Scheduled work. One management command, `reconcile_pending`, runs on a Render cron job. It does the same check for sessions between 10 minutes and 24 hours old and writes an audit entry for each booking it confirms. It's the only scheduled job: holds still expire lazily (4.8), and nothing else depends on a timer.
+Scheduled work. One management command, `reconcile_pending`, runs on a Render cron job. It does the same check for sessions between 10 minutes and 24 hours old and writes an audit entry for each booking it confirms. It also tidies up: it deletes holds that expired more than 24 hours ago, and pending bookings abandoned for more than seven days with their holds, never a paid booking, and logs how many it removed. It's the only scheduled job: holds still expire lazily (4.8), and nothing else depends on a timer.
 
 Moving a customer's seats. A staff action moves a paid booking to other seats in the same screening: the same tickets at the same prices, the old `SeatBooking` rows kept with `released_at` set, behind its own permission, with an audit entry and a reason, and a new confirmation email. Anything bigger, another screening or other ticket types, is a cancellation and a new booking, as 4.22 already sets out.
 
@@ -601,6 +605,26 @@ Finding a booking quickly. One staff search box, behind `view_bookings`, matches
 ## 4.33 Performance
 
 The film page, a screening's seats page and the seat map each aim for 90 or more in every mobile Lighthouse category once warm, with the largest contentful paint at or under 2.5 seconds and layout shift at or under 0.1. Posters have an explicit width and height, load lazily below the fold, and use a small TMDb size cached when the film is added. Static files have hashed names and long cache lifetimes. Listings and film pages are cached for 60 seconds, but seat availability and anything specific to one customer never is. When two people race for a seat, the one who loses is told those seats were just taken and sees the map refreshed (4.8 step 4).
+
+The seat map's layout, the screen's fixed seats plus its layout's seats with their positions and flags, is cached per layout and cleared whenever the layout is saved. Who holds or has bought a seat is never cached: it's two queries for the screening, the live seat bookings and the unexpired holds, set against the cached seats. The database constraint decides who wins a race (4.8), so nothing locks the screening, and holding seats makes no network calls inside its transaction. A test fixes the seat map page's query count.
+
+The Stripe webhook handler stays small: it checks the signature, records the `StripeEvent`, calls `confirm_booking` and returns. Looking up the fee and sending email happen after the commit, so nothing slow runs while Stripe waits for an answer.
+
+Reports add up in the database with `Sum` and `Count`, never in Python loops, and each has an `assertNumQueries` test. Indexes cover a screening's start time and the holds for a screening by expiry time, as well as the booking lookups in 4.31. Django Debug Toolbar runs in development only, to catch a query inside a loop before it reaches a page.
+
+WhiteNoise serves static files compressed with hashed names, `ConditionalGetMiddleware` answers repeat requests with "not modified", scripts are deferred, and the cached template loader is on in production. Film and listing pages send `Cache-Control: public, max-age=60`. Booking, account and staff pages, and any page with a CSRF token, send `private, no-store`.
+
+## 4.34 Scaling notes
+
+Rate limits (4.29) and the listing cache (4.33) use Django's default cache, which lives inside each worker process. `render.yaml` runs two workers, so each worker counts its own requests, and a limit is effectively per worker rather than per site. That's acceptable for a course project on one small instance. A real venue would want a shared cache such as Redis, pooled database connections, an always-on paid instance with more workers, and a proper worker for background jobs instead of a cron command.
+
+## 4.35 Choices I didn't make
+
+- Django REST Framework: there's no public API yet, and the logic already lives in services the views call.
+- Celery and Redis: an outbox and one cron command give retries without running a separate worker.
+- A JavaScript framework: pages are rendered on the server, with a few small scripts I wrote by hand.
+- Websockets: the service list's conditional refresh every 20 seconds is enough.
+- Raw SQL: the ORM covers every query the site needs.
 
 ---
 
