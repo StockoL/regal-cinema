@@ -632,7 +632,7 @@ Error pages. Plain custom 403, 404, 500 and 503 pages give the box office phone 
 
 The guest list. A staff page for each screening lists every booking with its reference, the customer's email, seats, ticket types, any proof reminders, the food order and how it's handed over, and whether the party has checked in. It prints cleanly and downloads, so staff can take it to the door if the site is down. It needs `view_bookings`.
 
-What needs attention. A staff page behind `view_attention`, held by both default groups, counts what needs a person and lists each item with its action beside it: pending bookings with an old Checkout Session, and duplicate payments refunded in the last seven days. The staff menu shows the total as a badge.
+What needs attention. A staff page behind `view_attention`, held by both default groups, counts what needs a person and lists each item with its action beside it: pending bookings with an old Checkout Session, emails that failed or have waited too long, failed refunds, open disputes, duplicate payments refunded in the last seven days, and products at or below their low-stock threshold. The staff menu shows the total as a badge.
 
 Customer accounts. Staff can deactivate a customer's account, with a reason and an audit entry, which stops it logging in and keeps its bookings. They can also see every booking under one email address.
 
