@@ -200,6 +200,8 @@ Success: a customer can see every booking and request a cancellation without pho
 | Request declined            | Given Front of House decline a request, when they record a note, then the booking returns to paid, the customer is told, and the action is logged with the staff member's name.                                                                                                                                        | Should |
 | Past or cancelled           | Given a booking is past or already cancelled, when it is viewed, then no cancellation option is shown.                                                                                                                                                                                                                 | Should |
 | Grace period after purchase | Given a customer cancels within minutes of booking, when inside the cutoff, then the request is still allowed.                                                                                                                                                                                                         | Could  |
+| Download my data            | Given a logged-in customer, when they ask for their data, then they get a file of their account details and bookings, and nothing about anyone else. | Should |
+| Delete my account           | Given a customer deletes their account, when it is done, then they can't log in, and their bookings stay for the venue's records with no customer attached (4.21). | Should |
 
 My bookings, the cancellation request form, and the three outcomes of a request.
 
@@ -250,6 +252,8 @@ Success: no customer-facing page ever links to staff tooling, checked by crawlin
 | Direct access blocked | Given any staff URL, when it is requested while logged out, then the user is redirected to the staff login.                               | Must   |
 | Permission-gated      | Given a logged-in staff member lacking a permission, when they request that action, then it is refused, not just hidden in the interface. | Must   |
 | No public link        | Given any customer page, when it is rendered, then nothing links to `/staff/`.                                                            | Must   |
+| Rate limits           | Given repeated attempts at logging in, registering, resetting a password, holding seats or entering a voucher code, when a limit is passed, then a plain 429 page explains it in one line. | Should |
+| Staff second step     | Given an account with any staff permission, when it logs in, then it is asked for a code from an authenticator app, and customers never are. | Could  |
 
 ## Journey 12: Create or edit a screening
 
@@ -339,6 +343,9 @@ Success: figures can never drift from the underlying data, because nothing is st
 | Discounts         | Given discounts and vouchers redeemed are shown, when they are computed, then they match the paid bookings.                        | Should |
 | Sold and released | Given a seat was sold then released, when sell-through is analysed, then the original demand can still be seen.                    | Could  |
 | Ticket mix        | Given the dashboard loads, when sales are broken down, then tickets sold by type (adult, student, OAP, child, infant) can be seen. | Could  |
+| Attendance        | Given screenings with checked-in bookings, when the attendance report loads, then tickets checked in, tickets sold and the no-show rate show per screening, film and day. | Should |
+| Occupancy         | Given a screening, when the occupancy report loads, then seats sold show against bookable seats, leaving out closed areas and seats out of use. | Should |
+| Excel export      | Given any report, when it is downloaded for a date range, then the `.xlsx` file holds the same rows as the page. | Should |
 
 ## Journey 18: Buy a gift voucher
 
