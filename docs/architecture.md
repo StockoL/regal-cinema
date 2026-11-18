@@ -256,7 +256,7 @@ Ticket-class pricing isn't part of this stack. A screening's `ScreeningPrice` ro
 The order is:
 
 1. Start from the sum of each seated ticket's own price (the `ScreeningPrice` for its ticket type, stored on its `SeatBooking`) and any concessions. Infant tickets are free and add nothing.
-2. Apply the customer's membership tier discounts, if any: the tier's ticket discount to the tickets, and its food and drink discount to the concessions. Snapshot both percentages onto the booking as `ticket_discount_percent` and `food_drink_discount_percent` (4.2). A discount is worked out per ticket and per item, not on the total, and rounded to the nearest penny with halves going up, using Python's `Decimal` with `ROUND_HALF_UP`, so each `SeatBooking` stores exactly what its ticket cost and a refund for one seat matches what was paid for it.
+2. Apply the discounts, per ticket and per item, never on the total. Each ticket gets whichever is lower: its price with the customer's membership discount (or free, if it takes a free ticket from the allowance, 4.4), or its price with the promo code's discount. Promo codes and membership don't stack. Food and drink takes only the membership's food and drink discount, since promo codes are for tickets. Each discount is rounded to the nearest penny with halves going up, using Python's `Decimal` with `ROUND_HALF_UP`, so each `SeatBooking` stores exactly what its ticket cost and a refund for one seat matches what was paid for it. Snapshot both membership percentages onto the booking as `ticket_discount_percent` and `food_drink_discount_percent`, and the promo code with `promo_discount_pence` (4.2).
 3. Deduct what's left from the customer's voucher balance, if a code was entered, up to the voucher's remaining balance. The amount taken is stored on the booking as `voucher_applied_pence`.
 4. Charge the remainder to Stripe. If the voucher covers the whole total, no Stripe charge is needed, but the `Booking` is still marked paid.
 
@@ -264,7 +264,7 @@ A voucher can never take a booking below £0. Any unused balance stays on the vo
 
 Prices include VAT. Reports and exports show net, VAT and gross, worked out per ticket and per food line from the snapshotted rate with `Decimal` and `ROUND_HALF_UP`, then added up, so the totals always match the lines. Rates are data, never written into the code. I haven't checked which rate applies to which food and drink, so the rates are a starting point and the docs make no claim to be VAT advice.
 
-An earlier version of this design also had a staff discretionary discount and a promo-code layer, each with its own stacking rule. I've moved those to [Marketing development thoughts](future_ideas.md) as future ideas.
+An earlier version of this design also had a staff discretionary discount, which I've moved to [Marketing development thoughts](future_ideas.md) as a future idea. Promo codes came back in once a venue asked for them, with the rule that they don't stack with membership. There's no booking fee (8.4).
 
 ## 4.11 Business rule: screening cancellation
 
