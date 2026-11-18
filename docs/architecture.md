@@ -620,7 +620,7 @@ One confirmation function. Everything that has to happen together when a booking
 
 Checkout can't be created twice. A Checkout Session is created with a Stripe idempotency key built from the pending booking and what's in its basket, so a repeated request returns the same session. A booking has at most one live session: when the basket changes, the old one is expired or replaced. The Pay button shows LooseLeaf's loading state, and the server ignores a second submit.
 
-Paying twice. If a payment arrives for a booking that another payment has already paid for, the second one is refunded automatically, the same way as a payment that arrives after the seats were lost, and it's listed for staff. On check-your-order, a customer who already has a paid booking for the same screening sees a notice linking to it, which doesn't stop them booking again.
+Paying twice. If a payment arrives for a booking that another payment has already paid for, the second one is refunded automatically with the reason `duplicate_payment`, the same way as a payment that arrives after the seats were lost, and it's listed for staff. On check-your-order, a customer who already has a paid booking for the same screening sees a notice linking to it, which doesn't stop them booking again.
 
 A webhook that never arrives. `recheck_payment(booking)` asks Stripe for the Checkout Session and, if it's been paid, confirms it through `confirm_booking`, so it's safe to run alongside the webhook. Staff have a "Check with Stripe" action on any pending booking whose session is more than five minutes old. The confirming page checks a few times and then says the payment is still being confirmed and an email will follow, with a plain refresh link that works without JavaScript.
 
