@@ -68,7 +68,7 @@ Customer-facing:
 
 Staff-facing:
 
-- Front of House: the service list for each screening, seat deliveries in walking order and bar collections by reference, moving each item from ordered to preparing to delivered, with every change logged
+- Front of House: the service list for each screening, seat deliveries in walking order and bar collections by reference, moving each item from ordered to preparing to delivered, with every change logged. It refreshes itself every 20 seconds, keeping the place on the page ([4.3](architecture.md#43-concessions))
 - Front of House: mark an item sold out for today, which takes it off the online menu until it's switched back on
 - Manager: manage the product catalogue (add, edit or retire items, prices, allergens and age limits)
 - Manager: turn seat delivery off for one screening, such as a live event ([4.1](architecture.md#41-screenings))
