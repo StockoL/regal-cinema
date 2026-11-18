@@ -10,7 +10,7 @@ The database is on Neon's free plan. How often Neon keeps its own copies on that
 
 ## How much could be lost
 
-Anything since the last dump. Payments are the exception: Stripe keeps its own record of every payment and refund, and `reconcile_pending` can rebuild a booking's payment state from Stripe, so a paid booking can't be lost without trace.
+Anything since the last dump. Payments are the exception: Stripe keeps its own record of every payment and refund, and `reconcile_pending` can confirm a booking from Stripe if its payment went through in the last 24 hours.
 
 ## How long to be back
 
