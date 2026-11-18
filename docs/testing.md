@@ -50,9 +50,13 @@ Each Given/When/Then scenario in [section 1](user_stories.md) is a pass or fail 
 
 Run against the highest-risk pages instead of every page equally: the home and listings page, a film detail page, and the seat selection and checkout flow, since that is where most of the complexity, and so the risk of a poor score, sits. Accessibility and performance are the two categories most worth tracking given [4.17](architecture.md#417-accessibility-implementation).
 
+The budget, on mobile once warm, for the film page, a screening's seats page and the seat map (4.33): 90 or more in every category, largest contentful paint at or under 2.5 seconds and layout shift at or under 0.1. An automated axe check runs over the same pages in a development-only browser test, and its results go here.
+
 ## 5. Browser compatibility
 
 Checked on current Chrome, Firefox, Safari and Edge, plus mobile Safari and Chrome. The seat map has to work on a phone-sized screen, per the acceptance criteria in section 1, not just on desktop.
+
+Real devices: an iPhone in Safari on iOS 17.4 or later, an Android phone in Chrome, and a 320 pixel wide window. The phone ticket's QR code is scanned from a second phone.
 
 ## 6. Responsiveness testing
 
@@ -104,6 +108,10 @@ Each way a payment can go wrong has a named test, run against the fake payment p
 | The webhook arrives late | Confirmed when it arrives, or earlier by the scheduled check | `test_a_late_webhook_confirms_once` |
 | The webhook never arrives | `reconcile_pending` or Check with Stripe confirms it | `test_a_missing_webhook_is_recovered` |
 | Confirming fails halfway | Nothing partial is saved | `test_a_failed_confirmation_saves_nothing` |
+
+## 11. Load testing
+
+A Locust script, a development dependency only, simulates a popular on-sale: many visitors browsing, opening the seat map and holding seats on one screening at once. The run records the 95th percentile response time and the error rate here, and the check that matters most: zero seats sold twice.
 
 ---
 
