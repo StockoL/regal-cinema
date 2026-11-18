@@ -42,6 +42,11 @@ Within each app, logic goes in one place per kind. Models hold the data rules an
 - [4.24 Project structure](#424-project-structure)
 - [4.25 URL conventions](#425-url-conventions)
 - [4.26 Gift vouchers](#426-gift-vouchers)
+- [4.27 Payments behind one interface](#427-payments-behind-one-interface)
+- [4.28 Reports and exports](#428-reports-and-exports)
+- [4.29 Abuse controls and staff sign-in](#429-abuse-controls-and-staff-sign-in)
+- [4.30 Personal data](#430-personal-data)
+- [4.31 Backups and restoring](#431-backups-and-restoring)
 
 ## 4.1 `screenings`
 
@@ -521,6 +526,37 @@ A customer buys a gift voucher the same way they buy anything else online. The p
 When Stripe's success webhook arrives (4.13), the voucher is activated, and the purchaser sees the code on screen and receives it by email. A repeated webhook neither activates it nor sends it twice. If the purchaser leaves Stripe without paying, the voucher stays inactive and unusable, and they can try again. The code is random and unguessable, and it's the only thing needed to spend the balance, like a physical gift card. Redemption follows the order in 4.10. Like every voucher, it expires a year after it was bought (4.4).
 
 Buying needs an account, as any online purchase does (4.16). The purchase page states the 14-day refund rule from 4.22 in one sentence, and whether the legal 14-day cancellation right applies to gift vouchers is one of the questions in 4.22 I haven't checked yet.
+
+## 4.27 Payments behind one interface
+
+Every call to Stripe goes through one payments module with a small interface: create a Checkout Session, refund a payment, and look up the fee and net amount for a payment. Stripe is the only real implementation. I've kept the interface narrow enough to fit Braintree too (a client token, hosted fields or Drop-in, a transaction and a refund), because a venue may already take payments through it, but I'm not building a Braintree version. A fake provider implements the same interface for the tests and for demo mode, so the test suite never calls Stripe.
+
+Money stays in integer pence throughout. I haven't checked whether Stripe returns its fee when a payment is refunded, so a refund records the amount refunded and doesn't assume the fee comes back.
+
+## 4.28 Reports and exports
+
+The sales overview (4.9) grows into reports a venue would actually run, each computed from existing rows so no figure is stored twice:
+
+- Attendance: tickets on checked-in bookings against tickets sold, per screening, film and day, with the no-show rate.
+- Occupancy: seats sold against bookable seats, per screening, film and day. Bookable seats are a screening's seats from 4.1, which already leave out closed areas and seats out of use.
+
+Every report can be filtered by a date range and downloaded as an Excel file (`.xlsx`, written with `openpyxl`) holding the same rows as the page. Access stays behind `view_sales_dashboard` (4.9).
+
+## 4.29 Abuse controls and staff sign-in
+
+Logging in, registering, resetting a password, holding seats and entering a voucher code are rate limited through Django's cache. Anyone who goes over a limit gets a plain page with a one-line message and a 429 status, and nothing is tracked about them.
+
+The site never sees or stores card details. Payment happens on Stripe's own page, and Stripe's fraud checks and 3D Secure stay switched on in every Checkout Session. In production the session and CSRF cookies are secure, HSTS is on, Render redirects plain HTTP to HTTPS (development log, 25 October), and pages send a basic content security policy. Dependencies are checked with `pip-audit`, and the result is recorded in the testing doc.
+
+Any account with a staff permission signs in with a second step, a code from an authenticator app (`django-otp`). Customers aren't asked for one. It's the first thing to cut if time runs short.
+
+## 4.30 Personal data
+
+A privacy page says in plain English what the site holds, why, how long it keeps it, and who it's shared with: Stripe for payments and the email provider for sending mail. A logged-in customer can download their data as a file holding their account details and their bookings. Deleting an account follows 4.21: the account is removed, and the bookings and financial rows stay with no customer attached. The privacy page states how long each kind of record is kept, and the code keeps them for exactly that long.
+
+## 4.31 Backups and restoring
+
+A management command dumps the database to a file, and the steps to restore it are written down and tested by doing it. The free Neon plan isn't a production backup plan, and I don't treat it as one. Indexes cover the lookups the busiest pages make: a screening's start time, a booking's reference (already unique) and the seats sold for a screening.
 
 ---
 
