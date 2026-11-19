@@ -145,6 +145,7 @@ To be completed.
 - Render for hosting, and cron-job.org to keep the free web service awake
 - LooseLeaf UI, through its Django package `django-looseleaf`, for the design system: CUBE CSS layers, _Every Layout_ compositions, Utopia fluid scales and accessible form rendering
 - Stripe in test mode for payments, through Stripe Checkout and Stripe's Python library, `stripe`
+- flake8 for the Python style check and pip-audit for known vulnerabilities, in development only
 - Planned: The Movie Database (TMDb) API for film details, and the View Transitions API between pages
 
 Exact versions are pinned in [`requirements.txt`](requirements.txt).
