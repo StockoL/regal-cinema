@@ -22,7 +22,7 @@ class SeedSeatsTests(TestCase):
 
     def test_standard_is_the_default_and_tables_is_the_other(self):
         screen = self.seed()
-        layouts = {l.name: l for l in screen.layouts.all()}
+        layouts = {layout.name: layout for layout in screen.layouts.all()}
         self.assertEqual(set(layouts), {'Standard', 'Tables'})
         self.assertTrue(layouts['Standard'].is_default)
         self.assertEqual(layouts['Standard'].seats.count(), 46)
