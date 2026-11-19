@@ -63,6 +63,7 @@ class StripeProviderTests(SimpleTestCase):
         self.create()
         params = self.sessions.create.call_args.kwargs['params']
         self.assertEqual(params['mode'], 'payment')
+        self.assertEqual(params['payment_method_types'], ['card'])
         self.assertEqual(params['client_reference_id'], 'RGL-ABCDE')
         self.assertEqual(params['expires_at'], int(EXPIRES.timestamp()))
         self.assertEqual(params['line_items'], [{
