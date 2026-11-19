@@ -276,6 +276,16 @@ class TicketType(models.Model):
     def __str__(self):
         return self.name
 
+    @property
+    def proof_reminder(self):
+        """What to bring to the door, shown at checkout and on the
+        confirmation (4.2). The Companion ticket asks for the CEA Card."""
+        if not self.requires_proof:
+            return ''
+        if self.is_companion:
+            return 'Bring your CEA Card'
+        return 'Bring proof of age or status'
+
 
 class TsTzRange(models.Func):
     """PostgreSQL's timestamp range, built from two datetime columns."""
