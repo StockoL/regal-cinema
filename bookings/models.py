@@ -136,3 +136,42 @@ class Booking(models.Model):
             reference = new_reference()
             if not Booking.objects.filter(reference=reference).exists():
                 return reference
+
+
+class SeatBooking(models.Model):
+    """A sold seat. Releasing it sets `released_at` instead of deleting
+    the row, so the sale stays on record (architecture 4.2, 4.8)."""
+
+    booking = models.ForeignKey(
+        Booking, on_delete=models.PROTECT, related_name='seats'
+    )
+    # Copied from the booking, so the database can refuse a second live
+    # sale of the same seat for the same screening.
+    screening = models.ForeignKey(
+        'screenings.Screening', on_delete=models.PROTECT,
+        related_name='seat_bookings',
+    )
+    seat = models.ForeignKey(
+        'screenings.Seat', on_delete=models.PROTECT,
+        related_name='seat_bookings',
+    )
+    ticket_type = models.ForeignKey(
+        'screenings.TicketType', on_delete=models.PROTECT,
+        related_name='seat_bookings',
+    )
+    # Snapshots taken when sold, never worked out again.
+    price_pence = models.PositiveIntegerField()
+    vat_rate_percent = models.PositiveSmallIntegerField()
+    released_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=['screening', 'seat'],
+                condition=models.Q(released_at__isnull=True),
+                name='one_live_sale_per_seat',
+            ),
+        ]
+
+    def __str__(self):
+        return f'{self.seat} sold for {self.screening}'
