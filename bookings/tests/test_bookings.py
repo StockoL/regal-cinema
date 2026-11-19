@@ -7,7 +7,7 @@ from django.db.models import ProtectedError
 from django.test import TestCase
 from django.utils import timezone
 
-from bookings.models import Booking, SeatHold
+from bookings.models import REFERENCE_CHARACTERS, Booking, SeatHold
 from bookings.tests.test_holds import make_screening
 from screenings.models import TicketType
 
@@ -35,7 +35,10 @@ class BookingTests(TestCase):
     def test_each_booking_gets_a_reference_to_read_out(self):
         booking = self.book()
         self.assertRegex(booking.reference, r'^RGL-[A-Z2-9]{5}$')
-        self.assertIsNone(re.search(r'[01OI]', booking.reference[4:]))
+        self.assertIsNone(re.search(r'[01OIL]', booking.reference[4:]))
+
+    def test_references_leave_out_characters_easily_misheard(self):
+        self.assertFalse(set('01OIL') & set(REFERENCE_CHARACTERS))
 
     def test_references_are_unique(self):
         first = self.book()

@@ -58,8 +58,8 @@ class SeatHold(models.Model):
         return f'{self.seat} held for {self.screening}'
 
 
-# No 0, O, 1 or I, which are easy to mishear over the phone.
-REFERENCE_CHARACTERS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
+# No 0, O, 1, I or L, which are easy to mishear over the phone.
+REFERENCE_CHARACTERS = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'
 
 
 def new_reference():
