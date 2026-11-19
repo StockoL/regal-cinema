@@ -149,6 +149,18 @@ class Booking(models.Model):
                 return reference
 
 
+class StripeEvent(models.Model):
+    """A Stripe event that has been handled. Stripe can send the same
+    event more than once, and one already here is ignored (4.13)."""
+
+    event_id = models.CharField(max_length=255, unique=True)
+    event_type = models.CharField(max_length=100)
+    processed_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f'{self.event_type} {self.event_id}'
+
+
 class SeatBookingQuerySet(models.QuerySet):
 
     def live(self):
