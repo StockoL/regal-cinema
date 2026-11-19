@@ -171,3 +171,37 @@ class PaymentNotCompletedTests(TestCase):
         response = self.client.get(self.url)
         self.assertContains(response, 'Never enter a real card')
         self.assertContains(response, '4242 4242 4242 4242')
+
+
+@override_settings(SEAT_HOLD_MINUTES=10)
+class ProofReminderTests(TestCase):
+    """A ticket that needs proof says what to bring, at checkout and on
+    the confirmation (journey 2, "Proof reminder"; architecture 4.2)."""
+
+    def setUp(self):
+        test = test_views.TicketTypesTests('setUp')
+        test.client = self.client
+        test.setUp()
+        test.submit(first='Adult', second='Companion')
+        self.booking = Booking.objects.get()
+        user = get_user_model().objects.create_user(
+            'customer@example.com', 'a-long-pw-1'
+        )
+        self.booking.user = user
+        self.booking.save()
+        self.client.force_login(user)
+
+    def page(self, name):
+        return self.client.get(reverse(f'bookings:{name}',
+                                       args=[self.booking.reference]))
+
+    def test_checkout_reminds_them_beside_the_ticket(self):
+        response = self.page('booking_checkout')
+        self.assertContains(response,
+                            'Stalls, seat 2, Companion. Bring your CEA Card')
+        self.assertContains(response, 'Stalls, seat 1, Adult<')
+
+    def test_the_confirmation_reminds_them_too(self):
+        confirm_booking(self.booking)
+        self.assertContains(self.page('booking_confirming'),
+                            'Stalls, seat 2, Companion. Bring your CEA Card')

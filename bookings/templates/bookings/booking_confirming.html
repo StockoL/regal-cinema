@@ -12,7 +12,7 @@
       <p>{{ booking.screening.film.title }}, {{ booking.screening.date_time|date:"l j F" }} at {{ booking.screening.date_time|time:"g:i a" }}</p>
       <ul class="flow" role="list">
         {% for sold in seats %}
-          <li>{{ sold.seat.label }}, {{ sold.ticket_type.name }}</li>
+          <li>{{ sold.seat.label }}, {{ sold.ticket_type.name }}{% if sold.ticket_type.proof_reminder %}. {{ sold.ticket_type.proof_reminder }}{% endif %}</li>
         {% endfor %}
         {% if booking.infant_count %}<li>{{ booking.infant_count }} under 2{{ booking.infant_count|pluralize }}, on a lap</li>{% endif %}
       </ul>
