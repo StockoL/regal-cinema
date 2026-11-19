@@ -55,6 +55,9 @@ def hold_seats(screening, choices, session_key, user=None, expires_at=None):
         screening.holds.filter(expires_at__lte=now).delete()
         available = set(screening.seats())
         held = set(screening.holds.values_list('seat', flat=True))
+        held |= set(screening.seat_bookings.filter(
+            released_at__isnull=True
+        ).values_list('seat', flat=True))
         unavailable = [
             seat for seat, _ in choices
             if seat not in available or seat.pk in held

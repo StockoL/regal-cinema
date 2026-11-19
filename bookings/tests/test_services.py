@@ -5,7 +5,7 @@ from django.test import TestCase, override_settings
 from django.utils import timezone
 
 from bookings.basket import BasketError
-from bookings.models import Booking, SeatHold
+from bookings.models import Booking, SeatBooking, SeatHold
 from bookings.services import (
     HoldTimeUsedUp,
     SeatsUnavailable,
@@ -97,6 +97,23 @@ class HoldSeatsTests(TestCase):
         self.seat_1.save()
         with self.assertRaises(SeatsUnavailable):
             self.hold([(self.seat_1, self.adult)])
+
+    def sold(self, seat, released_at=None):
+        SeatBooking.objects.create(
+            booking=Booking.objects.create(screening=self.screening),
+            screening=self.screening, seat=seat, ticket_type=self.adult,
+            price_pence=950, vat_rate_percent=20, released_at=released_at,
+        )
+
+    def test_a_sold_seat_cant_be_held(self):
+        self.sold(self.seat_1)
+        with self.assertRaises(SeatsUnavailable) as caught:
+            self.hold([(self.seat_1, self.adult)])
+        self.assertEqual(caught.exception.seats, [self.seat_1])
+
+    def test_a_released_seat_can_be_held_again(self):
+        self.sold(self.seat_1, released_at=timezone.now())
+        self.hold([(self.seat_1, self.adult)])
 
     def test_a_ticket_type_the_rating_rules_out_is_refused(self):
         """Journey 2, "Ticket types by rating"."""
