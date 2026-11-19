@@ -37,7 +37,7 @@ class FakeProvider(PaymentProvider):
         session = CheckoutSession(
             id=session_id,
             url=f'https://checkout.example.com/{session_id}',
-            expires_at=expires_at,
+            expires_at=expires_at, amount_pence=amount_pence,
         )
         self.sessions[session_id] = {
             'reference': reference, 'amount_pence': amount_pence,

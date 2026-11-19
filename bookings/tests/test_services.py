@@ -304,9 +304,33 @@ class StartPaymentTests(TestCase):
                                 timedelta(minutes=30))
 
     def test_paying_again_returns_the_same_session(self):
-        """Pressing Pay twice can't make a second session (4.32)."""
-        self.assertEqual(self.pay(), self.pay())
+        """Pressing Pay twice can't make a second session (4.32), and
+        coming back while it's open returns to it (4.13 step 7)."""
+        first = self.pay()
+        self.booking.refresh_from_db()
+        self.assertEqual(self.pay(), first)
         self.assertEqual(len(FakeProvider.sessions), 1)
+
+    def test_paying_after_the_session_expired_gets_a_new_one(self):
+        """Otherwise Stripe's idempotency would hand back the expired
+        session and the customer could never pay (4.13 step 6)."""
+        first = self.pay()
+        FakeProvider.expire(first.id)
+        self.booking.refresh_from_db()
+        second = self.pay()
+        self.assertNotEqual(second.id, first.id)
+        self.assertTrue(second.is_open)
+
+    def test_a_changed_total_gets_a_new_session(self):
+        first = self.pay()
+        hold = self.booking.holds.get(seat=self.seat_2)
+        hold.ticket_type = self.adult
+        hold.save()
+        self.booking.refresh_from_db()
+        second = self.pay()
+        self.assertNotEqual(second.id, first.id)
+        self.assertEqual(FakeProvider.sessions[second.id]['amount_pence'],
+                         1900)
 
     def test_seats_whose_hold_ran_out_cant_be_paid_for(self):
         self.booking.holds.update(expires_at=timezone.now())

@@ -223,12 +223,24 @@ def start_payment(booking, success_url, cancel_url):
     if len(holds) != booking.seat_count:
         raise HoldsExpired()
     total = basket_total(booking, holds)
+    provider = get_provider()
+    previous = booking.stripe_checkout_session_id
+    if previous:
+        # Back while the session is still open: return to it (4.13 step
+        # 7). Confirming sells whatever is held, so only the total has
+        # to match.
+        current = provider.get_checkout_session(previous)
+        if current.is_open and current.amount_pence == total:
+            return current
+    # The previous session is part of the key, so a session that expired
+    # or closed is followed by a new one, not handed back by Stripe.
     basket = sorted((hold.seat_id, hold.ticket_type_id) for hold in holds)
     key = hashlib.sha256(
-        f'{booking.pk}:{basket}:{booking.infant_count}:{total}'.encode()
+        f'{booking.pk}:{basket}:{booking.infant_count}:{total}:{previous}'
+        .encode()
     ).hexdigest()
     tickets = 'ticket' if len(holds) == 1 else 'tickets'
-    session = get_provider().create_checkout_session(
+    session = provider.create_checkout_session(
         reference=booking.reference, amount_pence=total,
         description=f'{booking.screening.film.title}, '
                     f'{len(holds)} {tickets}',

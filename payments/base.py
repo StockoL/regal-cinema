@@ -11,6 +11,7 @@ class CheckoutSession:
     id: str
     url: str
     expires_at: datetime
+    amount_pence: int
     # Still taking payment: not paid, expired or closed.
     is_open: bool = True
 

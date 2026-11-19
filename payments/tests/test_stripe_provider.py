@@ -38,7 +38,8 @@ class StripeProviderTests(SimpleTestCase):
         self.sessions = self.client_class.return_value.v1.checkout.sessions
         self.sessions.create.return_value = SimpleNamespace(
             id='cs_test_1', url='https://checkout.stripe.com/c/pay/cs_test_1',
-            expires_at=int(EXPIRES.timestamp()), status='open',
+            expires_at=int(EXPIRES.timestamp()), amount_total=1900,
+            status='open',
         )
 
     def create(self):
@@ -85,7 +86,8 @@ class StripeProviderTests(SimpleTestCase):
             with self.subTest(status=status):
                 self.sessions.retrieve.return_value = SimpleNamespace(
                     id='cs_test_1', url='https://checkout.stripe.com/x',
-                    expires_at=int(EXPIRES.timestamp()), status=status,
+                    expires_at=int(EXPIRES.timestamp()), amount_total=1900,
+                    status=status,
                 )
                 session = StripeProvider().get_checkout_session('cs_test_1')
                 self.sessions.retrieve.assert_called_with('cs_test_1')
@@ -94,7 +96,7 @@ class StripeProviderTests(SimpleTestCase):
     def test_it_returns_the_session(self):
         self.assertEqual(self.create(), CheckoutSession(
             id='cs_test_1', url='https://checkout.stripe.com/c/pay/cs_test_1',
-            expires_at=EXPIRES,
+            expires_at=EXPIRES, amount_pence=1900,
         ))
 
 

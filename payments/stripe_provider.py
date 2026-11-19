@@ -79,5 +79,6 @@ def checkout_session(session):
         id=session.id, url=session.url,
         expires_at=datetime.fromtimestamp(session.expires_at,
                                           tz=timezone.utc),
+        amount_pence=session.amount_total,
         is_open=session.status == 'open',
     )
