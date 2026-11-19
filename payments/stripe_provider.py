@@ -30,9 +30,6 @@ class StripeProvider(PaymentProvider):
         session = self.client.v1.checkout.sessions.create(
             params={
                 'mode': 'payment',
-                # Cards only: refunds and reconciliation are built around
-                # them (4.22), and other methods wait (future ideas 8.10).
-                'payment_method_types': ['card'],
                 'client_reference_id': reference,
                 'line_items': [{
                     'quantity': 1,
