@@ -110,6 +110,11 @@ class Booking(models.Model):
         max_length=15, choices=PaymentMethod.choices,
         default=PaymentMethod.CARD_ONLINE,
     )
+    # The Stripe Checkout Session paying for an online booking. Unique,
+    # so the webhook can only ever find one booking for it (4.13).
+    stripe_checkout_session_id = models.CharField(
+        max_length=255, unique=True, null=True, blank=True
+    )
     # The staff member who took an in-venue booking (4.14).
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.SET_NULL,
