@@ -167,6 +167,39 @@ class StripeEvent(models.Model):
         return f'{self.event_type} {self.event_id}'
 
 
+class Refund(models.Model):
+    """One refund against a booking's payment. It's created pending,
+    sent to the provider once the transaction has committed, and then
+    marked succeeded or failed. A failed one is kept, so it can be
+    retried and shown to staff (4.2, 4.32)."""
+
+    class Status(models.TextChoices):
+        PENDING = 'pending', 'Pending'
+        SUCCEEDED = 'succeeded', 'Succeeded'
+        FAILED = 'failed', 'Failed'
+
+    booking = models.ForeignKey(
+        Booking, on_delete=models.PROTECT, related_name='refunds'
+    )
+    amount_pence = models.PositiveIntegerField()
+    reason = models.CharField(max_length=200)
+    stripe_refund_id = models.CharField(max_length=255, null=True,
+                                        blank=True)
+    status = models.CharField(max_length=10, choices=Status.choices,
+                              default=Status.PENDING)
+    # The provider's message when a refund fails.
+    error = models.TextField(blank=True)
+    # A member of staff, or the system user for an automatic refund.
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.PROTECT,
+        related_name='refunds_made',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f'{self.amount_pence}p refund for {self.booking.reference}'
+
+
 class SeatBookingQuerySet(models.QuerySet):
 
     def live(self):
