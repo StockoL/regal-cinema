@@ -8,7 +8,7 @@ from django.utils import timezone
 from .basket import check_basket
 from screenings.models import Seat
 
-from .models import Booking, SeatHold
+from .models import Booking, SeatBooking, SeatHold
 
 
 class SeatsUnavailable(Exception):
@@ -55,6 +55,9 @@ def hold_seats(screening, choices, session_key, user=None, expires_at=None):
         screening.holds.filter(expires_at__lte=now).delete()
         available = set(screening.seats())
         held = set(screening.holds.values_list('seat', flat=True))
+        held |= set(
+            screening.seat_bookings.live().values_list('seat', flat=True)
+        )
         unavailable = [
             seat for seat, _ in choices
             if seat not in available or seat.pk in held
@@ -94,11 +97,60 @@ def start_booking(screening, choices, infants, session_key, user=None):
         holds = hold_seats(screening, choices, session_key, user=user)
         booking = Booking.objects.create(
             screening=screening, user=user, infant_count=infants,
+            seat_count=len(choices),
         )
         SeatHold.objects.filter(pk__in=[hold.pk for hold in holds]).update(
             booking=booking
         )
     return booking
+
+
+class SeatsLost(Exception):
+    """Another sale took one of the booking's seats, so none of them
+    were sold. Once payments arrive, this is the automatic refund path
+    (4.13)."""
+
+
+def confirm_booking(booking):
+    """Everything that happens together when a booking is paid, in one
+    transaction: its holds become SeatBooking rows at this screening's
+    prices, with the VAT rate snapshotted, and the booking is marked
+    paid. Calling it again for a paid booking changes nothing (4.32).
+    Raises SeatsLost, and saves nothing, if any seat has gone."""
+    with transaction.atomic():
+        booking = Booking.objects.select_for_update().get(pk=booking.pk)
+        if booking.status != Booking.Status.PENDING:
+            return booking
+        prices = {price.ticket_type_id: price.price_pence
+                  for price in booking.screening.prices.all()}
+        holds = list(booking.holds.select_related('ticket_type'))
+        if len(holds) != booking.seat_count:
+            raise SeatsLost()
+        try:
+            with transaction.atomic():
+                SeatBooking.objects.bulk_create([
+                    SeatBooking(
+                        booking=booking, screening=booking.screening,
+                        seat=hold.seat, ticket_type=hold.ticket_type,
+                        price_pence=prices[hold.ticket_type_id],
+                        vat_rate_percent=hold.ticket_type.vat_rate_percent,
+                    )
+                    for hold in holds
+                ])
+        except IntegrityError:
+            raise SeatsLost() from None
+        booking.holds.all().delete()
+        booking.status = Booking.Status.PAID
+        booking.paid_at = timezone.now()
+        booking.save(update_fields=['status', 'paid_at'])
+    return booking
+
+
+def release_seats(booking):
+    """Put a booking's sold seats back on sale at once. The rows are
+    kept with released_at set, never deleted, so the sale stays on
+    record (4.2, 4.8). Seats already released keep their first time."""
+    booking.seats.live().update(released_at=timezone.now())
 
 
 def seat_plan(screening, own_booking=None):
@@ -118,6 +170,9 @@ def seat_plan(screening, own_booking=None):
     if own_booking is not None:
         held = held.exclude(booking=own_booking)
     held = set(held.values_list('seat', flat=True))
+    held |= set(
+        screening.seat_bookings.live().values_list('seat', flat=True)
+    )
     areas = []
     for area, name in ((Seat.Area.STALLS, 'Stalls'),
                        (Seat.Area.CIRCLE, 'Circle')):
@@ -192,7 +247,8 @@ def amend_booking(booking, choices, infants, session_key, user=None):
                 pk__in=[hold.pk for hold in holds]
             ).update(booking=booking)
         booking.infant_count = infants
-        booking.save(update_fields=['infant_count'])
+        booking.seat_count = len(choices)
+        booking.save(update_fields=['infant_count', 'seat_count'])
     return booking
 
 

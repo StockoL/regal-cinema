@@ -5,17 +5,25 @@ from django.test import TestCase, override_settings
 from django.utils import timezone
 
 from bookings.basket import BasketError
-from bookings.models import Booking, SeatHold
+from bookings.models import Booking, SeatBooking, SeatHold
 from bookings.services import (
     HoldTimeUsedUp,
+    SeatsLost,
     SeatsUnavailable,
     amend_booking,
     cancel_pending_booking,
+    confirm_booking,
     hold_seats,
+    release_seats,
     start_booking,
 )
 from bookings.tests.test_holds import make_screening
-from screenings.models import ScreeningClosedArea, Seat, TicketType
+from screenings.models import (
+    ScreeningClosedArea,
+    ScreeningPrice,
+    Seat,
+    TicketType,
+)
 
 
 @override_settings(SEAT_HOLD_MINUTES=10)
@@ -98,6 +106,23 @@ class HoldSeatsTests(TestCase):
         with self.assertRaises(SeatsUnavailable):
             self.hold([(self.seat_1, self.adult)])
 
+    def sold(self, seat, released_at=None):
+        SeatBooking.objects.create(
+            booking=Booking.objects.create(screening=self.screening),
+            screening=self.screening, seat=seat, ticket_type=self.adult,
+            price_pence=950, vat_rate_percent=20, released_at=released_at,
+        )
+
+    def test_a_sold_seat_cant_be_held(self):
+        self.sold(self.seat_1)
+        with self.assertRaises(SeatsUnavailable) as caught:
+            self.hold([(self.seat_1, self.adult)])
+        self.assertEqual(caught.exception.seats, [self.seat_1])
+
+    def test_a_released_seat_can_be_held_again(self):
+        self.sold(self.seat_1, released_at=timezone.now())
+        self.hold([(self.seat_1, self.adult)])
+
     def test_a_ticket_type_the_rating_rules_out_is_refused(self):
         """Journey 2, "Ticket types by rating"."""
         film = self.screening.film
@@ -136,6 +161,7 @@ class StartBookingTests(TestCase):
                              user=user)
         self.assertEqual(booking.status, Booking.Status.PENDING)
         self.assertEqual((booking.user, booking.infant_count), (user, 1))
+        self.assertEqual(booking.seat_count, 2)
         self.assertEqual(
             {(h.seat, h.ticket_type) for h in booking.holds.all()},
             {(self.seat_1, self.adult), (self.seat_2, self.child)},
@@ -158,6 +184,101 @@ class StartBookingTests(TestCase):
                         (self.seat_2, self.adult)])
         self.assertFalse(Booking.objects.exists())
         self.assertEqual(SeatHold.objects.count(), 1)
+
+
+class ConfirmBookingTests(TestCase):
+    """Turning a pending booking's holds into sold seats, all at once
+    and only once (architecture 4.32, "One confirmation function")."""
+
+    def setUp(self):
+        self.screening, (self.seat_1, self.seat_2) = make_screening()
+        self.adult = TicketType.objects.get(name='Adult')
+        self.student = TicketType.objects.get(name='Student')
+        ScreeningPrice.objects.create(screening=self.screening,
+                                      ticket_type=self.adult, price_pence=950)
+        ScreeningPrice.objects.create(screening=self.screening,
+                                      ticket_type=self.student,
+                                      price_pence=750)
+        self.booking = start_booking(
+            self.screening,
+            [(self.seat_1, self.adult), (self.seat_2, self.student)],
+            0, 'session-a',
+        )
+
+    def sold(self):
+        return {(s.seat, s.ticket_type, s.price_pence, s.vat_rate_percent)
+                for s in SeatBooking.objects.filter(booking=self.booking)}
+
+    def test_holds_become_sold_seats_at_this_screenings_prices(self):
+        confirm_booking(self.booking)
+        self.assertEqual(self.sold(), {
+            (self.seat_1, self.adult, 950, 20),
+            (self.seat_2, self.student, 750, 20),
+        })
+        self.booking.refresh_from_db()
+        self.assertEqual(self.booking.status, Booking.Status.PAID)
+        self.assertFalse(self.booking.holds.exists())
+
+    def test_confirming_records_when_it_was_paid(self):
+        self.assertIsNone(self.booking.paid_at)
+        before = timezone.now()
+        booking = confirm_booking(self.booking)
+        self.assertGreaterEqual(booking.paid_at, before)
+
+    def test_confirming_twice_changes_nothing(self):
+        paid_at = confirm_booking(self.booking).paid_at
+        confirm_booking(self.booking)
+        self.assertEqual(len(self.sold()), 2)
+        self.booking.refresh_from_db()
+        self.assertEqual(self.booking.paid_at, paid_at)
+
+    def test_a_lost_seat_saves_nothing(self):
+        """Another sale got one of the seats first, so none of this
+        booking's seats are sold and it stays pending."""
+        SeatBooking.objects.create(
+            booking=Booking.objects.create(screening=self.screening),
+            screening=self.screening, seat=self.seat_2,
+            ticket_type=self.adult, price_pence=950, vat_rate_percent=20,
+        )
+        with self.assertRaises(SeatsLost):
+            confirm_booking(self.booking)
+        self.assertEqual(self.sold(), set())
+        self.booking.refresh_from_db()
+        self.assertEqual(self.booking.status, Booking.Status.PENDING)
+        self.assertEqual(self.booking.holds.count(), 2)
+
+    def test_a_hold_that_ran_out_and_went_to_someone_else_saves_nothing(self):
+        """The expired hold was cleared and the seat held by another
+        customer, so the booking has fewer holds than seats."""
+        self.booking.holds.filter(seat=self.seat_2).delete()
+        with self.assertRaises(SeatsLost):
+            confirm_booking(self.booking)
+        self.assertEqual(self.sold(), set())
+
+
+class ReleaseSeatsTests(TestCase):
+    """A cancelled or refunded booking's seats go back on sale at once,
+    and the sold rows stay on record (architecture 4.2, 4.8)."""
+
+    def setUp(self):
+        self.screening, (self.seat, _) = make_screening()
+        self.adult = TicketType.objects.get(name='Adult')
+        ScreeningPrice.objects.create(screening=self.screening,
+                                      ticket_type=self.adult, price_pence=950)
+        self.booking = confirm_booking(start_booking(
+            self.screening, [(self.seat, self.adult)], 0, 'session-a'
+        ))
+
+    def test_released_seats_can_be_held_again_and_keep_their_rows(self):
+        release_seats(self.booking)
+        hold_seats(self.screening, [(self.seat, self.adult)], 'session-b')
+        self.assertEqual(self.booking.seats.count(), 1)
+
+    def test_releasing_again_keeps_the_first_time(self):
+        release_seats(self.booking)
+        released_at = self.booking.seats.get().released_at
+        release_seats(self.booking)
+        self.assertEqual(self.booking.seats.get().released_at, released_at)
 
 
 class CancelPendingBookingTests(TestCase):
@@ -217,6 +338,12 @@ class AmendBookingTests(TestCase):
         self.booking.refresh_from_db()
         self.assertEqual(self.booking.infant_count, 2)
         self.assertIn((self.seat_1, self.student), self.held())
+
+    def test_the_seat_count_follows_the_amendment(self):
+        self.amend([(self.seat_1, self.adult), (self.seat_2, self.adult),
+                    (self.seat_3, self.adult)])
+        self.booking.refresh_from_db()
+        self.assertEqual(self.booking.seat_count, 3)
 
     def test_each_change_restarts_the_timer(self):
         SeatHold.objects.update(expires_at=timezone.now() + timedelta(

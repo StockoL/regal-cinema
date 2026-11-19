@@ -117,6 +117,12 @@ class Booking(models.Model):
     )
     # Under 2s, free and on a lap, so they have no seat (4.2).
     infant_count = models.PositiveSmallIntegerField(default=0)
+    # How many seats the customer chose, so confirming can tell if a
+    # hold ran out and its seat went to someone else (4.32).
+    seat_count = models.PositiveSmallIntegerField(default=0)
+    # Set once, when payment is confirmed. Indexed for the reports,
+    # which go by payment date (4.28, 4.33).
+    paid_at = models.DateTimeField(null=True, blank=True, db_index=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -136,3 +142,51 @@ class Booking(models.Model):
             reference = new_reference()
             if not Booking.objects.filter(reference=reference).exists():
                 return reference
+
+
+class SeatBookingQuerySet(models.QuerySet):
+
+    def live(self):
+        """Sales that haven't been released."""
+        return self.filter(released_at__isnull=True)
+
+
+class SeatBooking(models.Model):
+    """A sold seat. Releasing it sets `released_at` instead of deleting
+    the row, so the sale stays on record (architecture 4.2, 4.8)."""
+
+    booking = models.ForeignKey(
+        Booking, on_delete=models.PROTECT, related_name='seats'
+    )
+    # Copied from the booking, so the database can refuse a second live
+    # sale of the same seat for the same screening.
+    screening = models.ForeignKey(
+        'screenings.Screening', on_delete=models.PROTECT,
+        related_name='seat_bookings',
+    )
+    seat = models.ForeignKey(
+        'screenings.Seat', on_delete=models.PROTECT,
+        related_name='seat_bookings',
+    )
+    ticket_type = models.ForeignKey(
+        'screenings.TicketType', on_delete=models.PROTECT,
+        related_name='seat_bookings',
+    )
+    # Snapshots taken when sold, never worked out again.
+    price_pence = models.PositiveIntegerField()
+    vat_rate_percent = models.PositiveSmallIntegerField()
+    released_at = models.DateTimeField(null=True, blank=True)
+
+    objects = SeatBookingQuerySet.as_manager()
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=['screening', 'seat'],
+                condition=models.Q(released_at__isnull=True),
+                name='one_live_sale_per_seat',
+            ),
+        ]
+
+    def __str__(self):
+        return f'{self.seat} sold for {self.screening}'

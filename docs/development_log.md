@@ -242,6 +242,30 @@ Tab leaves the map to: BUTTON Continue
 
 Looking at it in a browser caught three things. The chosen seat showed the browser's own checkbox, because LooseLeaf's visually-hidden class reveals an element when it has focus, which suits a skip link but not a seat, so the seat's checkbox now has its own hiding. On a phone the whole page was 992 pixels wide, because a fieldset won't shrink below its contents by default, so the map pushed the page out instead of scrolling in its frame. And a chosen seat was still read out as "available", so its state word now says "chosen", and the script keeps it in step as seats are ticked.
 
+### 19 November 2026: selling the seats
+
+Until now a booking only ever held seats. This step sells them. A sold seat is a `SeatBooking` row with its ticket type, the price it sold for and the VAT rate at the time, all copied when it's sold so a later price change never alters a past booking (4.2). The database allows only one unreleased sale of a seat for a screening, the same kind of guard as the one on holds. When a booking is cancelled, its seats go back on sale by setting `released_at`, and the row stays on record.
+
+Everything that happens when a booking is paid lives in one function, `confirm_booking` (4.32). In one transaction it locks the booking, turns its holds into sold seats at the screening's prices, marks it paid and records when. Calling it again for a paid booking changes nothing, which matters because Stripe can send the same event twice. Stripe comes in Phase 3, so for now staff run it from a "Mark as paid" action in the admin.
+
+<img src="screenshots/payment-stub/admin-mark-paid.png" alt="The bookings list in the admin with one pending booking ticked and Mark as paid chosen as the action">
+
+<img src="screenshots/payment-stub/admin-paid.png" alt="The bookings list after the action: two bookings paid with two seats each and the time they were paid, and two older pending ones">
+
+The two older pending bookings show 0 seats because they were made before the seat count existed. Production has no bookings, so nothing there needed fixing.
+
+Writing the tests turned up two gaps. Holding seats and the seat map only looked at other holds, so once a hold became a sale its seat would have looked free. Both now count a live sale as taken, and each fix came with a test that failed first.
+
+<img src="screenshots/payment-stub/map-sold.png" alt="The circle on the seat map with row B seats 13 to 16 crossed out as sold">
+
+The second gap was harder to see. A hold that runs out is cleared the next time anyone holds a seat at that screening. If the seat went to someone else, the first booking quietly had one hold fewer, and confirming would have sold the seats it still had and called it done. The booking had no record of how many seats it should have, so I added `seat_count`, set when the booking starts and on every change, and confirming now refuses if the holds don't match. Once payments are built, that refusal leads to the automatic refund for a payment that arrives after its seats have gone (4.13).
+
+```text
+python manage.py test bookings
+Ran 128 tests in 10.679s
+OK
+```
+
 </details>
 
 ## Phase 3: Payment integration
