@@ -118,6 +118,14 @@ The project runs on PostgreSQL locally as well as in production, never SQLite. T
 
    `seed_seats` is demo data for this fictional venue, so it's run by hand and is safe to run again: it does nothing if the screen already has seats. To load a changed plan, run `python manage.py seed_seats --replace`. That's refused once Screen 1 has any screenings, and from then on the plan is edited in the admin. The reasons are in the [development log](docs/development_log.md#4-november-2026-demo-data-and-reference-data).
 6. Start the server with `python manage.py runserver` and open http://127.0.0.1:8000/. The admin is at http://127.0.0.1:8000/admin/.
+7. Run the tests and the checks recorded in the [testing doc](docs/testing.md). The style and vulnerability checks need the development requirements, which Render never installs. The tests use a fake payment provider, so they never call Stripe, whatever `.env` holds.
+
+   ```text
+   pip install -r requirements-dev.txt
+   python manage.py test
+   flake8
+   pip-audit -r requirements.txt
+   ```
 
 On macOS or Linux, install PostgreSQL 17 with your package manager (Homebrew, apt), run the same two `psql` commands, and activate the virtual environment with `source .venv/bin/activate`.
 
