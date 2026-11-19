@@ -136,7 +136,8 @@ To be completed.
 - gunicorn, which runs the app on Render, and WhiteNoise, which serves its static files
 - Render for hosting, and cron-job.org to keep the free web service awake
 - LooseLeaf UI, through its Django package `django-looseleaf`, for the design system: CUBE CSS layers, _Every Layout_ compositions, Utopia fluid scales and accessible form rendering
-- Planned: Stripe in test mode for payments, The Movie Database (TMDb) API for film details, and the View Transitions API between pages
+- Stripe in test mode for payments, through Stripe Checkout and Stripe's Python library, `stripe`
+- Planned: The Movie Database (TMDb) API for film details, and the View Transitions API between pages
 
 Exact versions are pinned in [`requirements.txt`](requirements.txt).
 
