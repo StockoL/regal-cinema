@@ -146,16 +146,20 @@ ONLINE_SALES_CLOSE_MINUTES = 0
 
 AUTH_PASSWORD_VALIDATORS = [
     {
-        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
+        'NAME': ('django.contrib.auth.password_validation.'
+                 'UserAttributeSimilarityValidator'),
     },
     {
-        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
+        'NAME': ('django.contrib.auth.password_validation.'
+                 'MinimumLengthValidator'),
     },
     {
-        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
+        'NAME': ('django.contrib.auth.password_validation.'
+                 'CommonPasswordValidator'),
     },
     {
-        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
+        'NAME': ('django.contrib.auth.password_validation.'
+                 'NumericPasswordValidator'),
     },
 ]
 
@@ -204,3 +208,12 @@ if DEBUG:
 
 # Gmail when EMAIL_HOST_PASSWORD is set, the console otherwise.
 globals().update(email_settings(os.environ))
+
+
+# Payments (architecture 4.27)
+
+# Stripe in test mode. The test runner swaps in the fake provider.
+PAYMENT_PROVIDER = 'payments.stripe_provider.StripeProvider'
+STRIPE_SECRET_KEY = os.environ.get('STRIPE_SECRET_KEY', '')
+STRIPE_WEBHOOK_SECRET = os.environ.get('STRIPE_WEBHOOK_SECRET', '')
+TEST_RUNNER = 'regal.test_runner.RegalTestRunner'

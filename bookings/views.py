@@ -1,20 +1,26 @@
 from django.contrib import messages
+from django.contrib.auth.views import redirect_to_login
 from django.db.models import Q
 from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.views.decorators.http import require_POST
 
 from screenings.models import Screening
 
 from .basket import BasketError
+from .handover import remember_booking
 from .models import Booking
 from .services import (
     HoldTimeUsedUp,
+    HoldsExpired,
     SeatsUnavailable,
     amend_booking,
+    basket_total,
     cancel_pending_booking,
     seat_plan,
     start_booking,
+    start_payment,
 )
 
 
@@ -150,6 +156,7 @@ def screening_tickets(request, pk):
                 return seats_taken(request, screening, seats, taken.seats)
             else:
                 del request.session[session_key_for(screening)]
+                remember_booking(request, booking)
                 return redirect('bookings:booking_checkout',
                                 reference=booking.reference)
 
@@ -216,6 +223,59 @@ def booking_checkout(request, reference):
         'booking': booking,
         'holds': holds,
         'held_until': min(expiries) if expiries else None,
+        'total_pence': basket_total(booking, holds),
+        # Stripe's cancel link brings the customer back here (4.13 step 6).
+        'not_completed': request.GET.get('payment') == 'not-completed',
+    })
+
+
+@require_POST
+def booking_pay(request, reference):
+    """The customer chose Pay (4.13 step 3). Paying needs an account
+    (4.16), so a visitor logs in first and comes back to the checkout
+    page with their seats. Then they're sent to Stripe's page."""
+    checkout = reverse('bookings:booking_checkout', args=[reference])
+    if not request.user.is_authenticated:
+        return redirect_to_login(checkout)
+    booking = owned_pending_booking(request, reference)
+    confirming = reverse('bookings:booking_confirming', args=[reference])
+    try:
+        session = start_payment(
+            booking,
+            success_url=request.build_absolute_uri(confirming),
+            cancel_url=request.build_absolute_uri(
+                f'{checkout}?payment=not-completed'
+            ),
+        )
+    except HoldsExpired:
+        messages.error(request, 'Your hold on these seats ran out. '
+                                'Please choose your seats again.')
+        return redirect('bookings:screening_seats', pk=booking.screening.pk)
+    # 303, so the browser fetches Stripe's page rather than posting again.
+    response = redirect(session.url)
+    response.status_code = 303
+    return response
+
+
+def booking_confirming(request, reference):
+    """Where Stripe sends the customer back to. Coming back confirms
+    nothing: the booking is paid only once the webhook says so (4.13
+    step 4). Until then the page says it's still being confirmed."""
+    booking = (
+        Booking.objects.filter(owner_filter(request), reference=reference)
+        .exclude(status=Booking.Status.CANCELLED)
+        .select_related('screening__film').distinct().first()
+    )
+    if booking is None:
+        raise Http404('No such booking.')
+    seats = booking.seats.live().select_related('seat', 'ticket_type')
+    return render(request, 'bookings/booking_confirming.html', {
+        'booking': booking,
+        'paid': booking.status == Booking.Status.PAID,
+        # Paid after the seats had gone, and refunded (4.13).
+        'refunded': booking.status == Booking.Status.REFUNDED,
+        'seats': seats.order_by('-seat__area', 'seat__row_index',
+                                'seat__column_index'),
     })
 
 

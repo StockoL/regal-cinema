@@ -82,7 +82,8 @@ class ScreeningsAdminTests(TestCase):
         })
         self.assertEqual(response.status_code, 302)
         seat = Seat.objects.get()
-        self.assertEqual((seat.screen, seat.layout), (self.screen, self.layout))
+        self.assertEqual((seat.screen, seat.layout),
+                         (self.screen, self.layout))
 
     def test_a_layout_without_a_wheelchair_space_is_refused(self):
         """Every stalls layout needs at least one (architecture 4.1)."""

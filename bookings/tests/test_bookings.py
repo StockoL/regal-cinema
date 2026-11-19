@@ -40,6 +40,14 @@ class BookingTests(TestCase):
     def test_references_leave_out_characters_easily_misheard(self):
         self.assertFalse(set('01OIL') & set(REFERENCE_CHARACTERS))
 
+    def test_two_bookings_can_never_share_a_checkout_session(self):
+        """4.13: the webhook finds the booking by its session."""
+        self.book(stripe_checkout_session_id='cs_test_1')
+        self.book()
+        self.book()
+        with self.assertRaises(IntegrityError):
+            self.book(stripe_checkout_session_id='cs_test_1')
+
     def test_references_are_unique(self):
         first = self.book()
         with self.assertRaises(IntegrityError):

@@ -275,7 +275,42 @@ OK
 
 Planned scope: Stripe on top of the working booking skeleton: Checkout Session creation from the pending booking and the hand-off to Stripe's hosted page, extending the holds when the customer chooses Pay, the return pages (confirming and not completed), webhook signature verification, idempotency through `StripeEvent`, and the automatic refund when a payment lands after the seats have gone (4.13). Building this after Phase 2 means payment problems and seat concurrency problems get debugged one at a time.
 
-### To be completed during development
+### 19 November 2026: paying with Stripe Checkout
+
+Every call to Stripe goes through one payments module (4.27), a small interface with two versions: one that talks to Stripe, and a fake that stands in for it in the tests. The test runner swaps the fake in whatever `.env` holds, so the suite never reaches Stripe, and a test checks that it doesn't. The Stripe version refuses any key that isn't a test-mode key, so the project can't take a real payment even by mistake.
+
+When a customer presses Pay, the site works out the total from the held tickets and asks Stripe for a Checkout Session. It stores the session on the booking, extends the holds to the session's expiry so nobody else can take the seats while they pay, and sends them to Stripe's page. Stripe won't make a session that ends less than 30 minutes after it receives the request, so the session asks for 31. Paying needs an account (4.16), so a visitor is asked to log in or register first. Django gives the session a new key at login, and holds are tied to that key, so the seats would have been lost at exactly that moment. Each booking started in a session is now remembered in the session's data, which login keeps, and moves to the account when the customer logs in.
+
+<img src="screenshots/payments/checkout-customer.png" alt="The checkout page for a logged-in customer: two seats, Total £18.00, a warning to use Stripe's test card 4242 4242 4242 4242, and a gold Pay £18.00 button above Cancel" width="300"> <img src="screenshots/payments/checkout-visitor.png" alt="The same page for a visitor: To pay, log in or create an account. Your seats stay held while you do" width="300">
+
+The warning never to enter a real card is on the page because the site is public and the venue is fictional. The screenshot also caught a mistake: Pay was a plain outlined button under a filled Cancel, so the action the page exists for looked weaker than letting the seats go. It's now the primary button, like Continue and Hold these seats.
+
+<img src="screenshots/payments/stripe-page.png" alt="Stripe's test page: Sandbox, Paddington in Peru, 2 tickets, £18.00, with Apple Pay, Onelink, Klarna and Amazon Pay above an email field and a choice of Card, Klarna or Revolut Pay" width="300">
+
+Stripe's page offered Klarna, Revolut Pay, Amazon Pay and Link as well as cards. Refunds and reconciliation are designed around cards (4.22), and other ways to pay wait in the future ideas, so I asked Stripe for card-only sessions. The unit test passed, because it checks what the site asks for against a stand-in. The first real request failed: Stripe's API no longer accepts that setting, and every Pay would have been a server error. I undid it in a new commit. The methods are now chosen in the Stripe dashboard, and switching off everything but cards there is on my list. It's the clearest case so far of a test passing against a stand-in while the real service had changed underneath it.
+
+Coming back from Stripe never confirms anything (4.13). The page Stripe returns the customer to says the payment is being confirmed, with a plain Check again link that works without JavaScript, and backing out of Stripe's page brings them back to checkout with their seats still held.
+
+<img src="screenshots/payments/confirming.png" alt="We're confirming your payment. This usually takes a few seconds, the booking reference and a Check again link" width="300"> <img src="screenshots/payments/not-completed.png" alt="The checkout page after backing out of Stripe: No payment was taken. Your seats are still held, so you can try again" width="300"> <img src="screenshots/payments/confirmed.png" alt="Booking confirmed: the reference in bold, show it at the door or read it out at the box office, the screening and the two seats" width="300">
+
+Only Stripe's webhook marks a booking paid. The endpoint checks the signature before trusting anything in the request, records each event in `StripeEvent` so a repeat is ignored, stores the payment on the booking and then calls `confirm_booking`, the same function the admin's Mark as paid has used since Phase 2. Recording the event and handling it share one transaction, so if handling fails the event isn't recorded either, and Stripe sends it again.
+
+If the seats have gone to someone else by the time the payment arrives, the booking is marked refunded and a `Refund` row is recorded under the seeded system user, an inactive account nobody can log in as (4.9). The refund is sent to Stripe only after the transaction commits, with an idempotency key from its own row, so sending it again can never pay out twice, and the customer is told on the page.
+
+<img src="screenshots/payments/refunded.png" alt="We're refunding your payment: your seats were sold to someone else before your payment reached us, so we're refunding the £9.00 you paid, with a Choose other seats link" width="300">
+
+The confirmed and refunded pages above weren't set up by hand. I sent the local site two `checkout.session.completed` events signed with my real webhook secret, so they went through the real endpoint and its signature check. The first confirmed its booking. The second was for a booking whose seat I'd sold to someone else first, so it took the refund path, and Stripe's test API refused the refund, since the payment it named was made up: `No such payment_intent`. The refund was stored as failed with that reason, which is what should happen. Nothing retries a failed refund yet; that comes with the scheduled job (4.32).
+
+Two more bugs turned up while writing the tests, both now fixed with a test each. Paying again after a session expired built the same idempotency key, so Stripe would have handed back the dead session and the customer could never pay; the key now includes the previous session, and a session that's still open for the same total is reused instead. And registering from the checkout page ignored where it came from, so a new customer lost their way back to their seats.
+
+A real payment with the test card, from booking to "Booking confirmed", waits until screenings are created through the real flow, so the journey starts where a customer's would. It's in the testing doc as [row M24](testing.md#m24).
+
+```text
+python manage.py test
+Found 444 test(s).
+Ran 444 tests in 68.465s
+OK
+```
 
 </details>
 

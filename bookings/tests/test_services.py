@@ -8,6 +8,7 @@ from bookings.basket import BasketError
 from bookings.models import Booking, SeatBooking, SeatHold
 from bookings.services import (
     HoldTimeUsedUp,
+    HoldsExpired,
     SeatsLost,
     SeatsUnavailable,
     amend_booking,
@@ -16,8 +17,10 @@ from bookings.services import (
     hold_seats,
     release_seats,
     start_booking,
+    start_payment,
 )
 from bookings.tests.test_holds import make_screening
+from payments.fake import FakeProvider
 from screenings.models import (
     ScreeningClosedArea,
     ScreeningPrice,
@@ -254,6 +257,86 @@ class ConfirmBookingTests(TestCase):
         with self.assertRaises(SeatsLost):
             confirm_booking(self.booking)
         self.assertEqual(self.sold(), set())
+
+
+class StartPaymentTests(TestCase):
+    """Choosing Pay: a Checkout Session for the total, and the holds
+    extended once to cover it (architecture 4.13 step 3, 4.8 step 5)."""
+
+    def setUp(self):
+        FakeProvider.reset()
+        self.screening, (self.seat_1, self.seat_2) = make_screening()
+        self.adult = TicketType.objects.get(name='Adult')
+        self.student = TicketType.objects.get(name='Student')
+        for ticket_type, price in ((self.adult, 950), (self.student, 750)):
+            ScreeningPrice.objects.create(screening=self.screening,
+                                          ticket_type=ticket_type,
+                                          price_pence=price)
+        self.booking = start_booking(
+            self.screening,
+            [(self.seat_1, self.adult), (self.seat_2, self.student)],
+            0, 'session-a',
+        )
+
+    def pay(self):
+        return start_payment(self.booking, 'https://site/ok',
+                             'https://site/back')
+
+    def test_the_session_is_for_the_total_and_names_the_booking(self):
+        session = self.pay()
+        asked = FakeProvider.sessions[session.id]
+        self.assertEqual(asked['amount_pence'], 1700)
+        self.assertEqual(asked['reference'], self.booking.reference)
+        self.assertEqual(asked['description'], 'Nosferatu, 2 tickets')
+
+    def test_the_session_is_stored_on_the_booking(self):
+        session = self.pay()
+        self.booking.refresh_from_db()
+        self.assertEqual(self.booking.stripe_checkout_session_id, session.id)
+
+    def test_the_holds_last_as_long_as_the_session(self):
+        session = self.pay()
+        self.assertEqual(
+            set(self.booking.holds.values_list('expires_at', flat=True)),
+            {session.expires_at},
+        )
+        self.assertGreaterEqual(session.expires_at - timezone.now(),
+                                timedelta(minutes=30))
+
+    def test_paying_again_returns_the_same_session(self):
+        """Pressing Pay twice can't make a second session (4.32), and
+        coming back while it's open returns to it (4.13 step 7)."""
+        first = self.pay()
+        self.booking.refresh_from_db()
+        self.assertEqual(self.pay(), first)
+        self.assertEqual(len(FakeProvider.sessions), 1)
+
+    def test_paying_after_the_session_expired_gets_a_new_one(self):
+        """Otherwise Stripe's idempotency would hand back the expired
+        session and the customer could never pay (4.13 step 6)."""
+        first = self.pay()
+        FakeProvider.expire(first.id)
+        self.booking.refresh_from_db()
+        second = self.pay()
+        self.assertNotEqual(second.id, first.id)
+        self.assertTrue(second.is_open)
+
+    def test_a_changed_total_gets_a_new_session(self):
+        first = self.pay()
+        hold = self.booking.holds.get(seat=self.seat_2)
+        hold.ticket_type = self.adult
+        hold.save()
+        self.booking.refresh_from_db()
+        second = self.pay()
+        self.assertNotEqual(second.id, first.id)
+        self.assertEqual(FakeProvider.sessions[second.id]['amount_pence'],
+                         1900)
+
+    def test_seats_whose_hold_ran_out_cant_be_paid_for(self):
+        self.booking.holds.update(expires_at=timezone.now())
+        with self.assertRaises(HoldsExpired):
+            self.pay()
+        self.assertEqual(FakeProvider.sessions, {})
 
 
 class ReleaseSeatsTests(TestCase):

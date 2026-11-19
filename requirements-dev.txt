@@ -1,0 +1,10 @@
+-r requirements.txt
+
+# For development and the checks in docs/testing.md only, never
+# installed on Render, which uses requirements.txt.
+
+# The Python style check, set up in .flake8.
+flake8==7.4.1
+
+# Checks every pinned package for known vulnerabilities (4.29).
+pip-audit==2.10.0

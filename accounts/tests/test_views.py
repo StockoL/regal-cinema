@@ -48,6 +48,18 @@ class RegisterTests(TestCase):
         user = User.objects.get(email='new@example.com')
         self.assertEqual(int(self.client.session['_auth_user_id']), user.pk)
 
+    def test_registering_to_pay_goes_back_to_the_booking(self):
+        """The checkout page sends a visitor here with ?next= (4.16)."""
+        self.url = f'{reverse("accounts:register")}?next=/booking/RGL-ABCDE/'
+        response = self.register()
+        self.assertRedirects(response, '/booking/RGL-ABCDE/',
+                             fetch_redirect_response=False)
+
+    def test_next_cant_send_anyone_to_another_site(self):
+        self.url = f'{reverse("accounts:register")}?next=https://evil.example/'
+        response = self.register()
+        self.assertRedirects(response, reverse('screenings:screening_list'))
+
     def test_the_email_is_stored_in_lower_case(self):
         self.register(email='New.Person@Example.COM')
         self.assertTrue(
@@ -62,18 +74,24 @@ class RegisterTests(TestCase):
         self.assertContains(
             response, 'An account with this email address already exists.'
         )
-        self.assertEqual(User.objects.count(), 1)
+        self.assertEqual(
+            User.objects.filter(email__iexact='taken@example.com').count(), 1
+        )
 
     def test_the_same_email_with_different_capitals_is_a_duplicate(self):
         """Journey 4, "Email case"."""
         User.objects.create_user('taken@example.com', 'a-long-password')
         self.register(email='Taken@Example.com')
-        self.assertEqual(User.objects.count(), 1)
+        self.assertEqual(
+            User.objects.filter(email__iexact='taken@example.com').count(), 1
+        )
 
     def test_the_passwords_must_match(self):
         response = self.register(confirm='a-different-password')
         self.assertEqual(response.status_code, 200)
-        self.assertFalse(User.objects.exists())
+        self.assertFalse(
+            User.objects.filter(email='new@example.com').exists()
+        )
 
     def test_errors_are_written_next_to_their_field(self):
         """LooseLeaf's renderer ties each error to its field (4.17)."""

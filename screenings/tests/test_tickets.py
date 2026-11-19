@@ -130,6 +130,18 @@ class SeededTicketTypeTests(TestCase):
             {'Student', 'OAP', 'Companion'},
         )
 
+    def test_each_type_says_what_proof_to_bring(self):
+        """4.2: a reminder, never a block. The Companion ticket asks for
+        the CEA Card, the others that need proof for proof of age or
+        status, and the rest for nothing."""
+        reminders = {ticket_type.name: ticket_type.proof_reminder
+                     for ticket_type in TicketType.objects.all()}
+        self.assertEqual(reminders['Student'], 'Bring proof of age or status')
+        self.assertEqual(reminders['OAP'], 'Bring proof of age or status')
+        self.assertEqual(reminders['Companion'], 'Bring your CEA Card')
+        self.assertEqual(reminders['Adult'], '')
+        self.assertEqual(reminders['Child'], '')
+
     def test_the_age_bands_are_in_the_descriptions(self):
         self.assertIn('12 to 17', TicketType.objects.get(
             name='Young person').description)

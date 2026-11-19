@@ -110,6 +110,17 @@ class Booking(models.Model):
         max_length=15, choices=PaymentMethod.choices,
         default=PaymentMethod.CARD_ONLINE,
     )
+    # The Stripe Checkout Session paying for an online booking. Unique,
+    # so the webhook can only ever find one booking for it (4.13).
+    stripe_checkout_session_id = models.CharField(
+        max_length=255, unique=True, null=True, blank=True
+    )
+    # The payment, set once Stripe says it went through (4.13). A refund
+    # goes back against the payment intent.
+    stripe_payment_intent_id = models.CharField(
+        max_length=255, null=True, blank=True
+    )
+    amount_charged_pence = models.PositiveIntegerField(null=True, blank=True)
     # The staff member who took an in-venue booking (4.14).
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.SET_NULL,
@@ -142,6 +153,51 @@ class Booking(models.Model):
             reference = new_reference()
             if not Booking.objects.filter(reference=reference).exists():
                 return reference
+
+
+class StripeEvent(models.Model):
+    """A Stripe event that has been handled. Stripe can send the same
+    event more than once, and one already here is ignored (4.13)."""
+
+    event_id = models.CharField(max_length=255, unique=True)
+    event_type = models.CharField(max_length=100)
+    processed_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f'{self.event_type} {self.event_id}'
+
+
+class Refund(models.Model):
+    """One refund against a booking's payment. It's created pending,
+    sent to the provider once the transaction has committed, and then
+    marked succeeded or failed. A failed one is kept, so it can be
+    retried and shown to staff (4.2, 4.32)."""
+
+    class Status(models.TextChoices):
+        PENDING = 'pending', 'Pending'
+        SUCCEEDED = 'succeeded', 'Succeeded'
+        FAILED = 'failed', 'Failed'
+
+    booking = models.ForeignKey(
+        Booking, on_delete=models.PROTECT, related_name='refunds'
+    )
+    amount_pence = models.PositiveIntegerField()
+    reason = models.CharField(max_length=200)
+    stripe_refund_id = models.CharField(max_length=255, null=True,
+                                        blank=True)
+    status = models.CharField(max_length=10, choices=Status.choices,
+                              default=Status.PENDING)
+    # The provider's message when a refund fails.
+    error = models.TextField(blank=True)
+    # A member of staff, or the system user for an automatic refund.
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.PROTECT,
+        related_name='refunds_made',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f'{self.amount_pence}p refund for {self.booking.reference}'
 
 
 class SeatBookingQuerySet(models.QuerySet):

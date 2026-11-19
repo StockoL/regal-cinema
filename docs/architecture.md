@@ -297,7 +297,7 @@ Payment uses Stripe Checkout, Stripe's hosted payment page, rather than a card f
 
 1. Checkout starts. The customer's seats are already held and their pending booking already exists (4.8), holding everything else in the basket. The server calculates the final total using the order in 4.10. The breakdown (each ticket type, concessions, the membership discounts and any voucher) is shown on this site's checkout page, and Stripe receives the total as a single line for the booking. Stripe runs in test mode throughout.
 2. If the total is £0 (a voucher covers it), there's no Stripe interaction. The booking is marked paid on the server straight away.
-3. Otherwise, when the customer chooses Pay, the server creates a Checkout Session for the total, set to expire after 30 minutes, the shortest session Stripe allows. Its ID is stored on the pending booking, and the holds are extended once to the session's expiry, so the seats can't go to anyone else while the customer pays. The card statement shows "REGAL CINEMA". Then the customer is sent to Stripe's page.
+3. Otherwise, when the customer chooses Pay, the server creates a Checkout Session for the total, set to expire after 30 minutes, the shortest session Stripe allows. In practice it asks for 31, because Stripe measures the 30 minutes from when the request arrives, and a request asking for exactly 30 would be refused. Its ID is stored on the pending booking, and the holds are extended once to the session's expiry, so the seats can't go to anyone else while the customer pays. The card statement shows "REGAL CINEMA". Then the customer is sent to Stripe's page.
 4. When the customer finishes on Stripe's page, Stripe sends them back to a success page on this site. Arriving there doesn't confirm anything. Until the webhook in step 5 has been processed, the page says the payment is being confirmed, and it updates itself once the booking is paid.
 5. Stripe sends a `checkout.session.completed` webhook, and this is what finalises everything. The webhook looks the session ID up to find what was being paid for: a pending booking, a membership purchase (4.4) or a gift voucher (4.26). For a booking, it's marked paid, its holds become `SeatBooking` rows, the payment ID is stored, the voucher balance is reduced (not before, see below), and a confirmation is sent.
 6. If the customer backs out of Stripe's page or closes the tab, nothing is charged and the booking stays pending. When they come back, they're told no payment was taken, their seats are still held with the time left shown, and they can try again. A declined card is handled on Stripe's page, which shows the reason and lets the customer try another card. When a session expires unpaid, Stripe sends `checkout.session.expired`, and nothing is booked.
@@ -316,7 +316,7 @@ Refunds (4.22) call Stripe's refund API directly and get an immediate response, 
 
 Once a booking is confirmed, the payments module looks up Stripe's balance transaction for the payment and stores `stripe_fee_pence` and `stripe_net_pence`. That happens after the commit, so if the lookup fails the booking still stands, and a later retry fills the fields. A dispute arrives as `charge.dispute.created`, and later `charge.dispute.closed`, through the same `StripeEvent` path as any other event. It sets `disputed_at`, writes an audit entry and shows a flag on the staff booking page. Nothing is cancelled automatically.
 
-There's one known limitation I'm not solving. A voucher's balance isn't held the way a seat is. If the same code were entered in two simultaneous checkouts, there's a narrow window where both could succeed against the same balance before either payment confirms. A voucher has to be typed in by hand, so this is unlikely and low in severity, and fixing it properly would need a second holding mechanism like `SeatHold`, which is out of proportion to the risk. It's listed under [Known issues](testing.md#9-known-issues).
+There's one known limitation I'm not solving. A voucher's balance isn't held the way a seat is. If the same code were entered in two simultaneous checkouts, there's a narrow window where both could succeed against the same balance before either payment confirms. A voucher has to be typed in by hand, so this is unlikely and low in severity, and fixing it properly would need a second holding mechanism like `SeatHold`, which is out of proportion to the risk. It's listed under [Known issues](testing.md#known-issues).
 
 ## 4.14 Payment methods and till reconciliation
 
@@ -528,6 +528,7 @@ regal-cinema/
 │   ├── staff_urls.py       staff routes, mounted under /staff/ (only where needed)
 │   ├── templates/<app>/    the app's own templates
 │   └── tests/              test_models.py, test_services.py, test_views.py
+├── payments/               the payments module (4.27): the interface, Stripe and the fake provider, with no models
 ├── templates/              base.html, shared partials, error pages
 ├── static/
 │   ├── css/                main.css and this project's own blocks, in LooseLeaf UI's layers

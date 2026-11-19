@@ -1,3 +1,4 @@
+import hashlib
 from datetime import timedelta
 
 from django.conf import settings
@@ -5,10 +6,13 @@ from django.db import IntegrityError, transaction
 from django.db.models import Q
 from django.utils import timezone
 
-from .basket import check_basket
+from accounts.models import get_system_user
+from payments import get_provider
+from payments.base import RefundFailed
 from screenings.models import Seat
 
-from .models import Booking, SeatBooking, SeatHold
+from .basket import check_basket
+from .models import Booking, Refund, SeatBooking, SeatHold
 
 
 class SeatsUnavailable(Exception):
@@ -146,11 +150,111 @@ def confirm_booking(booking):
     return booking
 
 
+def refund_late_payment(booking):
+    """A payment arrived after the booking's seats were sold to someone
+    else (4.13). The booking is marked refunded and a refund for what
+    was charged is recorded, named to the system user, and sent to the
+    provider once the transaction has committed, so the customer is
+    never left paying for seats they don't have."""
+    booking.holds.all().delete()
+    booking.status = Booking.Status.REFUNDED
+    booking.save(update_fields=['status'])
+    refund = Refund.objects.create(
+        booking=booking, amount_pence=booking.amount_charged_pence,
+        reason='Paid after the seats were sold to someone else',
+        created_by=get_system_user(),
+    )
+    transaction.on_commit(lambda: send_refund(refund.pk))
+    return refund
+
+
+def send_refund(refund_pk):
+    """Ask the provider for a pending refund and record the answer. The
+    idempotency key comes from the refund's row, so sending it again,
+    as a retry does, can never pay out twice (4.13, 4.32)."""
+    refund = Refund.objects.select_related('booking').get(pk=refund_pk)
+    try:
+        refund.stripe_refund_id = get_provider().refund(
+            payment_intent_id=refund.booking.stripe_payment_intent_id,
+            amount_pence=refund.amount_pence,
+            idempotency_key=f'refund-{refund.pk}',
+        )
+        refund.status = Refund.Status.SUCCEEDED
+    except RefundFailed as error:
+        refund.status = Refund.Status.FAILED
+        refund.error = str(error)
+    refund.save(update_fields=['stripe_refund_id', 'status', 'error'])
+
+
 def release_seats(booking):
     """Put a booking's sold seats back on sale at once. The rows are
     kept with released_at set, never deleted, so the sale stays on
     record (4.2, 4.8). Seats already released keep their first time."""
     booking.seats.live().update(released_at=timezone.now())
+
+
+def basket_total(booking, holds):
+    """What the customer pays for their held seats, in pence, at this
+    screening's prices. Food, discounts and vouchers join it as those
+    features arrive (4.10)."""
+    prices = {price.ticket_type_id: price.price_pence
+              for price in booking.screening.prices.all()}
+    return sum(prices[hold.ticket_type_id] for hold in holds)
+
+
+class HoldsExpired(Exception):
+    """Some of the booking's seats are no longer held, so the customer
+    has to choose them again before paying."""
+
+
+# Stripe refuses a session that expires less than 30 minutes after it
+# receives the request, so the session asks for a minute more (4.13).
+CHECKOUT_SESSION_MINUTES = 31
+
+
+def start_payment(booking, success_url, cancel_url):
+    """The customer chose Pay (4.13 step 3). Ask the payment provider
+    for a Checkout Session for the total, store its id on the booking,
+    and extend the holds once to the session's expiry, so the seats
+    can't go to anyone else while the customer pays (4.8 step 5). The
+    idempotency key comes from the booking and its basket, so pressing
+    Pay twice gets the same session. Raises HoldsExpired."""
+    holds = list(booking.holds.live().select_related('ticket_type'))
+    if len(holds) != booking.seat_count:
+        raise HoldsExpired()
+    total = basket_total(booking, holds)
+    provider = get_provider()
+    previous = booking.stripe_checkout_session_id
+    if previous:
+        # Back while the session is still open: return to it (4.13 step
+        # 7). Confirming sells whatever is held, so only the total has
+        # to match.
+        current = provider.get_checkout_session(previous)
+        if current.is_open and current.amount_pence == total:
+            return current
+    # The previous session is part of the key, so a session that expired
+    # or closed is followed by a new one, not handed back by Stripe.
+    basket = sorted((hold.seat_id, hold.ticket_type_id) for hold in holds)
+    key = hashlib.sha256(
+        f'{booking.pk}:{basket}:{booking.infant_count}:{total}:{previous}'
+        .encode()
+    ).hexdigest()
+    tickets = 'ticket' if len(holds) == 1 else 'tickets'
+    session = provider.create_checkout_session(
+        reference=booking.reference, amount_pence=total,
+        description=f'{booking.screening.film.title}, '
+                    f'{len(holds)} {tickets}',
+        success_url=success_url, cancel_url=cancel_url,
+        expires_at=timezone.now() + timedelta(
+            minutes=CHECKOUT_SESSION_MINUTES
+        ),
+        idempotency_key=f'checkout-{key}',
+    )
+    with transaction.atomic():
+        booking.stripe_checkout_session_id = session.id
+        booking.save(update_fields=['stripe_checkout_session_id'])
+        booking.holds.update(expires_at=session.expires_at)
+    return session
 
 
 def seat_plan(screening, own_booking=None):

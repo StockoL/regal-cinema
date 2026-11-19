@@ -179,7 +179,8 @@ class ScreeningLayoutTests(TestCase):
         self.layout = SeatingLayout.objects.create(
             screen=self.screen, name='Standard'
         )
-        self.film = Film.objects.create(title='Nosferatu', duration_minutes=100)
+        self.film = Film.objects.create(title='Nosferatu',
+                                        duration_minutes=100)
         self.ticket_class = TicketClass.objects.create(name='Standard')
         self.start = datetime(2026, 11, 14, 19, 0,
                               tzinfo=ZoneInfo('Europe/London'))

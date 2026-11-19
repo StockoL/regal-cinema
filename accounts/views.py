@@ -22,6 +22,13 @@ def register(request):
             backend='django.contrib.auth.backends.ModelBackend',
         )
         send_verification_email(request, user)
+        # Back to the booking for someone who registered to pay.
+        next_url = request.GET.get('next', '')
+        if url_has_allowed_host_and_scheme(
+            next_url, allowed_hosts={request.get_host()},
+            require_https=request.is_secure(),
+        ):
+            return redirect(next_url)
         return redirect('screenings:screening_list')
     return render(request, 'accounts/register.html', {'form': form})
 
