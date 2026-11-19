@@ -39,5 +39,12 @@ def session_completed(session):
     booking = Booking.objects.filter(
         stripe_checkout_session_id=session['id']
     ).first()
-    if booking is not None:
-        confirm_booking(booking)
+    if booking is None:
+        return
+    # Recorded before confirming, so a refund can find the payment even
+    # if the seats turn out to be lost.
+    booking.stripe_payment_intent_id = session.get('payment_intent')
+    booking.amount_charged_pence = session.get('amount_total')
+    booking.save(update_fields=['stripe_payment_intent_id',
+                                'amount_charged_pence'])
+    confirm_booking(booking)

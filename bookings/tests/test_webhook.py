@@ -15,7 +15,7 @@ def completed(session_id, event_id='evt_1', payment_status='paid'):
         'id': event_id, 'type': 'checkout.session.completed',
         'data': {'object': {
             'id': session_id, 'payment_status': payment_status,
-            'payment_intent': 'pi_1',
+            'payment_intent': 'pi_1', 'amount_total': 950,
         }},
     }
 
@@ -54,6 +54,13 @@ class WebhookTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(self.status(), Booking.Status.PAID)
         self.assertEqual(self.booking.seats.count(), 1)
+
+    def test_the_payment_is_recorded_on_the_booking(self):
+        """What a refund needs later: how it was paid and how much."""
+        self.send(completed('cs_fake_1'))
+        self.booking.refresh_from_db()
+        self.assertEqual(self.booking.stripe_payment_intent_id, 'pi_1')
+        self.assertEqual(self.booking.amount_charged_pence, 950)
 
     def test_each_event_is_recorded(self):
         self.send(completed('cs_fake_1'))

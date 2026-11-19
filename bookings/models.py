@@ -115,6 +115,12 @@ class Booking(models.Model):
     stripe_checkout_session_id = models.CharField(
         max_length=255, unique=True, null=True, blank=True
     )
+    # The payment, set once Stripe says it went through (4.13). A refund
+    # goes back against the payment intent.
+    stripe_payment_intent_id = models.CharField(
+        max_length=255, null=True, blank=True
+    )
+    amount_charged_pence = models.PositiveIntegerField(null=True, blank=True)
     # The staff member who took an in-venue booking (4.14).
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.SET_NULL,
