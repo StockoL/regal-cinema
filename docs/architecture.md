@@ -571,7 +571,7 @@ Buying needs an account, as any online purchase does (4.16). The purchase page s
 
 ## 4.27 Payments behind one interface
 
-Every call to Stripe goes through one payments module with a small interface: create a Checkout Session, refund a payment, and look up the fee and net amount for a payment. Stripe is the only real implementation. I've kept the interface narrow enough to fit Braintree too (a client token, hosted fields or Drop-in, a transaction and a refund), because a venue may already take payments through it, but I'm not building a Braintree version. A fake provider implements the same interface for the tests and for demo mode, so the test suite never calls Stripe.
+Every call to Stripe goes through one payments module with a small interface: create a Checkout Session, refund a payment, and look up the fee and net amount for a payment. Stripe is the only real implementation. I've kept the interface narrow enough to fit another provider such as Braintree too (a client token, hosted fields or Drop-in, a transaction and a refund), but I'm not building a second version. A fake provider implements the same interface for the tests and for demo mode, so the test suite never calls Stripe.
 
 Money stays in integer pence throughout. I haven't checked whether Stripe returns its fee when a payment is refunded, so a refund records the amount refunded and doesn't assume the fee comes back.
 

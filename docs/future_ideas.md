@@ -67,7 +67,7 @@ A seat's area doesn't affect its price (4.1): the real venue charges the same wh
 
 ## 8.9 Braintree, or another payment provider
 
-Payments sit behind one interface (4.27) that fits Braintree as well as Stripe, because a venue may already take payments through it. I haven't built a Braintree version. It would mean a second implementation of the same small interface and its own webhook handling, worth doing only for a venue that actually uses it.
+Payments sit behind one interface (4.27) that fits another provider such as Braintree as well as Stripe. I haven't built a Braintree version. It would mean a second implementation of the same small interface and its own webhook handling, worth doing only for a venue that actually uses it.
 
 ## 8.10 Pay by Bank
 
