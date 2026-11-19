@@ -52,6 +52,15 @@ class TicketTypeTests(TestCase):
     def test_string_is_the_name(self):
         self.assertEqual(str(TicketType.objects.get(name='OAP')), 'OAP')
 
+    def test_vat_rate_defaults_to_twenty_percent(self):
+        ticket_type = TicketType.objects.create(name='Member')
+        self.assertEqual(ticket_type.vat_rate_percent, 20)
+
+    def test_vat_rate_above_one_hundred_is_rejected(self):
+        ticket_type = TicketType(name='Member', vat_rate_percent=101)
+        with self.assertRaises(ValidationError):
+            ticket_type.full_clean()
+
 
 class TicketTypeRuleFieldTests(TestCase):
     """The flags and age limit that drive the booking rules. Nothing about

@@ -8,7 +8,7 @@ from django.contrib.postgres.fields import (
     RangeOperators,
 )
 from django.core.exceptions import ValidationError
-from django.core.validators import MinValueValidator
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.utils import timezone
 from django.utils.text import slugify
@@ -264,6 +264,10 @@ class TicketType(models.Model):
     is_companion = models.BooleanField(default=False)
     # Not offered for a film whose minimum age is above this.
     max_age = models.PositiveSmallIntegerField(null=True, blank=True)
+    # Prices include VAT. The rate is data, snapshotted on each sale.
+    vat_rate_percent = models.PositiveSmallIntegerField(
+        default=20, validators=[MaxValueValidator(100)]
+    )
     is_active = models.BooleanField(default=True)
 
     class Meta:

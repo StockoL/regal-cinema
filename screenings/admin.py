@@ -103,7 +103,8 @@ class TicketClassAdmin(admin.ModelAdmin):
 @admin.register(TicketType)
 class TicketTypeAdmin(admin.ModelAdmin):
     list_display = ('name', 'description', 'max_age', 'requires_adult',
-                    'requires_proof', 'is_companion', 'is_active')
+                    'requires_proof', 'is_companion', 'vat_rate_percent',
+                    'is_active')
 
 
 class ScreeningPriceInline(admin.TabularInline):
