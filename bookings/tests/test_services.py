@@ -218,10 +218,18 @@ class ConfirmBookingTests(TestCase):
         self.assertEqual(self.booking.status, Booking.Status.PAID)
         self.assertFalse(self.booking.holds.exists())
 
+    def test_confirming_records_when_it_was_paid(self):
+        self.assertIsNone(self.booking.paid_at)
+        before = timezone.now()
+        booking = confirm_booking(self.booking)
+        self.assertGreaterEqual(booking.paid_at, before)
+
     def test_confirming_twice_changes_nothing(self):
-        confirm_booking(self.booking)
+        paid_at = confirm_booking(self.booking).paid_at
         confirm_booking(self.booking)
         self.assertEqual(len(self.sold()), 2)
+        self.booking.refresh_from_db()
+        self.assertEqual(self.booking.paid_at, paid_at)
 
     def test_a_lost_seat_saves_nothing(self):
         """Another sale got one of the seats first, so none of this

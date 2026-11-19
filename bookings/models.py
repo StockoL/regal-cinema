@@ -120,6 +120,9 @@ class Booking(models.Model):
     # How many seats the customer chose, so confirming can tell if a
     # hold ran out and its seat went to someone else (4.32).
     seat_count = models.PositiveSmallIntegerField(default=0)
+    # Set once, when payment is confirmed. Indexed for the reports,
+    # which go by payment date (4.28, 4.33).
+    paid_at = models.DateTimeField(null=True, blank=True, db_index=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

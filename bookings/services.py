@@ -141,7 +141,8 @@ def confirm_booking(booking):
             raise SeatsLost() from None
         booking.holds.all().delete()
         booking.status = Booking.Status.PAID
-        booking.save(update_fields=['status'])
+        booking.paid_at = timezone.now()
+        booking.save(update_fields=['status', 'paid_at'])
     return booking
 
 
