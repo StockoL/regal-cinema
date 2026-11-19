@@ -13,6 +13,21 @@ class CheckoutSession:
     expires_at: datetime
 
 
+@dataclass(frozen=True)
+class WebhookEvent:
+    """An event the provider sent, once its signature has been checked:
+    its id, its type, and the object it's about as plain data."""
+
+    id: str
+    type: str
+    object: dict
+
+
+class InvalidSignature(Exception):
+    """A webhook that wasn't signed by the provider. Nothing in it can
+    be trusted (4.13)."""
+
+
 class PaymentProvider(ABC):
     """What the site needs from a payment provider. Kept small, so a
     second provider could fit behind it (4.27). Amounts are integer
@@ -24,3 +39,8 @@ class PaymentProvider(ABC):
                                 expires_at, idempotency_key):
         """Return a CheckoutSession. The same idempotency_key returns
         the same session, so a repeated request can't make two."""
+
+    @abstractmethod
+    def parse_webhook(self, payload, signature):
+        """Check the webhook's signature and return a WebhookEvent, or
+        raise InvalidSignature."""

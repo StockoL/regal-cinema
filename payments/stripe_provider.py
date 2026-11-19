@@ -4,7 +4,12 @@ import stripe
 from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
 
-from .base import CheckoutSession, PaymentProvider
+from .base import (
+    CheckoutSession,
+    InvalidSignature,
+    PaymentProvider,
+    WebhookEvent,
+)
 
 
 class StripeProvider(PaymentProvider):
@@ -44,3 +49,13 @@ class StripeProvider(PaymentProvider):
             expires_at=datetime.fromtimestamp(session.expires_at,
                                               tz=timezone.utc),
         )
+
+    def parse_webhook(self, payload, signature):
+        try:
+            event = self.client.construct_event(
+                payload, signature, settings.STRIPE_WEBHOOK_SECRET
+            )
+        except (stripe.SignatureVerificationError, ValueError):
+            raise InvalidSignature() from None
+        return WebhookEvent(id=event.id, type=event.type,
+                            object=event.data.object.to_dict())

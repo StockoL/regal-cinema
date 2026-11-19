@@ -1,4 +1,12 @@
-from .base import CheckoutSession, PaymentProvider
+import hashlib
+import json
+
+from .base import (
+    CheckoutSession,
+    InvalidSignature,
+    PaymentProvider,
+    WebhookEvent,
+)
 
 
 class FakeProvider(PaymentProvider):
@@ -31,3 +39,15 @@ class FakeProvider(PaymentProvider):
         }
         self.by_key[idempotency_key] = session
         return session
+
+    @staticmethod
+    def sign(payload):
+        """The signature the fake accepts for a payload."""
+        return 'fake:' + hashlib.sha256(payload).hexdigest()
+
+    def parse_webhook(self, payload, signature):
+        if signature != self.sign(payload):
+            raise InvalidSignature()
+        event = json.loads(payload)
+        return WebhookEvent(id=event['id'], type=event['type'],
+                            object=event['data']['object'])

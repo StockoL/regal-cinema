@@ -1,3 +1,5 @@
+import json
+import time
 from datetime import datetime, timezone
 from types import SimpleNamespace
 from unittest import mock
@@ -5,8 +7,9 @@ from unittest import mock
 from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
 from django.test import SimpleTestCase, override_settings
+from stripe import WebhookSignature
 
-from payments.base import CheckoutSession
+from payments.base import CheckoutSession, InvalidSignature
 from payments.stripe_provider import StripeProvider
 
 
@@ -80,3 +83,36 @@ class StripeProviderTests(SimpleTestCase):
             id='cs_test_1', url='https://checkout.stripe.com/c/pay/cs_test_1',
             expires_at=EXPIRES,
         ))
+
+
+@override_settings(STRIPE_SECRET_KEY='sk_test_example',
+                   STRIPE_WEBHOOK_SECRET='whsec_example')
+class StripeWebhookTests(SimpleTestCase):
+    """Stripe signs every webhook, and the signature is checked before
+    anything in it is trusted (architecture 4.13). Checked with a real
+    signature made from a made-up secret, so nothing leaves the
+    machine."""
+
+    payload = json.dumps({
+        'id': 'evt_1', 'object': 'event', 'type': 'checkout.session.completed',
+        'data': {'object': {'id': 'cs_test_1', 'object': 'checkout.session'}},
+    })
+
+    def signature(self, secret='whsec_example'):
+        now = int(time.time())
+        digest = WebhookSignature._compute_signature(
+            f'{now}.{self.payload}', secret
+        )
+        return f't={now},v1={digest}'
+
+    def test_a_signed_event_is_read(self):
+        event = StripeProvider().parse_webhook(self.payload,
+                                               self.signature())
+        self.assertEqual((event.id, event.type, event.object['id']),
+                         ('evt_1', 'checkout.session.completed', 'cs_test_1'))
+
+    def test_an_event_signed_with_another_secret_is_refused(self):
+        with self.assertRaises(InvalidSignature):
+            StripeProvider().parse_webhook(
+                self.payload, self.signature('whsec_someone_else')
+            )

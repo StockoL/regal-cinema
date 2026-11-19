@@ -1,8 +1,10 @@
+import json
 from datetime import datetime, timezone
 
 from django.test import SimpleTestCase, override_settings
 
 from payments import get_provider
+from payments.base import InvalidSignature, WebhookEvent
 from payments.fake import FakeProvider
 
 
@@ -46,3 +48,26 @@ class FakeProviderTests(SimpleTestCase):
         session = create(self.provider, amount=2450)
         self.assertEqual(FakeProvider.sessions[session.id]['amount_pence'],
                          2450)
+
+
+class FakeWebhookTests(SimpleTestCase):
+    """The fake signs and checks webhooks its own way, so the tests can
+    send good and bad ones."""
+
+    payload = json.dumps({
+        'id': 'evt_1', 'type': 'checkout.session.completed',
+        'data': {'object': {'id': 'cs_fake_1'}},
+    }).encode()
+
+    def test_a_signed_event_is_read(self):
+        event = FakeProvider().parse_webhook(
+            self.payload, FakeProvider.sign(self.payload)
+        )
+        self.assertEqual(event, WebhookEvent(
+            id='evt_1', type='checkout.session.completed',
+            object={'id': 'cs_fake_1'},
+        ))
+
+    def test_a_bad_signature_is_refused(self):
+        with self.assertRaises(InvalidSignature):
+            FakeProvider().parse_webhook(self.payload, 'forged')

@@ -211,4 +211,5 @@ globals().update(email_settings(os.environ))
 # Stripe in test mode. The test runner swaps in the fake provider.
 PAYMENT_PROVIDER = 'payments.stripe_provider.StripeProvider'
 STRIPE_SECRET_KEY = os.environ.get('STRIPE_SECRET_KEY', '')
+STRIPE_WEBHOOK_SECRET = os.environ.get('STRIPE_WEBHOOK_SECRET', '')
 TEST_RUNNER = 'regal.test_runner.RegalTestRunner'
