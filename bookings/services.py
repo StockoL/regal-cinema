@@ -6,11 +6,13 @@ from django.db import IntegrityError, transaction
 from django.db.models import Q
 from django.utils import timezone
 
+from accounts.models import get_system_user
 from payments import get_provider
+from payments.base import RefundFailed
 from screenings.models import Seat
 
 from .basket import check_basket
-from .models import Booking, SeatBooking, SeatHold
+from .models import Booking, Refund, SeatBooking, SeatHold
 
 
 class SeatsUnavailable(Exception):
@@ -146,6 +148,42 @@ def confirm_booking(booking):
         booking.paid_at = timezone.now()
         booking.save(update_fields=['status', 'paid_at'])
     return booking
+
+
+def refund_late_payment(booking):
+    """A payment arrived after the booking's seats were sold to someone
+    else (4.13). The booking is marked refunded and a refund for what
+    was charged is recorded, named to the system user, and sent to the
+    provider once the transaction has committed, so the customer is
+    never left paying for seats they don't have."""
+    booking.holds.all().delete()
+    booking.status = Booking.Status.REFUNDED
+    booking.save(update_fields=['status'])
+    refund = Refund.objects.create(
+        booking=booking, amount_pence=booking.amount_charged_pence,
+        reason='Paid after the seats were sold to someone else',
+        created_by=get_system_user(),
+    )
+    transaction.on_commit(lambda: send_refund(refund.pk))
+    return refund
+
+
+def send_refund(refund_pk):
+    """Ask the provider for a pending refund and record the answer. The
+    idempotency key comes from the refund's row, so sending it again,
+    as a retry does, can never pay out twice (4.13, 4.32)."""
+    refund = Refund.objects.select_related('booking').get(pk=refund_pk)
+    try:
+        refund.stripe_refund_id = get_provider().refund(
+            payment_intent_id=refund.booking.stripe_payment_intent_id,
+            amount_pence=refund.amount_pence,
+            idempotency_key=f'refund-{refund.pk}',
+        )
+        refund.status = Refund.Status.SUCCEEDED
+    except RefundFailed as error:
+        refund.status = Refund.Status.FAILED
+        refund.error = str(error)
+    refund.save(update_fields=['stripe_refund_id', 'status', 'error'])
 
 
 def release_seats(booking):

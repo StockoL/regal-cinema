@@ -7,7 +7,7 @@ from payments import get_provider
 from payments.base import InvalidSignature
 
 from .models import Booking, StripeEvent
-from .services import confirm_booking
+from .services import SeatsLost, confirm_booking, refund_late_payment
 
 
 @csrf_exempt
@@ -47,4 +47,7 @@ def session_completed(session):
     booking.amount_charged_pence = session.get('amount_total')
     booking.save(update_fields=['stripe_payment_intent_id',
                                 'amount_charged_pence'])
-    confirm_booking(booking)
+    try:
+        confirm_booking(booking)
+    except SeatsLost:
+        refund_late_payment(booking)

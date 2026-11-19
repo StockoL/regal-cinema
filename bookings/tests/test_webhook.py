@@ -3,8 +3,9 @@ import json
 from django.test import TestCase
 from django.urls import reverse
 
-from bookings.models import Booking, StripeEvent
-from bookings.services import start_booking
+from accounts.models import get_system_user
+from bookings.models import Booking, Refund, StripeEvent
+from bookings.services import confirm_booking, start_booking
 from bookings.tests.test_holds import make_screening
 from payments.fake import FakeProvider
 from screenings.models import ScreeningPrice, TicketType
@@ -94,3 +95,49 @@ class WebhookTests(TestCase):
 
     def test_a_plain_link_does_nothing(self):
         self.assertEqual(self.client.get(self.url).status_code, 405)
+
+
+class LatePaymentTests(TestCase):
+    """A payment that lands after the seats were sold to someone else is
+    refunded automatically (journey 6, "Payment after seats lost";
+    architecture 4.13)."""
+
+    def setUp(self):
+        FakeProvider.reset()
+        screening, (seat, _) = make_screening()
+        adult = TicketType.objects.get(name='Adult')
+        ScreeningPrice.objects.create(screening=screening, ticket_type=adult,
+                                      price_pence=950)
+        self.booking = start_booking(screening, [(seat, adult)], 0, 'a')
+        self.booking.stripe_checkout_session_id = 'cs_fake_1'
+        self.booking.save()
+        # The hold ran out and someone else bought the seat.
+        self.booking.holds.all().delete()
+        confirm_booking(start_booking(screening, [(seat, adult)], 0, 'b'))
+
+    def send(self):
+        payload = json.dumps(completed('cs_fake_1')).encode()
+        with self.captureOnCommitCallbacks(execute=True):
+            return self.client.post(
+                WebhookTests.url, payload, content_type='application/json',
+                HTTP_STRIPE_SIGNATURE=FakeProvider.sign(payload),
+            )
+
+    def test_a_payment_after_the_seats_went_is_refunded(self):
+        """Named in the testing doc's failure modes (4.32)."""
+        response = self.send()
+        self.assertEqual(response.status_code, 200)
+        self.booking.refresh_from_db()
+        self.assertEqual(self.booking.status, Booking.Status.REFUNDED)
+        refund = self.booking.refunds.get()
+        self.assertEqual(refund.status, Refund.Status.SUCCEEDED)
+        self.assertEqual(refund.created_by, get_system_user())
+        self.assertEqual(FakeProvider.refunds[refund.stripe_refund_id],
+                         {'payment_intent_id': 'pi_1', 'amount_pence': 950})
+
+    def test_a_refund_that_fails_is_kept_with_its_reason(self):
+        FakeProvider.fail_refunds = True
+        self.send()
+        refund = self.booking.refunds.get()
+        self.assertEqual(refund.status, Refund.Status.FAILED)
+        self.assertIn('told to fail', refund.error)
