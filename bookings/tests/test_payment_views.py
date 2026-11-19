@@ -45,3 +45,27 @@ class ConfirmingPageTests(TestCase):
     def test_another_visitor_cant_see_it(self):
         self.client.logout()
         self.assertEqual(self.client.get(self.url).status_code, 404)
+
+
+@override_settings(SEAT_HOLD_MINUTES=10)
+class PaymentNotCompletedTests(TestCase):
+    """Backing out of Stripe's page (journey 6, "Payment not completed";
+    architecture 4.13 step 6)."""
+
+    def setUp(self):
+        test = test_views.TicketTypesTests('setUp')
+        test.client = self.client
+        test.setUp()
+        test.submit()
+        self.booking = Booking.objects.get()
+        self.url = reverse('bookings:booking_checkout',
+                           args=[self.booking.reference])
+
+    def test_coming_back_unpaid_says_nothing_was_taken(self):
+        response = self.client.get(self.url, {'payment': 'not-completed'})
+        self.assertContains(response, 'No payment was taken')
+        self.assertContains(response, 'keep these seats for you until')
+
+    def test_the_message_only_shows_after_stripe(self):
+        self.assertNotContains(self.client.get(self.url),
+                               'No payment was taken')

@@ -218,6 +218,8 @@ def booking_checkout(request, reference):
         'booking': booking,
         'holds': holds,
         'held_until': min(expiries) if expiries else None,
+        # Stripe's cancel link brings the customer back here (4.13 step 6).
+        'not_completed': request.GET.get('payment') == 'not-completed',
     })
 
 
