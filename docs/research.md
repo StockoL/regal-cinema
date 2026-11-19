@@ -8,7 +8,7 @@ What I haven't taken is the technology. Large chains run enterprise ticketing pl
 
 ## The Regal in Evesham
 
-The real venue gave me concrete facts to model instead of guesses. It has two seating areas, stalls and circle, and the price doesn't change with where you sit. It sells four kinds of ticket: adult, student, OAP (discounted), and free baby tickets. A baby doesn't need a seat, since they sit on a lap or stay in a pushchair. It also prices whole showings differently (Silver Screen, Family Super Saver, Subtitled and so on), which is why a screening has a ticket class as well as a ticket type per customer. See [4.1](architecture.md#41-screenings) and [4.18](architecture.md#418-ticket-classes-membership-tiers-and-priority-booking).
+The real venue's public site gave me concrete facts to model instead of guesses. It has two seating areas, stalls and circle, and the price doesn't change with where you sit. It sells four kinds of ticket: adult, student, OAP (discounted), and free baby tickets. A baby doesn't need a seat, since they sit on a lap or stay in a pushchair. It also prices whole showings differently (Silver Screen, Family Super Saver, Subtitled and so on), which is why a screening has a ticket class as well as a ticket type per customer. See [4.1](architecture.md#41-screenings) and [4.18](architecture.md#418-ticket-classes-membership-tiers-and-priority-booking).
 
 From using its booking pages as a customer, I set three goals for this project:
 
