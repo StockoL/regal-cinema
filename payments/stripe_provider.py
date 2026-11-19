@@ -45,10 +45,11 @@ class StripeProvider(PaymentProvider):
             },
             options={'idempotency_key': idempotency_key},
         )
-        return CheckoutSession(
-            id=session.id, url=session.url,
-            expires_at=datetime.fromtimestamp(session.expires_at,
-                                              tz=timezone.utc),
+        return checkout_session(session)
+
+    def get_checkout_session(self, session_id):
+        return checkout_session(
+            self.client.v1.checkout.sessions.retrieve(session_id)
         )
 
     def parse_webhook(self, payload, signature):
@@ -71,3 +72,12 @@ class StripeProvider(PaymentProvider):
         except stripe.StripeError as error:
             raise RefundFailed(error.user_message or str(error)) from None
         return refund.id
+
+
+def checkout_session(session):
+    return CheckoutSession(
+        id=session.id, url=session.url,
+        expires_at=datetime.fromtimestamp(session.expires_at,
+                                          tz=timezone.utc),
+        is_open=session.status == 'open',
+    )

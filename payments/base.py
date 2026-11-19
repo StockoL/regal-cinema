@@ -11,6 +11,8 @@ class CheckoutSession:
     id: str
     url: str
     expires_at: datetime
+    # Still taking payment: not paid, expired or closed.
+    is_open: bool = True
 
 
 @dataclass(frozen=True)
@@ -44,6 +46,10 @@ class PaymentProvider(ABC):
                                 expires_at, idempotency_key):
         """Return a CheckoutSession. The same idempotency_key returns
         the same session, so a repeated request can't make two."""
+
+    @abstractmethod
+    def get_checkout_session(self, session_id):
+        """Return the CheckoutSession with this id as it is now."""
 
     @abstractmethod
     def parse_webhook(self, payload, signature):

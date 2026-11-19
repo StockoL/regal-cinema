@@ -1,5 +1,6 @@
 import hashlib
 import json
+from dataclasses import replace
 
 from .base import (
     CheckoutSession,
@@ -41,10 +42,19 @@ class FakeProvider(PaymentProvider):
         self.sessions[session_id] = {
             'reference': reference, 'amount_pence': amount_pence,
             'description': description, 'success_url': success_url,
-            'cancel_url': cancel_url,
+            'cancel_url': cancel_url, 'session': session,
         }
         self.by_key[idempotency_key] = session
         return session
+
+    def get_checkout_session(self, session_id):
+        return self.sessions[session_id]['session']
+
+    @classmethod
+    def expire(cls, session_id):
+        """What Stripe does when a session runs out unpaid."""
+        info = cls.sessions[session_id]
+        info['session'] = replace(info['session'], is_open=False)
 
     @staticmethod
     def sign(payload):

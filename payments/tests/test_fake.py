@@ -44,6 +44,14 @@ class FakeProviderTests(SimpleTestCase):
         self.assertEqual(create(self.provider), first)
         self.assertNotEqual(create(self.provider, key='booking-2'), first)
 
+    def test_a_session_can_be_looked_up_and_is_open_until_it_expires(self):
+        session = create(self.provider)
+        self.assertTrue(self.provider.get_checkout_session(session.id).is_open)
+        FakeProvider.expire(session.id)
+        self.assertFalse(
+            self.provider.get_checkout_session(session.id).is_open
+        )
+
     def test_it_remembers_what_each_session_was_for(self):
         session = create(self.provider, amount=2450)
         self.assertEqual(FakeProvider.sessions[session.id]['amount_pence'],
