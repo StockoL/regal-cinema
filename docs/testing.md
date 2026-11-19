@@ -2,7 +2,7 @@
 
 This covers the automated tests, the checks I ran on the code, the manual tests, and the bugs found along the way. Each check says what I used, what it found and whether that's resolved. The project is still being built, so where a check hasn't been run yet it says so instead of giving a result, and its row fills in when it's run.
 
-The automated tests and the checks in [section 1](#1-checks-run-findings-and-how-each-was-resolved) were run on 19 November 2026 at `92741de`, on a local copy of the site with the demo seat plan from `seed_seats`. The manual results so far come from checking each feature in a browser as I built it, recorded with screenshots in the [development log](development_log.md), and each row links to its entry. A full manual run of every row, in Google Chrome on Windows and on real devices, is planned for the testing pass in Phase 7.
+The automated tests and the checks in [section 1](#1-checks-run-findings-and-how-each-was-resolved) were run on 19 November 2026 at `92741de`, and flake8 and pip-audit at `4bb9454` once they were installed, on a local copy of the site with the demo seat plan from `seed_seats`. The manual results so far come from checking each feature in a browser as I built it, recorded with screenshots in the [development log](development_log.md), and each row links to its entry. A full manual run of every row, in Google Chrome on Windows and on real devices, is planned for the testing pass in Phase 7.
 
 I'm building test-first. For each journey step I write a test from its Given/When/Then scenario, watch it fail, then write the smallest code that makes it pass. The test and the code go into the same commit, so the history shows each behaviour arriving with its test. Where it's useful as evidence, a failing test is committed on its own first on the feature branch.
 
@@ -39,11 +39,11 @@ I'm building test-first. For each journey step I write a test from its Given/Whe
 | Migrations | `python manage.py makemigrations --check --dry-run` | No changes detected | Nothing to resolve |
 | Leftover debugging | `git grep` for `print(`, `breakpoint(`, `pdb`, `TODO` and `FIXME` in the Python, JavaScript and templates, outside migrations | None | Nothing to resolve |
 | Files that shouldn't be tracked | `git ls-files`, searched for `.env`, database files, keys, a virtual environment and uploaded media; `git grep` for Stripe secret keys and webhook secrets | None tracked, and no keys in the code | Nothing to resolve |
-| Python style | flake8 | Not run yet: it isn't installed in the project's environment | To come with a development requirements file, before the freeze |
+| Python style | flake8 7.4.1 with the settings in `.flake8` (PEP 8's 79-character lines, with the virtual environment, migrations and collected static files left out), from `requirements-dev.txt` | No findings at `4bb9454`. The first run found six lines over 79 characters, four of them Django's generated password validator paths, and a variable named `l` | Fixed in `4bb9454`, with the suite still passing |
 | HTML validation | The W3C's Nu HTML Checker, every page ([section 2](#2-html-and-css-validation)) | Not run yet | |
 | CSS validation | The W3C CSS Validator, on the project's own stylesheets ([section 2](#2-html-and-css-validation)) | Not run yet | |
 | JavaScript | ESLint with its recommended rules, over `static/js/` | Not run yet | |
-| Dependencies | `pip-audit` (4.29) | Not run yet | |
+| Dependencies | pip-audit 2.10.0, from `requirements-dev.txt`, over `requirements.txt` and `requirements-dev.txt` (4.29) | No known vulnerabilities in either, at `4bb9454` | Nothing to resolve |
 | Lighthouse | Lighthouse in Chrome, mobile, on the film page, a screening's seats page and the seat map ([section 3](#3-lighthouse-scores)) | Not run yet | |
 | Widths and browsers | Each page at 320, 375, 768, 1024 and 1280 pixels in Chromium, Firefox and WebKit ([section 6](#6-responsiveness-usability-and-the-keyboard)) | Not run yet as a recorded check. Looking at the seat map in a browser on 9 November found the page 992 pixels wide on a phone ([section 7](#7-bugs-found-and-fixed)) | That one fixed on 9 November |
 
