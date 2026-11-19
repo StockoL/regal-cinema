@@ -83,7 +83,7 @@ Everything here assumes one venue with its own settings record (4.23). Several v
 
 ## 8.13 Staff rotas, clock-in and payroll
 
-A venue manager would like these, but they're a separate system with its own legal rules. The site is designed so they don't get in the way: staff accounts and permissions (4.9) could link to a rota system later without changing how bookings work.
+Any venue with staff needs these, but they're a separate system with its own legal rules. The site is designed so they don't get in the way: staff accounts and permissions (4.9) could link to a rota system later without changing how bookings work.
 
 ## 8.14 Connecting to other systems
 
