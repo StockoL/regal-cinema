@@ -141,6 +141,13 @@ class Booking(models.Model):
                 return reference
 
 
+class SeatBookingQuerySet(models.QuerySet):
+
+    def live(self):
+        """Sales that haven't been released."""
+        return self.filter(released_at__isnull=True)
+
+
 class SeatBooking(models.Model):
     """A sold seat. Releasing it sets `released_at` instead of deleting
     the row, so the sale stays on record (architecture 4.2, 4.8)."""
@@ -166,6 +173,8 @@ class SeatBooking(models.Model):
     price_pence = models.PositiveIntegerField()
     vat_rate_percent = models.PositiveSmallIntegerField()
     released_at = models.DateTimeField(null=True, blank=True)
+
+    objects = SeatBookingQuerySet.as_manager()
 
     class Meta:
         constraints = [

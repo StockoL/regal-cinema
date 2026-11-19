@@ -55,9 +55,9 @@ def hold_seats(screening, choices, session_key, user=None, expires_at=None):
         screening.holds.filter(expires_at__lte=now).delete()
         available = set(screening.seats())
         held = set(screening.holds.values_list('seat', flat=True))
-        held |= set(screening.seat_bookings.filter(
-            released_at__isnull=True
-        ).values_list('seat', flat=True))
+        held |= set(
+            screening.seat_bookings.live().values_list('seat', flat=True)
+        )
         unavailable = [
             seat for seat, _ in choices
             if seat not in available or seat.pk in held
@@ -162,9 +162,9 @@ def seat_plan(screening, own_booking=None):
     if own_booking is not None:
         held = held.exclude(booking=own_booking)
     held = set(held.values_list('seat', flat=True))
-    held |= set(screening.seat_bookings.filter(
-        released_at__isnull=True
-    ).values_list('seat', flat=True))
+    held |= set(
+        screening.seat_bookings.live().values_list('seat', flat=True)
+    )
     areas = []
     for area, name in ((Seat.Area.STALLS, 'Stalls'),
                        (Seat.Area.CIRCLE, 'Circle')):
