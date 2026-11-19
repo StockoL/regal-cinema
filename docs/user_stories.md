@@ -1,6 +1,6 @@
 # 1. Project purpose and user stories
 
-Regal Cinema gives a boutique independent cinema a booking experience that matches what it offers: two seating areas, tickets for different kinds of customer, food and drink, and a membership scheme. I've worked out the user journeys first and written each one as a set of Given/When/Then scenarios, with a MoSCoW priority on every step. The scenarios are also the checklist for [user story testing](testing.md#2-user-story-testing-behaviour-driven-verification).
+Regal Cinema gives a boutique independent cinema a booking experience that matches what it offers: two seating areas, tickets for different kinds of customer, food and drink, and a membership scheme. I've worked out the user journeys first and written each one as a set of Given/When/Then scenarios, with a MoSCoW priority on every step. The scenarios are also the checklist for [user story testing](testing.md#journeys-as-checks).
 
 ## How I've prioritised
 

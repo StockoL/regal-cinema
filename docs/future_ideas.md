@@ -95,7 +95,7 @@ The phone ticket's QR code can be typed or pasted at check-in for now. Scanning 
 
 ## 8.16 A waiting room for big on-sales
 
-A queue that lets visitors in a few at a time would protect the seat map on a very popular on-sale. The load test (testing, section 11) shows where the site would need it. At this venue's size it doesn't.
+A queue that lets visitors in a few at a time would protect the seat map on a very popular on-sale. The [load test](testing.md#load-testing) shows where the site would need it. At this venue's size it doesn't.
 
 ---
 

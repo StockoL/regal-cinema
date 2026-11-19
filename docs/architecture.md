@@ -316,7 +316,7 @@ Refunds (4.22) call Stripe's refund API directly and get an immediate response, 
 
 Once a booking is confirmed, the payments module looks up Stripe's balance transaction for the payment and stores `stripe_fee_pence` and `stripe_net_pence`. That happens after the commit, so if the lookup fails the booking still stands, and a later retry fills the fields. A dispute arrives as `charge.dispute.created`, and later `charge.dispute.closed`, through the same `StripeEvent` path as any other event. It sets `disputed_at`, writes an audit entry and shows a flag on the staff booking page. Nothing is cancelled automatically.
 
-There's one known limitation I'm not solving. A voucher's balance isn't held the way a seat is. If the same code were entered in two simultaneous checkouts, there's a narrow window where both could succeed against the same balance before either payment confirms. A voucher has to be typed in by hand, so this is unlikely and low in severity, and fixing it properly would need a second holding mechanism like `SeatHold`, which is out of proportion to the risk. It's listed under [Known issues](testing.md#9-known-issues).
+There's one known limitation I'm not solving. A voucher's balance isn't held the way a seat is. If the same code were entered in two simultaneous checkouts, there's a narrow window where both could succeed against the same balance before either payment confirms. A voucher has to be typed in by hand, so this is unlikely and low in severity, and fixing it properly would need a second holding mechanism like `SeatHold`, which is out of proportion to the risk. It's listed under [Known issues](testing.md#known-issues).
 
 ## 4.14 Payment methods and till reconciliation
 
