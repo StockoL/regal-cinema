@@ -204,3 +204,11 @@ if DEBUG:
 
 # Gmail when EMAIL_HOST_PASSWORD is set, the console otherwise.
 globals().update(email_settings(os.environ))
+
+
+# Payments (architecture 4.27)
+
+# Stripe in test mode. The test runner swaps in the fake provider.
+PAYMENT_PROVIDER = 'payments.stripe_provider.StripeProvider'
+STRIPE_SECRET_KEY = os.environ.get('STRIPE_SECRET_KEY', '')
+TEST_RUNNER = 'regal.test_runner.RegalTestRunner'
