@@ -48,6 +48,18 @@ class RegisterTests(TestCase):
         user = User.objects.get(email='new@example.com')
         self.assertEqual(int(self.client.session['_auth_user_id']), user.pk)
 
+    def test_registering_to_pay_goes_back_to_the_booking(self):
+        """The checkout page sends a visitor here with ?next= (4.16)."""
+        self.url = f'{reverse("accounts:register")}?next=/booking/RGL-ABCDE/'
+        response = self.register()
+        self.assertRedirects(response, '/booking/RGL-ABCDE/',
+                             fetch_redirect_response=False)
+
+    def test_next_cant_send_anyone_to_another_site(self):
+        self.url = f'{reverse("accounts:register")}?next=https://evil.example/'
+        response = self.register()
+        self.assertRedirects(response, reverse('screenings:screening_list'))
+
     def test_the_email_is_stored_in_lower_case(self):
         self.register(email='New.Person@Example.COM')
         self.assertTrue(
