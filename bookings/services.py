@@ -121,6 +121,9 @@ def seat_plan(screening, own_booking=None):
     if own_booking is not None:
         held = held.exclude(booking=own_booking)
     held = set(held.values_list('seat', flat=True))
+    held |= set(screening.seat_bookings.filter(
+        released_at__isnull=True
+    ).values_list('seat', flat=True))
     areas = []
     for area, name in ((Seat.Area.STALLS, 'Stalls'),
                        (Seat.Area.CIRCLE, 'Circle')):

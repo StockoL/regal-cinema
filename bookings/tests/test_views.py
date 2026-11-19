@@ -6,7 +6,7 @@ from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 
-from bookings.models import Booking, SeatHold
+from bookings.models import Booking, SeatBooking, SeatHold
 from screenings.models import (
     Film,
     Screen,
@@ -158,6 +158,16 @@ class SeatFormTests(TestCase):
             ticket_type=TicketType.objects.get(name='Adult'),
             session_key='someone-else',
             expires_at=timezone.now() + timedelta(minutes=10),
+        )
+        self.assertIn('disabled', self.seat_input(self.stalls[0]))
+        self.assertIn('Stalls, seat 1, sold', text_of(self.page()))
+
+    def test_a_sold_seat_shows_as_sold(self):
+        SeatBooking.objects.create(
+            booking=Booking.objects.create(screening=self.screening),
+            screening=self.screening, seat=self.stalls[0],
+            ticket_type=TicketType.objects.get(name='Adult'),
+            price_pence=950, vat_rate_percent=20,
         )
         self.assertIn('disabled', self.seat_input(self.stalls[0]))
         self.assertIn('Stalls, seat 1, sold', text_of(self.page()))
