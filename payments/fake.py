@@ -5,6 +5,7 @@ from .base import (
     CheckoutSession,
     InvalidSignature,
     PaymentProvider,
+    RefundFailed,
     WebhookEvent,
 )
 
@@ -15,11 +16,16 @@ class FakeProvider(PaymentProvider):
 
     sessions = {}
     by_key = {}
+    refunds = {}
+    # Set by a test to make every refund fail (4.32).
+    fail_refunds = False
 
     @classmethod
     def reset(cls):
         cls.sessions.clear()
         cls.by_key.clear()
+        cls.refunds.clear()
+        cls.fail_refunds = False
 
     def create_checkout_session(self, *, reference, amount_pence,
                                 description, success_url, cancel_url,
@@ -51,3 +57,15 @@ class FakeProvider(PaymentProvider):
         event = json.loads(payload)
         return WebhookEvent(id=event['id'], type=event['type'],
                             object=event['data']['object'])
+
+    def refund(self, *, payment_intent_id, amount_pence, idempotency_key):
+        if self.fail_refunds:
+            raise RefundFailed('The fake provider was told to fail.')
+        if idempotency_key not in self.by_key:
+            refund_id = f're_fake_{len(self.refunds) + 1}'
+            self.refunds[refund_id] = {
+                'payment_intent_id': payment_intent_id,
+                'amount_pence': amount_pence,
+            }
+            self.by_key[idempotency_key] = refund_id
+        return self.by_key[idempotency_key]

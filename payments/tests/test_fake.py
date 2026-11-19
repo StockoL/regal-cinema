@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 from django.test import SimpleTestCase, override_settings
 
 from payments import get_provider
-from payments.base import InvalidSignature, WebhookEvent
+from payments.base import InvalidSignature, RefundFailed, WebhookEvent
 from payments.fake import FakeProvider
 
 
@@ -71,3 +71,30 @@ class FakeWebhookTests(SimpleTestCase):
     def test_a_bad_signature_is_refused(self):
         with self.assertRaises(InvalidSignature):
             FakeProvider().parse_webhook(self.payload, 'forged')
+
+
+class FakeRefundTests(SimpleTestCase):
+    """Refunds through the fake, including one that fails (4.32)."""
+
+    def setUp(self):
+        FakeProvider.reset()
+
+    def refund(self, key='refund-1'):
+        return FakeProvider().refund(payment_intent_id='pi_1',
+                                     amount_pence=950, idempotency_key=key)
+
+    def test_a_refund_is_made_and_remembered(self):
+        refund_id = self.refund()
+        self.assertTrue(refund_id.startswith('re_fake_'))
+        self.assertEqual(FakeProvider.refunds[refund_id],
+                         {'payment_intent_id': 'pi_1', 'amount_pence': 950})
+
+    def test_the_same_key_refunds_once(self):
+        self.assertEqual(self.refund(), self.refund())
+        self.assertEqual(len(FakeProvider.refunds), 1)
+
+    def test_it_can_be_told_to_fail(self):
+        FakeProvider.fail_refunds = True
+        with self.assertRaises(RefundFailed):
+            self.refund()
+        self.assertEqual(FakeProvider.refunds, {})

@@ -8,6 +8,7 @@ from .base import (
     CheckoutSession,
     InvalidSignature,
     PaymentProvider,
+    RefundFailed,
     WebhookEvent,
 )
 
@@ -59,3 +60,14 @@ class StripeProvider(PaymentProvider):
             raise InvalidSignature() from None
         return WebhookEvent(id=event.id, type=event.type,
                             object=event.data.object.to_dict())
+
+    def refund(self, *, payment_intent_id, amount_pence, idempotency_key):
+        try:
+            refund = self.client.v1.refunds.create(
+                params={'payment_intent': payment_intent_id,
+                        'amount': amount_pence},
+                options={'idempotency_key': idempotency_key},
+            )
+        except stripe.StripeError as error:
+            raise RefundFailed(error.user_message or str(error)) from None
+        return refund.id

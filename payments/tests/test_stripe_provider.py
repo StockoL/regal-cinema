@@ -4,12 +4,13 @@ from datetime import datetime, timezone
 from types import SimpleNamespace
 from unittest import mock
 
+import stripe
 from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
 from django.test import SimpleTestCase, override_settings
 from stripe import WebhookSignature
 
-from payments.base import CheckoutSession, InvalidSignature
+from payments.base import CheckoutSession, InvalidSignature, RefundFailed
 from payments.stripe_provider import StripeProvider
 
 
@@ -116,3 +117,35 @@ class StripeWebhookTests(SimpleTestCase):
             StripeProvider().parse_webhook(
                 self.payload, self.signature('whsec_someone_else')
             )
+
+
+@override_settings(STRIPE_SECRET_KEY='sk_test_example')
+class StripeRefundTests(SimpleTestCase):
+    """Refunds against a stand-in client, so nothing leaves the
+    machine."""
+
+    def setUp(self):
+        patcher = mock.patch('payments.stripe_provider.stripe.StripeClient')
+        self.refunds = patcher.start().return_value.v1.refunds
+        self.addCleanup(patcher.stop)
+        self.refunds.create.return_value = SimpleNamespace(id='re_1')
+
+    def refund(self):
+        return StripeProvider().refund(payment_intent_id='pi_1',
+                                       amount_pence=950,
+                                       idempotency_key='refund-1')
+
+    def test_it_refunds_the_amount_against_the_payment(self):
+        self.assertEqual(self.refund(), 're_1')
+        self.refunds.create.assert_called_once_with(
+            params={'payment_intent': 'pi_1', 'amount': 950},
+            options={'idempotency_key': 'refund-1'},
+        )
+
+    def test_stripes_error_is_kept_as_the_reason(self):
+        self.refunds.create.side_effect = stripe.InvalidRequestError(
+            'Charge has already been refunded.', param=None,
+        )
+        with self.assertRaises(RefundFailed) as caught:
+            self.refund()
+        self.assertIn('already been refunded', str(caught.exception))

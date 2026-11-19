@@ -28,6 +28,11 @@ class InvalidSignature(Exception):
     be trusted (4.13)."""
 
 
+class RefundFailed(Exception):
+    """The provider refused a refund. The message is its reason, kept so
+    staff can see why (4.2, 4.32)."""
+
+
 class PaymentProvider(ABC):
     """What the site needs from a payment provider. Kept small, so a
     second provider could fit behind it (4.27). Amounts are integer
@@ -44,3 +49,8 @@ class PaymentProvider(ABC):
     def parse_webhook(self, payload, signature):
         """Check the webhook's signature and return a WebhookEvent, or
         raise InvalidSignature."""
+
+    @abstractmethod
+    def refund(self, *, payment_intent_id, amount_pence, idempotency_key):
+        """Refund part or all of a payment and return the refund's id,
+        or raise RefundFailed. The same idempotency_key refunds once."""
