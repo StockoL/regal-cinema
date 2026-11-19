@@ -1,3 +1,4 @@
+import hashlib
 from datetime import timedelta
 
 from django.conf import settings
@@ -5,9 +6,10 @@ from django.db import IntegrityError, transaction
 from django.db.models import Q
 from django.utils import timezone
 
-from .basket import check_basket
+from payments import get_provider
 from screenings.models import Seat
 
+from .basket import check_basket
 from .models import Booking, SeatBooking, SeatHold
 
 
@@ -151,6 +153,51 @@ def release_seats(booking):
     kept with released_at set, never deleted, so the sale stays on
     record (4.2, 4.8). Seats already released keep their first time."""
     booking.seats.live().update(released_at=timezone.now())
+
+
+class HoldsExpired(Exception):
+    """Some of the booking's seats are no longer held, so the customer
+    has to choose them again before paying."""
+
+
+# Stripe refuses a session that expires less than 30 minutes after it
+# receives the request, so the session asks for a minute more (4.13).
+CHECKOUT_SESSION_MINUTES = 31
+
+
+def start_payment(booking, success_url, cancel_url):
+    """The customer chose Pay (4.13 step 3). Ask the payment provider
+    for a Checkout Session for the total, store its id on the booking,
+    and extend the holds once to the session's expiry, so the seats
+    can't go to anyone else while the customer pays (4.8 step 5). The
+    idempotency key comes from the booking and its basket, so pressing
+    Pay twice gets the same session. Raises HoldsExpired."""
+    holds = list(booking.holds.live().select_related('ticket_type'))
+    if len(holds) != booking.seat_count:
+        raise HoldsExpired()
+    prices = {price.ticket_type_id: price.price_pence
+              for price in booking.screening.prices.all()}
+    total = sum(prices[hold.ticket_type_id] for hold in holds)
+    basket = sorted((hold.seat_id, hold.ticket_type_id) for hold in holds)
+    key = hashlib.sha256(
+        f'{booking.pk}:{basket}:{booking.infant_count}:{total}'.encode()
+    ).hexdigest()
+    tickets = 'ticket' if len(holds) == 1 else 'tickets'
+    session = get_provider().create_checkout_session(
+        reference=booking.reference, amount_pence=total,
+        description=f'{booking.screening.film.title}, '
+                    f'{len(holds)} {tickets}',
+        success_url=success_url, cancel_url=cancel_url,
+        expires_at=timezone.now() + timedelta(
+            minutes=CHECKOUT_SESSION_MINUTES
+        ),
+        idempotency_key=f'checkout-{key}',
+    )
+    with transaction.atomic():
+        booking.stripe_checkout_session_id = session.id
+        booking.save(update_fields=['stripe_checkout_session_id'])
+        booking.holds.update(expires_at=session.expires_at)
+    return session
 
 
 def seat_plan(screening, own_booking=None):
