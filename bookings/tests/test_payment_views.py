@@ -69,3 +69,13 @@ class PaymentNotCompletedTests(TestCase):
     def test_the_message_only_shows_after_stripe(self):
         self.assertNotContains(self.client.get(self.url),
                                'No payment was taken')
+
+    def test_the_page_shows_the_total(self):
+        """An Adult at £9.00 and a Child at £6.50."""
+        self.assertContains(self.client.get(self.url), 'Total £15.50')
+
+    def test_the_page_warns_against_a_real_card(self):
+        """Brief decision 12: it's a course project in test mode."""
+        response = self.client.get(self.url)
+        self.assertContains(response, 'Never enter a real card')
+        self.assertContains(response, '4242 4242 4242 4242')

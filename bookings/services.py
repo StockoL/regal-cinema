@@ -155,6 +155,15 @@ def release_seats(booking):
     booking.seats.live().update(released_at=timezone.now())
 
 
+def basket_total(booking, holds):
+    """What the customer pays for their held seats, in pence, at this
+    screening's prices. Food, discounts and vouchers join it as those
+    features arrive (4.10)."""
+    prices = {price.ticket_type_id: price.price_pence
+              for price in booking.screening.prices.all()}
+    return sum(prices[hold.ticket_type_id] for hold in holds)
+
+
 class HoldsExpired(Exception):
     """Some of the booking's seats are no longer held, so the customer
     has to choose them again before paying."""
@@ -175,9 +184,7 @@ def start_payment(booking, success_url, cancel_url):
     holds = list(booking.holds.live().select_related('ticket_type'))
     if len(holds) != booking.seat_count:
         raise HoldsExpired()
-    prices = {price.ticket_type_id: price.price_pence
-              for price in booking.screening.prices.all()}
-    total = sum(prices[hold.ticket_type_id] for hold in holds)
+    total = basket_total(booking, holds)
     basket = sorted((hold.seat_id, hold.ticket_type_id) for hold in holds)
     key = hashlib.sha256(
         f'{booking.pk}:{basket}:{booking.infant_count}:{total}'.encode()

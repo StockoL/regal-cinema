@@ -13,6 +13,7 @@ from .services import (
     HoldTimeUsedUp,
     SeatsUnavailable,
     amend_booking,
+    basket_total,
     cancel_pending_booking,
     seat_plan,
     start_booking,
@@ -218,6 +219,7 @@ def booking_checkout(request, reference):
         'booking': booking,
         'holds': holds,
         'held_until': min(expiries) if expiries else None,
+        'total_pence': basket_total(booking, holds),
         # Stripe's cancel link brings the customer back here (4.13 step 6).
         'not_completed': request.GET.get('payment') == 'not-completed',
     })
