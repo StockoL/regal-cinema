@@ -187,11 +187,12 @@ Paying with Stripe Checkout in test mode (journey 6).
 
 | ID | Feature | Steps | Expected | Result |
 | -- | ------- | ----- | -------- | ------ |
-| <a id="m22"></a>M22 | Log in to pay | Hold seats as a visitor and open the checkout page | Log in or create an account offered instead of Pay; after logging in, the same seats still held | Not run yet |
+| <a id="m22"></a>M22 | Log in to pay | Hold seats as a visitor and open the checkout page | Log in or create an account offered instead of Pay; after logging in, the same seats still held | Partly, 19 November: a visitor is offered log in or create an account, with no Pay button ([dev log](development_log.md#19-november-2026-paying-with-stripe-checkout)). Logging in with seats held not run yet |
 | <a id="m23"></a>M23 | Go to Stripe | As a customer, press Pay | Stripe's test page with the film, the number of tickets and the total from the checkout page | Partly, 19 November: Stripe's page showed "Paddington in Peru, 2 tickets" and £18.00. It also offered Klarna, Revolut Pay, Amazon Pay and Link, which have to be switched off in the Stripe dashboard ([Known issues](#known-issues)) |
 | <a id="m24"></a>M24 | Pay with the test card | Pay with 4242 4242 4242 4242, with `stripe listen` forwarding the webhook | "We're confirming your payment", then "Booking confirmed" with the reference and seats; the listener shows the event answered 200 | Not run yet: waits until screenings are created through the real flow ([Known issues](#known-issues)) |
-| <a id="m25"></a>M25 | Back out of Stripe | Press Pay, then the back link on Stripe's page | "No payment was taken", with the seats still held | Not run yet |
-| <a id="m26"></a>M26 | Test-card warning | Open the checkout page | The warning never to use a real card, with the test card number | Not run yet |
+| <a id="m25"></a>M25 | Back out of Stripe | Press Pay, then the back link on Stripe's page | "No payment was taken", with the seats still held | Partly, 19 November: the checkout page Stripe's back link returns to says "No payment was taken" with the seats held ([dev log](development_log.md#19-november-2026-paying-with-stripe-checkout)). Pressing the back link on Stripe's own page not run yet |
+| <a id="m26"></a>M26 | Test-card warning | Open the checkout page | The warning never to use a real card, with the test card number | Pass, 19 November ([dev log](development_log.md#19-november-2026-paying-with-stripe-checkout)) |
+| <a id="m31"></a>M31 | A signed webhook | Send the local site a `checkout.session.completed` event signed with the real webhook secret, for a pending booking and for one whose seat was sold first | The first booking confirmed; the second marked refunded, its refund sent to Stripe and its result stored | Pass, 19 November: both answered 200; the first was paid with its two seats; the second was refunded, and Stripe's test API refused the made-up payment, so the refund was stored as failed with "No such payment_intent" ([dev log](development_log.md#19-november-2026-paying-with-stripe-checkout)) |
 
 ### 5.5 Staff and the admin
 
@@ -286,6 +287,7 @@ Taken from the commit history and the development log. Each was found while buil
 | `fbac223` | Registering from the checkout page ignored where it was sent from, so a new customer lost their way back to their seats. `test_registering_to_pay_goes_back_to_the_booking`, and `test_next_cant_send_anyone_to_another_site` |
 | `1983569`, `b4232ae` | Stripe's page offered Klarna, Revolut Pay, Amazon Pay and Link as well as cards. Asking Stripe for card-only sessions made every Pay fail, as its API no longer accepts that, so it was undone; the methods are set in the Stripe dashboard instead. Found by a real test-mode payment |
 | `92741de` | Paying again after a session expired built the same idempotency key, so Stripe would have handed back the expired session and the customer could never pay. `test_paying_after_the_session_expired_gets_a_new_one` |
+| `7f80e4e` | Pay was a plain outlined button under a filled Cancel, so the page's main action looked weaker than letting the seats go. Found in a screenshot for the development log. `test_the_checkout_page_has_a_pay_button` |
 
 ### The overlap bug in full
 
