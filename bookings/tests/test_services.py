@@ -14,6 +14,7 @@ from bookings.services import (
     cancel_pending_booking,
     confirm_booking,
     hold_seats,
+    release_seats,
     start_booking,
 )
 from bookings.tests.test_holds import make_screening
@@ -253,6 +254,31 @@ class ConfirmBookingTests(TestCase):
         with self.assertRaises(SeatsLost):
             confirm_booking(self.booking)
         self.assertEqual(self.sold(), set())
+
+
+class ReleaseSeatsTests(TestCase):
+    """A cancelled or refunded booking's seats go back on sale at once,
+    and the sold rows stay on record (architecture 4.2, 4.8)."""
+
+    def setUp(self):
+        self.screening, (self.seat, _) = make_screening()
+        self.adult = TicketType.objects.get(name='Adult')
+        ScreeningPrice.objects.create(screening=self.screening,
+                                      ticket_type=self.adult, price_pence=950)
+        self.booking = confirm_booking(start_booking(
+            self.screening, [(self.seat, self.adult)], 0, 'session-a'
+        ))
+
+    def test_released_seats_can_be_held_again_and_keep_their_rows(self):
+        release_seats(self.booking)
+        hold_seats(self.screening, [(self.seat, self.adult)], 'session-b')
+        self.assertEqual(self.booking.seats.count(), 1)
+
+    def test_releasing_again_keeps_the_first_time(self):
+        release_seats(self.booking)
+        released_at = self.booking.seats.get().released_at
+        release_seats(self.booking)
+        self.assertEqual(self.booking.seats.get().released_at, released_at)
 
 
 class CancelPendingBookingTests(TestCase):

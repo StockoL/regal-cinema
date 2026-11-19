@@ -146,6 +146,13 @@ def confirm_booking(booking):
     return booking
 
 
+def release_seats(booking):
+    """Put a booking's sold seats back on sale at once. The rows are
+    kept with released_at set, never deleted, so the sale stays on
+    record (4.2, 4.8). Seats already released keep their first time."""
+    booking.seats.live().update(released_at=timezone.now())
+
+
 def seat_plan(screening, own_booking=None):
     """The seats a customer can see for a screening, area by area (the
     stalls, then the circle), each with how many grid columns it spans.
