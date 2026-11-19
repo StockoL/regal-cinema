@@ -1,0 +1,9 @@
+[flake8]
+# The settings the style check in docs/testing.md was run with, so that
+# `flake8` on its own gives the same result. Lines keep PEP 8's 79.
+exclude =
+    .git,
+    __pycache__,
+    .venv,
+    migrations,
+    staticfiles
