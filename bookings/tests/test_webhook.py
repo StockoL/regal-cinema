@@ -93,6 +93,17 @@ class WebhookTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(self.status(), Booking.Status.PENDING)
 
+    def test_a_session_that_expired_unpaid_books_nothing(self):
+        """4.13 step 6: the booking stays pending, and the event is
+        recorded so a repeat is ignored."""
+        response = self.send({
+            'id': 'evt_2', 'type': 'checkout.session.expired',
+            'data': {'object': {'id': 'cs_fake_1', 'status': 'expired'}},
+        })
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(self.status(), Booking.Status.PENDING)
+        self.assertTrue(StripeEvent.objects.filter(event_id='evt_2').exists())
+
     def test_a_plain_link_does_nothing(self):
         self.assertEqual(self.client.get(self.url).status_code, 405)
 
