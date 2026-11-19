@@ -74,18 +74,24 @@ class RegisterTests(TestCase):
         self.assertContains(
             response, 'An account with this email address already exists.'
         )
-        self.assertEqual(User.objects.count(), 1)
+        self.assertEqual(
+            User.objects.filter(email__iexact='taken@example.com').count(), 1
+        )
 
     def test_the_same_email_with_different_capitals_is_a_duplicate(self):
         """Journey 4, "Email case"."""
         User.objects.create_user('taken@example.com', 'a-long-password')
         self.register(email='Taken@Example.com')
-        self.assertEqual(User.objects.count(), 1)
+        self.assertEqual(
+            User.objects.filter(email__iexact='taken@example.com').count(), 1
+        )
 
     def test_the_passwords_must_match(self):
         response = self.register(confirm='a-different-password')
         self.assertEqual(response.status_code, 200)
-        self.assertFalse(User.objects.exists())
+        self.assertFalse(
+            User.objects.filter(email='new@example.com').exists()
+        )
 
     def test_errors_are_written_next_to_their_field(self):
         """LooseLeaf's renderer ties each error to its field (4.17)."""

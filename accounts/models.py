@@ -59,3 +59,14 @@ class User(AbstractUser):
     @property
     def email_verified(self):
         return self.email_verified_at is not None
+
+
+# The address can't receive mail: .invalid is reserved for exactly that.
+SYSTEM_USER_EMAIL = 'system@regal-cinema.invalid'
+
+
+def get_system_user():
+    """The seeded, inactive account named as the actor on audit entries
+    and refunds the site makes on its own (4.9). It has no usable
+    password, so nobody can log in as it."""
+    return User.objects.get(email=SYSTEM_USER_EMAIL)

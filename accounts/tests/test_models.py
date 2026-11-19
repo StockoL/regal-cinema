@@ -3,6 +3,8 @@ from django.db import IntegrityError
 from django.test import TestCase
 from django.utils import timezone
 
+from accounts.models import get_system_user
+
 User = get_user_model()
 
 
@@ -81,3 +83,17 @@ class UserModelTests(TestCase):
             'new@example.com', 'a-long-pw-1', email_verified_at=timezone.now()
         )
         self.assertTrue(user.email_verified)
+
+
+class SystemUserTests(TestCase):
+    """The account named on audit entries and refunds the site makes on
+    its own (architecture 4.9)."""
+
+    def test_it_exists_and_nobody_can_log_in_as_it(self):
+        user = get_system_user()
+        self.assertFalse(user.is_active)
+        self.assertFalse(user.has_usable_password())
+        self.assertFalse(user.is_staff)
+
+    def test_it_is_always_the_same_account(self):
+        self.assertEqual(get_system_user(), get_system_user())
