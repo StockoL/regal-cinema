@@ -7,6 +7,7 @@ from django.views.decorators.http import require_POST
 from screenings.models import Screening
 
 from .basket import BasketError
+from .handover import remember_booking
 from .models import Booking
 from .services import (
     HoldTimeUsedUp,
@@ -150,6 +151,7 @@ def screening_tickets(request, pk):
                 return seats_taken(request, screening, seats, taken.seats)
             else:
                 del request.session[session_key_for(screening)]
+                remember_booking(request, booking)
                 return redirect('bookings:booking_checkout',
                                 reference=booking.reference)
 
