@@ -22,7 +22,7 @@
     {% if user.is_authenticated %}
       <form method="post" action="{% url 'bookings:booking_pay' booking.reference %}">
         {% csrf_token %}
-        <button class="button" type="submit">Pay {{ total_pence|pounds }}</button>
+        <button class="button" type="submit" data-variant="primary">Pay {{ total_pence|pounds }}</button>
       </form>
     {% else %}
       <p>To pay, <a href="{% url 'accounts:login' %}?next={{ request.path|urlencode }}">log in</a> or <a href="{% url 'accounts:register' %}?next={{ request.path|urlencode }}">create an account</a>. Your seats stay held while you do.</p>

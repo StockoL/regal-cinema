@@ -85,7 +85,12 @@ class PayTests(TestCase):
     def test_the_checkout_page_has_a_pay_button(self):
         response = self.client.get(self.checkout)
         self.assertContains(response, f'action="{self.url}"')
-        self.assertContains(response, 'Pay £15.50')
+        self.assertContains(
+            response,
+            '<button class="button" type="submit" data-variant="primary">'
+            'Pay £15.50</button>',
+            html=True,
+        )
 
     def test_paying_goes_to_stripes_page(self):
         response = self.client.post(self.url)
