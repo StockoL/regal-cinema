@@ -528,6 +528,7 @@ regal-cinema/
 │   ├── staff_urls.py       staff routes, mounted under /staff/ (only where needed)
 │   ├── templates/<app>/    the app's own templates
 │   └── tests/              test_models.py, test_services.py, test_views.py
+├── payments/               the payments module (4.27): the interface, Stripe and the fake provider, with no models
 ├── templates/              base.html, shared partials, error pages
 ├── static/
 │   ├── css/                main.css and this project's own blocks, in LooseLeaf UI's layers
