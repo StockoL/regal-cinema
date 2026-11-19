@@ -221,6 +221,26 @@ def booking_checkout(request, reference):
     })
 
 
+def booking_confirming(request, reference):
+    """Where Stripe sends the customer back to. Coming back confirms
+    nothing: the booking is paid only once the webhook says so (4.13
+    step 4). Until then the page says it's still being confirmed."""
+    booking = (
+        Booking.objects.filter(owner_filter(request), reference=reference)
+        .exclude(status=Booking.Status.CANCELLED)
+        .select_related('screening__film').distinct().first()
+    )
+    if booking is None:
+        raise Http404('No such booking.')
+    seats = booking.seats.live().select_related('seat', 'ticket_type')
+    return render(request, 'bookings/booking_confirming.html', {
+        'booking': booking,
+        'paid': booking.status == Booking.Status.PAID,
+        'seats': seats.order_by('-seat__area', 'seat__row_index',
+                                'seat__column_index'),
+    })
+
+
 @require_POST
 def booking_cancel(request, reference):
     """Let the held seats go now (journey 2, "Cancel")."""

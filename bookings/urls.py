@@ -13,4 +13,6 @@ urlpatterns = [
          name='booking_checkout'),
     path('booking/<str:reference>/cancel/', views.booking_cancel,
          name='booking_cancel'),
+    path('booking/<str:reference>/confirming/', views.booking_confirming,
+         name='booking_confirming'),
 ]

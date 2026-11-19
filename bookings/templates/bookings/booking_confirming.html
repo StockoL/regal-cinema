@@ -1,0 +1,26 @@
+{% extends 'base.html' %}
+
+{% block title %}{% if paid %}Booking confirmed{% else %}Confirming your payment{% endif %}{% endblock %}
+
+{% block content %}
+<div class="wrapper region">
+  <div class="center flow">
+    {% if paid %}
+      <h1>Booking confirmed</h1>
+      <p>Booking reference <strong>{{ booking.reference }}</strong>. Show it at the door, or read it out at the box office.</p>
+      <p>{{ booking.screening.film.title }}, {{ booking.screening.date_time|date:"l j F" }} at {{ booking.screening.date_time|time:"g:i a" }}</p>
+      <ul class="flow" role="list">
+        {% for sold in seats %}
+          <li>{{ sold.seat.label }}, {{ sold.ticket_type.name }}</li>
+        {% endfor %}
+        {% if booking.infant_count %}<li>{{ booking.infant_count }} under 2{{ booking.infant_count|pluralize }}, on a lap</li>{% endif %}
+      </ul>
+    {% else %}
+      <h1>We're confirming your payment</h1>
+      <p>This usually takes a few seconds.</p>
+      <p>Booking reference {{ booking.reference }}</p>
+      <p><a href="{% url 'bookings:booking_confirming' booking.reference %}">Check again</a></p>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
