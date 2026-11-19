@@ -288,6 +288,7 @@ Taken from the commit history and the development log. Each was found while buil
 | `1983569`, `b4232ae` | Stripe's page offered Klarna, Revolut Pay, Amazon Pay and Link as well as cards. Asking Stripe for card-only sessions made every Pay fail, as its API no longer accepts that, so it was undone; the methods are set in the Stripe dashboard instead. Found by a real test-mode payment |
 | `92741de` | Paying again after a session expired built the same idempotency key, so Stripe would have handed back the expired session and the customer could never pay. `test_paying_after_the_session_expired_gets_a_new_one` |
 | `7f80e4e` | Pay was a plain outlined button under a filled Cancel, so the page's main action looked weaker than letting the seats go. Found in a screenshot for the development log. `test_the_checkout_page_has_a_pay_button` |
+| `1eb564e`, `676aac9` | Tickets that need proof, such as Student or Companion, didn't say so at checkout or on the confirmation, though journey 2 and 4.2 ask for it. Found in a screenshot for the development log. `test_checkout_reminds_them_beside_the_ticket` and `test_the_confirmation_reminds_them_too` |
 
 ### The overlap bug in full
 
