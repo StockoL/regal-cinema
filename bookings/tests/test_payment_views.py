@@ -48,6 +48,15 @@ class ConfirmingPageTests(TestCase):
         self.client.logout()
         self.assertEqual(self.client.get(self.url).status_code, 404)
 
+    def test_a_late_payment_says_it_was_refunded(self):
+        """Journey 6, "Payment after seats lost": the customer is told."""
+        self.booking.status = Booking.Status.REFUNDED
+        self.booking.amount_charged_pence = 1550
+        self.booking.save()
+        response = self.client.get(self.url)
+        self.assertContains(response, 'refunding the £15.50 you paid')
+        self.assertNotContains(response, "We're confirming your payment")
+
 
 @override_settings(SEAT_HOLD_MINUTES=10)
 class PayTests(TestCase):

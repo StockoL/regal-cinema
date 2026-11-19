@@ -1,6 +1,7 @@
 {% extends 'base.html' %}
+{% load screenings_extras %}
 
-{% block title %}{% if paid %}Booking confirmed{% else %}Confirming your payment{% endif %}{% endblock %}
+{% block title %}{% if paid %}Booking confirmed{% elif refunded %}We're refunding your payment{% else %}Confirming your payment{% endif %}{% endblock %}
 
 {% block content %}
 <div class="wrapper region">
@@ -15,6 +16,11 @@
         {% endfor %}
         {% if booking.infant_count %}<li>{{ booking.infant_count }} under 2{{ booking.infant_count|pluralize }}, on a lap</li>{% endif %}
       </ul>
+    {% elif refunded %}
+      <h1>We're refunding your payment</h1>
+      <p>We're sorry: your seats were sold to someone else before your payment reached us, so we're refunding the {{ booking.amount_charged_pence|pounds }} you paid. Card refunds usually take 5 to 10 working days to appear.</p>
+      <p>Booking reference {{ booking.reference }}</p>
+      <p><a href="{% url 'bookings:screening_seats' booking.screening.pk %}">Choose other seats</a></p>
     {% else %}
       <h1>We're confirming your payment</h1>
       <p>This usually takes a few seconds.</p>

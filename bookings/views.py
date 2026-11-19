@@ -272,6 +272,8 @@ def booking_confirming(request, reference):
     return render(request, 'bookings/booking_confirming.html', {
         'booking': booking,
         'paid': booking.status == Booking.Status.PAID,
+        # Paid after the seats had gone, and refunded (4.13).
+        'refunded': booking.status == Booking.Status.REFUNDED,
         'seats': seats.order_by('-seat__area', 'seat__row_index',
                                 'seat__column_index'),
     })
