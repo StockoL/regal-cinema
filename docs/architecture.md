@@ -264,7 +264,7 @@ A voucher can never take a booking below £0. Any unused balance stays on the vo
 
 Prices include VAT. Reports and exports show net, VAT and gross, worked out per ticket and per food line from the snapshotted rate with `Decimal` and `ROUND_HALF_UP`, then added up, so the totals always match the lines. Rates are data, never written into the code. I haven't checked which rate applies to which food and drink, so the rates are a starting point and the docs make no claim to be VAT advice.
 
-An earlier version of this design also had a staff discretionary discount, which I've moved to [Marketing development thoughts](future_ideas.md) as a future idea. Promo codes came back in once a venue asked for them, with the rule that they don't stack with membership. There's no booking fee (8.4).
+An earlier version of this design also had a staff discretionary discount, which I've moved to [Marketing development thoughts](future_ideas.md) as a future idea. Promo codes are back in scope, with the rule that they don't stack with membership. There's no booking fee (8.4).
 
 ## 4.11 Business rule: screening cancellation
 
