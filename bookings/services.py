@@ -8,7 +8,7 @@ from django.utils import timezone
 from .basket import check_basket
 from screenings.models import Seat
 
-from .models import Booking, SeatHold
+from .models import Booking, SeatBooking, SeatHold
 
 
 class SeatsUnavailable(Exception):
@@ -101,6 +101,44 @@ def start_booking(screening, choices, infants, session_key, user=None):
         SeatHold.objects.filter(pk__in=[hold.pk for hold in holds]).update(
             booking=booking
         )
+    return booking
+
+
+class SeatsLost(Exception):
+    """Another sale took one of the booking's seats, so none of them
+    were sold. Once payments arrive, this is the automatic refund path
+    (4.13)."""
+
+
+def confirm_booking(booking):
+    """Everything that happens together when a booking is paid, in one
+    transaction: its holds become SeatBooking rows at this screening's
+    prices, with the VAT rate snapshotted, and the booking is marked
+    paid. Calling it again for a paid booking changes nothing (4.32).
+    Raises SeatsLost, and saves nothing, if any seat has gone."""
+    with transaction.atomic():
+        booking = Booking.objects.select_for_update().get(pk=booking.pk)
+        if booking.status != Booking.Status.PENDING:
+            return booking
+        prices = {price.ticket_type_id: price.price_pence
+                  for price in booking.screening.prices.all()}
+        holds = list(booking.holds.select_related('ticket_type'))
+        try:
+            with transaction.atomic():
+                SeatBooking.objects.bulk_create([
+                    SeatBooking(
+                        booking=booking, screening=booking.screening,
+                        seat=hold.seat, ticket_type=hold.ticket_type,
+                        price_pence=prices[hold.ticket_type_id],
+                        vat_rate_percent=hold.ticket_type.vat_rate_percent,
+                    )
+                    for hold in holds
+                ])
+        except IntegrityError:
+            raise SeatsLost() from None
+        booking.holds.all().delete()
+        booking.status = Booking.Status.PAID
+        booking.save(update_fields=['status'])
     return booking
 
 

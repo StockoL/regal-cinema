@@ -8,14 +8,21 @@ from bookings.basket import BasketError
 from bookings.models import Booking, SeatBooking, SeatHold
 from bookings.services import (
     HoldTimeUsedUp,
+    SeatsLost,
     SeatsUnavailable,
     amend_booking,
     cancel_pending_booking,
+    confirm_booking,
     hold_seats,
     start_booking,
 )
 from bookings.tests.test_holds import make_screening
-from screenings.models import ScreeningClosedArea, Seat, TicketType
+from screenings.models import (
+    ScreeningClosedArea,
+    ScreeningPrice,
+    Seat,
+    TicketType,
+)
 
 
 @override_settings(SEAT_HOLD_MINUTES=10)
@@ -175,6 +182,60 @@ class StartBookingTests(TestCase):
                         (self.seat_2, self.adult)])
         self.assertFalse(Booking.objects.exists())
         self.assertEqual(SeatHold.objects.count(), 1)
+
+
+class ConfirmBookingTests(TestCase):
+    """Turning a pending booking's holds into sold seats, all at once
+    and only once (architecture 4.32, "One confirmation function")."""
+
+    def setUp(self):
+        self.screening, (self.seat_1, self.seat_2) = make_screening()
+        self.adult = TicketType.objects.get(name='Adult')
+        self.student = TicketType.objects.get(name='Student')
+        ScreeningPrice.objects.create(screening=self.screening,
+                                      ticket_type=self.adult, price_pence=950)
+        ScreeningPrice.objects.create(screening=self.screening,
+                                      ticket_type=self.student,
+                                      price_pence=750)
+        self.booking = start_booking(
+            self.screening,
+            [(self.seat_1, self.adult), (self.seat_2, self.student)],
+            0, 'session-a',
+        )
+
+    def sold(self):
+        return {(s.seat, s.ticket_type, s.price_pence, s.vat_rate_percent)
+                for s in SeatBooking.objects.filter(booking=self.booking)}
+
+    def test_holds_become_sold_seats_at_this_screenings_prices(self):
+        confirm_booking(self.booking)
+        self.assertEqual(self.sold(), {
+            (self.seat_1, self.adult, 950, 20),
+            (self.seat_2, self.student, 750, 20),
+        })
+        self.booking.refresh_from_db()
+        self.assertEqual(self.booking.status, Booking.Status.PAID)
+        self.assertFalse(self.booking.holds.exists())
+
+    def test_confirming_twice_changes_nothing(self):
+        confirm_booking(self.booking)
+        confirm_booking(self.booking)
+        self.assertEqual(len(self.sold()), 2)
+
+    def test_a_lost_seat_saves_nothing(self):
+        """Another sale got one of the seats first, so none of this
+        booking's seats are sold and it stays pending."""
+        SeatBooking.objects.create(
+            booking=Booking.objects.create(screening=self.screening),
+            screening=self.screening, seat=self.seat_2,
+            ticket_type=self.adult, price_pence=950, vat_rate_percent=20,
+        )
+        with self.assertRaises(SeatsLost):
+            confirm_booking(self.booking)
+        self.assertEqual(self.sold(), set())
+        self.booking.refresh_from_db()
+        self.assertEqual(self.booking.status, Booking.Status.PENDING)
+        self.assertEqual(self.booking.holds.count(), 2)
 
 
 class CancelPendingBookingTests(TestCase):
