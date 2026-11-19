@@ -117,6 +117,9 @@ class Booking(models.Model):
     )
     # Under 2s, free and on a lap, so they have no seat (4.2).
     infant_count = models.PositiveSmallIntegerField(default=0)
+    # How many seats the customer chose, so confirming can tell if a
+    # hold ran out and its seat went to someone else (4.32).
+    seat_count = models.PositiveSmallIntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

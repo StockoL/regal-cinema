@@ -160,6 +160,7 @@ class StartBookingTests(TestCase):
                              user=user)
         self.assertEqual(booking.status, Booking.Status.PENDING)
         self.assertEqual((booking.user, booking.infant_count), (user, 1))
+        self.assertEqual(booking.seat_count, 2)
         self.assertEqual(
             {(h.seat, h.ticket_type) for h in booking.holds.all()},
             {(self.seat_1, self.adult), (self.seat_2, self.child)},
@@ -237,6 +238,14 @@ class ConfirmBookingTests(TestCase):
         self.assertEqual(self.booking.status, Booking.Status.PENDING)
         self.assertEqual(self.booking.holds.count(), 2)
 
+    def test_a_hold_that_ran_out_and_went_to_someone_else_saves_nothing(self):
+        """The expired hold was cleared and the seat held by another
+        customer, so the booking has fewer holds than seats."""
+        self.booking.holds.filter(seat=self.seat_2).delete()
+        with self.assertRaises(SeatsLost):
+            confirm_booking(self.booking)
+        self.assertEqual(self.sold(), set())
+
 
 class CancelPendingBookingTests(TestCase):
 
@@ -295,6 +304,12 @@ class AmendBookingTests(TestCase):
         self.booking.refresh_from_db()
         self.assertEqual(self.booking.infant_count, 2)
         self.assertIn((self.seat_1, self.student), self.held())
+
+    def test_the_seat_count_follows_the_amendment(self):
+        self.amend([(self.seat_1, self.adult), (self.seat_2, self.adult),
+                    (self.seat_3, self.adult)])
+        self.booking.refresh_from_db()
+        self.assertEqual(self.booking.seat_count, 3)
 
     def test_each_change_restarts_the_timer(self):
         SeatHold.objects.update(expires_at=timezone.now() + timedelta(

@@ -97,6 +97,7 @@ def start_booking(screening, choices, infants, session_key, user=None):
         holds = hold_seats(screening, choices, session_key, user=user)
         booking = Booking.objects.create(
             screening=screening, user=user, infant_count=infants,
+            seat_count=len(choices),
         )
         SeatHold.objects.filter(pk__in=[hold.pk for hold in holds]).update(
             booking=booking
@@ -123,6 +124,8 @@ def confirm_booking(booking):
         prices = {price.ticket_type_id: price.price_pence
                   for price in booking.screening.prices.all()}
         holds = list(booking.holds.select_related('ticket_type'))
+        if len(holds) != booking.seat_count:
+            raise SeatsLost()
         try:
             with transaction.atomic():
                 SeatBooking.objects.bulk_create([
@@ -236,7 +239,8 @@ def amend_booking(booking, choices, infants, session_key, user=None):
                 pk__in=[hold.pk for hold in holds]
             ).update(booking=booking)
         booking.infant_count = infants
-        booking.save(update_fields=['infant_count'])
+        booking.seat_count = len(choices)
+        booking.save(update_fields=['infant_count', 'seat_count'])
     return booking
 
 
