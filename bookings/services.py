@@ -12,6 +12,7 @@ from payments.base import FeeUnavailable, RefundFailed
 from screenings.models import Seat
 
 from .basket import check_basket
+from .emails import queue_booking_confirmation
 from .models import Booking, Refund, SeatBooking, SeatHold
 
 
@@ -147,6 +148,7 @@ def confirm_booking(booking):
         booking.status = Booking.Status.PAID
         booking.paid_at = timezone.now()
         booking.save(update_fields=['status', 'paid_at'])
+        queue_booking_confirmation(booking)
     return booking
 
 
