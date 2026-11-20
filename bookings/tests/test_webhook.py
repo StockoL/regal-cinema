@@ -7,6 +7,7 @@ from accounts.models import get_system_user
 from bookings.models import Booking, Refund, StripeEvent
 from bookings.services import confirm_booking, start_booking
 from bookings.tests.test_holds import make_screening
+from payments.base import PaymentFee
 from payments.fake import FakeProvider
 from screenings.models import ScreeningPrice, TicketType
 
@@ -210,3 +211,43 @@ class DuplicatePaymentTests(TestCase):
     def test_the_same_payment_again_refunds_nothing(self):
         self.send(completed('cs_fake_1', event_id='evt_2'))
         self.assertFalse(self.booking.refunds.exists())
+
+
+class PaymentFeeTests(TestCase):
+    """What Stripe kept is stored on the booking after it's confirmed,
+    and a lookup that fails never undoes the booking (architecture
+    4.13)."""
+
+    def setUp(self):
+        FakeProvider.reset()
+        screening, (seat, _) = make_screening()
+        adult = TicketType.objects.get(name='Adult')
+        ScreeningPrice.objects.create(screening=screening, ticket_type=adult,
+                                      price_pence=950)
+        self.booking = start_booking(screening, [(seat, adult)], 0, 'a')
+        self.booking.stripe_checkout_session_id = 'cs_fake_1'
+        self.booking.save()
+
+    def send(self):
+        payload = json.dumps(completed('cs_fake_1')).encode()
+        with self.captureOnCommitCallbacks(execute=True):
+            response = self.client.post(
+                WebhookTests.url, payload, content_type='application/json',
+                HTTP_STRIPE_SIGNATURE=FakeProvider.sign(payload),
+            )
+        self.booking.refresh_from_db()
+        return response
+
+    def test_the_fee_and_net_are_stored(self):
+        FakeProvider.fees['pi_1'] = PaymentFee(fee_pence=34, net_pence=916)
+        self.send()
+        self.assertEqual(
+            (self.booking.stripe_fee_pence, self.booking.stripe_net_pence),
+            (34, 916),
+        )
+
+    def test_a_failed_lookup_leaves_the_booking_paid(self):
+        response = self.send()
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(self.booking.status, Booking.Status.PAID)
+        self.assertIsNone(self.booking.stripe_fee_pence)
