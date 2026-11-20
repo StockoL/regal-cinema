@@ -122,6 +122,24 @@ class PayTests(TestCase):
         self.assertContains(response, 'Your hold on these seats ran out')
         self.assertEqual(FakeProvider.sessions, {})
 
+    def test_a_timeout_confirms_nothing(self):
+        """Named in the testing doc's failure modes (4.32): Stripe can't
+        be reached, so the customer stays on checkout with their seats
+        and can try again."""
+        FakeProvider.fail_checkout = True
+        held_until = set(self.booking.holds.values_list('expires_at',
+                                                        flat=True))
+        response = self.client.post(self.url, follow=True)
+        self.assertRedirects(response, self.checkout)
+        self.assertContains(response, 'reach the payment provider')
+        self.booking.refresh_from_db()
+        self.assertEqual(self.booking.status, Booking.Status.PENDING)
+        self.assertIsNone(self.booking.stripe_checkout_session_id)
+        self.assertEqual(
+            set(self.booking.holds.values_list('expires_at', flat=True)),
+            held_until,
+        )
+
     def test_a_visitor_who_isnt_logged_in_cant_pay(self):
         self.client.logout()
         response = self.client.post(self.url)
