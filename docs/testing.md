@@ -12,6 +12,7 @@ I'm building test-first. For each journey step I write a test from its Given/Whe
 - [2. HTML and CSS validation](#2-html-and-css-validation)
 - [3. Lighthouse scores](#3-lighthouse-scores)
 - [4. Automated tests](#4-automated-tests)
+  - [Query counts](#query-counts)
   - [Failure modes](#failure-modes)
   - [Load testing](#load-testing)
 - [5. Manual tests](#5-manual-tests)
@@ -103,6 +104,15 @@ The suite has 444 tests, run on 19 November 2026 at `92741de`; all passed. The t
 | `screenings/tests/test_views.py` | 21 | The base template's landmarks, skip link and footer, and What's on by day |
 
 To run them, see [Local deployment](../README.md#local-deployment) in the README.
+
+### Query counts
+
+Fixed with `assertNumQueries`, so a page that starts querying per seat or per row fails its test (4.33).
+
+| Page | Queries | What they are | Test |
+| ---- | ------- | ------------- | ---- |
+| A screening's seat map, for a visitor | 5 | The screening, any booking of theirs, the closed areas, live holds and live sales. The room's seats come from the cache, and nearly thirty times as many seats make no more queries | `test_the_seat_map_page_makes_a_fixed_number_of_queries`, `test_a_bigger_room_makes_no_more_queries` |
+| A layout's seats, cached | 0 | Served from the cache until a seat or layout of the screen changes | `test_the_second_call_makes_no_query` |
 
 ### Failure modes
 

@@ -1,6 +1,8 @@
 from datetime import datetime
+from unittest import mock
 from zoneinfo import ZoneInfo
 
+from django.core.cache import cache
 from django.test import TestCase
 
 from screenings.models import (
@@ -8,11 +10,12 @@ from screenings.models import (
     Screen,
     Screening,
     ScreeningPrice,
+    Seat,
     SeatingLayout,
     TicketClass,
     TicketType,
 )
-from screenings.services import fill_prices
+from screenings.services import fill_prices, layout_seats
 
 
 class FillPricesTests(TestCase):
@@ -73,3 +76,63 @@ class FillPricesTests(TestCase):
         screening = self.screening(ticket_class=live)
         fill_prices(screening)
         self.assertEqual(self.prices(screening), {'Companion': 0})
+
+
+class LayoutSeatsTests(TestCase):
+    """A layout's seats are cached, and any change to a seat or layout
+    clears the cache (architecture 4.33; brief decision 97)."""
+
+    def setUp(self):
+        cache.clear()
+        self.screen = Screen.objects.create(name='Screen 1')
+        self.layout = SeatingLayout.objects.create(screen=self.screen,
+                                                   name='Rows')
+        self.stalls = self.seat(number=1, layout=self.layout)
+        self.circle = self.seat(number=2, area=Seat.Area.CIRCLE,
+                                row_label='A')
+
+    def seat(self, number, layout=None, area=Seat.Area.STALLS, **fields):
+        return Seat.objects.create(
+            screen=self.screen, layout=layout, area=area, number=number,
+            row_index=0, column_index=number, **fields,
+        )
+
+    def seats(self):
+        return layout_seats(self.screen.pk, self.layout.pk)
+
+    def test_fixed_and_layout_seats_in_use_in_grid_order(self):
+        self.seat(number=3, layout=self.layout, is_active=False)
+        other = SeatingLayout.objects.create(screen=self.screen,
+                                             name='Tables')
+        self.seat(number=4, layout=other)
+        self.assertEqual(self.seats(), [self.stalls, self.circle])
+
+    def test_the_second_call_makes_no_query(self):
+        self.seats()
+        with self.assertNumQueries(0):
+            self.seats()
+
+    def test_changing_a_seat_clears_it(self):
+        self.seats()
+        self.stalls.is_active = False
+        self.stalls.save()
+        self.assertEqual(self.seats(), [self.circle])
+
+    def test_a_new_fixed_seat_reaches_every_layout(self):
+        self.seats()
+        added = self.seat(number=5, area=Seat.Area.CIRCLE, row_label='A')
+        self.assertIn(added, self.seats())
+
+    def test_deleting_a_seat_clears_it(self):
+        self.seats()
+        self.circle.delete()
+        self.assertEqual(self.seats(), [self.stalls])
+
+    def test_a_cached_layout_lasts_a_minute_at_most(self):
+        """Each of Render's two workers has its own cache, and a change
+        clears only the one that made it, so the other's copy expires
+        on its own (4.34)."""
+        with mock.patch('screenings.services.cache') as fake_cache:
+            fake_cache.get.return_value = None
+            self.seats()
+        self.assertEqual(fake_cache.set.call_args.args[2], 60)

@@ -2,6 +2,7 @@ import re
 from datetime import timedelta
 
 from django.contrib.auth import get_user_model
+from django.core.cache import cache
 from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
@@ -618,3 +619,45 @@ class SeatMapRoomTests(TestCase):
         room = room[:room.index('</form>')]
         self.assertLess(room.index('Screen'), room.index('>Stalls<'))
         self.assertLess(room.index('>Stalls<'), room.index('>Circle<'))
+
+
+class SeatMapQueryTests(TestCase):
+    """The seat map page's queries are fixed, whatever the size of the
+    room, so a busier on-sale doesn't make it slower (architecture
+    4.33)."""
+
+    def setUp(self):
+        self.screening = make_future_screening()
+        self.url = reverse('bookings:screening_seats',
+                           args=[self.screening.pk])
+        self.add_seats(range(1, 3))
+        cache.clear()
+
+    def add_seats(self, numbers):
+        for number in numbers:
+            Seat.objects.create(
+                screen=self.screening.screen, layout=self.screening.layout,
+                area=Seat.Area.STALLS, number=number, row_index=0,
+                column_index=number,
+            )
+
+    def test_the_seat_map_page_makes_a_fixed_number_of_queries(self):
+        """Five once the room's layout is cached: the screening, any
+        booking of theirs, the closed areas, live holds and live sales."""
+        self.client.get(self.url)
+        with self.assertNumQueries(5):
+            self.client.get(self.url)
+
+    def test_a_bigger_room_makes_no_more_queries(self):
+        self.add_seats(range(3, 60))
+        self.client.get(self.url)
+        with self.assertNumQueries(5):
+            self.client.get(self.url)
+
+    def test_a_seat_taken_out_of_use_goes_at_once(self):
+        self.client.get(self.url)
+        seat = Seat.objects.get(number=1)
+        seat.is_active = False
+        seat.save()
+        html = self.client.get(self.url).content.decode()
+        self.assertNotIn(f'value="{seat.pk}"', html)
