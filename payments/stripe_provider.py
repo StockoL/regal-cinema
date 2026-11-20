@@ -10,6 +10,7 @@ from .base import (
     InvalidSignature,
     PaymentFee,
     PaymentProvider,
+    PaymentUnavailable,
     RefundFailed,
     WebhookEvent,
 )
@@ -30,23 +31,26 @@ class StripeProvider(PaymentProvider):
     def create_checkout_session(self, *, reference, amount_pence,
                                 description, success_url, cancel_url,
                                 expires_at, idempotency_key):
-        session = self.client.v1.checkout.sessions.create(
-            params={
-                'mode': 'payment',
-                'client_reference_id': reference,
-                'line_items': [{
-                    'quantity': 1,
-                    'price_data': {
-                        'currency': 'gbp', 'unit_amount': amount_pence,
-                        'product_data': {'name': description},
-                    },
-                }],
-                'success_url': success_url,
-                'cancel_url': cancel_url,
-                'expires_at': int(expires_at.timestamp()),
-            },
-            options={'idempotency_key': idempotency_key},
-        )
+        try:
+            session = self.client.v1.checkout.sessions.create(
+                params={
+                    'mode': 'payment',
+                    'client_reference_id': reference,
+                    'line_items': [{
+                        'quantity': 1,
+                        'price_data': {
+                            'currency': 'gbp', 'unit_amount': amount_pence,
+                            'product_data': {'name': description},
+                        },
+                    }],
+                    'success_url': success_url,
+                    'cancel_url': cancel_url,
+                    'expires_at': int(expires_at.timestamp()),
+                },
+                options={'idempotency_key': idempotency_key},
+            )
+        except (stripe.APIConnectionError, stripe.RateLimitError) as error:
+            raise PaymentUnavailable(str(error)) from None
         return checkout_session(session)
 
     def get_checkout_session(self, session_id):

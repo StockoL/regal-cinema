@@ -15,6 +15,7 @@ from payments.base import (
     FeeUnavailable,
     InvalidSignature,
     PaymentFee,
+    PaymentUnavailable,
     RefundFailed,
 )
 from payments.stripe_provider import StripeProvider
@@ -98,6 +99,13 @@ class StripeProviderTests(SimpleTestCase):
                 session = StripeProvider().get_checkout_session('cs_test_1')
                 self.sessions.retrieve.assert_called_with('cs_test_1')
                 self.assertEqual(session.is_open, is_open)
+
+    def test_a_timeout_says_stripe_cant_be_reached(self):
+        self.sessions.create.side_effect = stripe.APIConnectionError(
+            'Request timed out.'
+        )
+        with self.assertRaises(PaymentUnavailable):
+            self.create()
 
     def test_it_returns_the_session(self):
         self.assertEqual(self.create(), CheckoutSession(
