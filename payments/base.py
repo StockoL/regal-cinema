@@ -26,6 +26,20 @@ class WebhookEvent:
     object: dict
 
 
+@dataclass(frozen=True)
+class PaymentFee:
+    """What the provider kept from a payment, and what reached the
+    venue, in pence."""
+
+    fee_pence: int
+    net_pence: int
+
+
+class FeeUnavailable(Exception):
+    """The provider couldn't say what it kept yet. The booking stands,
+    and a later try fills the fee in (4.13)."""
+
+
 class InvalidSignature(Exception):
     """A webhook that wasn't signed by the provider. Nothing in it can
     be trusted (4.13)."""
@@ -61,3 +75,8 @@ class PaymentProvider(ABC):
     def refund(self, *, payment_intent_id, amount_pence, idempotency_key):
         """Refund part or all of a payment and return the refund's id,
         or raise RefundFailed. The same idempotency_key refunds once."""
+
+    @abstractmethod
+    def payment_fee(self, payment_intent_id):
+        """Return the PaymentFee for a payment, or raise
+        FeeUnavailable."""

@@ -6,7 +6,9 @@ from django.core.exceptions import ImproperlyConfigured
 
 from .base import (
     CheckoutSession,
+    FeeUnavailable,
     InvalidSignature,
+    PaymentFee,
     PaymentProvider,
     RefundFailed,
     WebhookEvent,
@@ -72,6 +74,21 @@ class StripeProvider(PaymentProvider):
         except stripe.StripeError as error:
             raise RefundFailed(error.user_message or str(error)) from None
         return refund.id
+
+    def payment_fee(self, payment_intent_id):
+        try:
+            intent = self.client.v1.payment_intents.retrieve(
+                payment_intent_id,
+                params={'expand': ['latest_charge.balance_transaction']},
+            )
+        except stripe.StripeError as error:
+            raise FeeUnavailable(str(error)) from None
+        charge = intent.latest_charge
+        transaction = charge.balance_transaction if charge else None
+        if transaction is None or isinstance(transaction, str):
+            raise FeeUnavailable('The payment has not settled yet.')
+        return PaymentFee(fee_pence=transaction.fee,
+                          net_pence=transaction.net)
 
 
 def checkout_session(session):
