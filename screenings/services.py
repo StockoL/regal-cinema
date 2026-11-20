@@ -24,6 +24,11 @@ def fill_prices(screening):
         )
 
 
+# Each of Render's workers has its own cache, and a change clears only
+# the one that made it, so a copy never lasts longer than this (4.34).
+LAYOUT_CACHE_SECONDS = 60
+
+
 def layout_cache_key(screen_id, layout_id):
     return f'seat-layout:{screen_id}:{layout_id}'
 
@@ -40,7 +45,7 @@ def layout_seats(screen_id, layout_id):
             Q(layout__isnull=True) | Q(layout=layout_id),
             screen=screen_id, is_active=True,
         ).order_by('row_index', 'column_index'))
-        cache.set(key, seats, None)
+        cache.set(key, seats, LAYOUT_CACHE_SECONDS)
     return seats
 
 

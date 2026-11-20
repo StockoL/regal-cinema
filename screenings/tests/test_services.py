@@ -1,4 +1,5 @@
 from datetime import datetime
+from unittest import mock
 from zoneinfo import ZoneInfo
 
 from django.core.cache import cache
@@ -126,3 +127,12 @@ class LayoutSeatsTests(TestCase):
         self.seats()
         self.circle.delete()
         self.assertEqual(self.seats(), [self.stalls])
+
+    def test_a_cached_layout_lasts_a_minute_at_most(self):
+        """Each of Render's two workers has its own cache, and a change
+        clears only the one that made it, so the other's copy expires
+        on its own (4.34)."""
+        with mock.patch('screenings.services.cache') as fake_cache:
+            fake_cache.get.return_value = None
+            self.seats()
+        self.assertEqual(fake_cache.set.call_args.args[2], 60)
