@@ -32,6 +32,12 @@ class BookingTests(TestCase):
         self.assertEqual(booking.infant_count, 0)
         self.assertIsNone(booking.user)
 
+    def test_the_stripe_fee_and_net_wait_for_the_payment(self):
+        """Filled in once Stripe says what it kept (4.2, 4.13)."""
+        booking = self.book()
+        self.assertIsNone(booking.stripe_fee_pence)
+        self.assertIsNone(booking.stripe_net_pence)
+
     def test_each_booking_gets_a_reference_to_read_out(self):
         booking = self.book()
         self.assertRegex(booking.reference, r'^RGL-[A-Z2-9]{5}$')

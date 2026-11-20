@@ -121,6 +121,10 @@ class Booking(models.Model):
         max_length=255, null=True, blank=True
     )
     amount_charged_pence = models.PositiveIntegerField(null=True, blank=True)
+    # What Stripe kept and what the venue received, looked up after the
+    # booking is confirmed, so a failed lookup never undoes it (4.13).
+    stripe_fee_pence = models.PositiveIntegerField(null=True, blank=True)
+    stripe_net_pence = models.IntegerField(null=True, blank=True)
     # The staff member who took an in-venue booking (4.14).
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.SET_NULL,
