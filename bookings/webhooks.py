@@ -7,7 +7,12 @@ from payments import get_provider
 from payments.base import InvalidSignature
 
 from .models import Booking, StripeEvent
-from .services import SeatsLost, confirm_booking, refund_late_payment
+from .services import (
+    SeatsLost,
+    confirm_booking,
+    refund_duplicate_payment,
+    refund_late_payment,
+)
 
 
 @csrf_exempt
@@ -38,6 +43,12 @@ def session_completed(session):
         return
     booking = paid_for(session)
     if booking is None:
+        return
+    if booking.status != Booking.Status.PENDING:
+        # Already settled. A different payment is a second one (4.32).
+        if session.get('payment_intent') != booking.stripe_payment_intent_id:
+            refund_duplicate_payment(booking, session.get('payment_intent'),
+                                     session.get('amount_total'))
         return
     # Recorded before confirming, so a refund can find the payment even
     # if the seats turn out to be lost.
