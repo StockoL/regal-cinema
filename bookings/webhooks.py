@@ -10,6 +10,7 @@ from .models import Booking, StripeEvent
 from .services import (
     SeatsLost,
     confirm_booking,
+    record_payment_fee,
     refund_duplicate_payment,
     refund_late_payment,
 )
@@ -60,6 +61,8 @@ def session_completed(session):
         confirm_booking(booking)
     except SeatsLost:
         refund_late_payment(booking)
+    else:
+        transaction.on_commit(lambda: record_payment_fee(booking.pk))
 
 
 def paid_for(session):

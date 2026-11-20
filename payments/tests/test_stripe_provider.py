@@ -10,7 +10,13 @@ from django.core.exceptions import ImproperlyConfigured
 from django.test import SimpleTestCase, override_settings
 from stripe import WebhookSignature
 
-from payments.base import CheckoutSession, InvalidSignature, RefundFailed
+from payments.base import (
+    CheckoutSession,
+    FeeUnavailable,
+    InvalidSignature,
+    PaymentFee,
+    RefundFailed,
+)
 from payments.stripe_provider import StripeProvider
 
 
@@ -163,3 +169,42 @@ class StripeRefundTests(SimpleTestCase):
         with self.assertRaises(RefundFailed) as caught:
             self.refund()
         self.assertIn('already been refunded', str(caught.exception))
+
+
+@override_settings(STRIPE_SECRET_KEY='sk_test_example')
+class StripeFeeTests(SimpleTestCase):
+    """The fee comes from the payment's balance transaction (4.13),
+    checked against a stand-in client."""
+
+    def setUp(self):
+        patcher = mock.patch('payments.stripe_provider.stripe.StripeClient')
+        self.intents = patcher.start().return_value.v1.payment_intents
+        self.addCleanup(patcher.stop)
+
+    def charge(self, balance_transaction):
+        self.intents.retrieve.return_value = SimpleNamespace(
+            latest_charge=SimpleNamespace(
+                balance_transaction=balance_transaction,
+            ),
+        )
+
+    def test_the_fee_and_net_come_from_the_balance_transaction(self):
+        self.charge(SimpleNamespace(fee=34, net=916))
+        self.assertEqual(StripeProvider().payment_fee('pi_1'),
+                         PaymentFee(fee_pence=34, net_pence=916))
+        self.intents.retrieve.assert_called_once_with(
+            'pi_1',
+            params={'expand': ['latest_charge.balance_transaction']},
+        )
+
+    def test_a_payment_not_yet_settled_has_no_fee_yet(self):
+        self.charge(None)
+        with self.assertRaises(FeeUnavailable):
+            StripeProvider().payment_fee('pi_1')
+
+    def test_a_stripe_error_means_no_fee_yet(self):
+        self.intents.retrieve.side_effect = stripe.APIConnectionError(
+            'No connection.'
+        )
+        with self.assertRaises(FeeUnavailable):
+            StripeProvider().payment_fee('pi_1')

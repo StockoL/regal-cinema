@@ -4,6 +4,7 @@ from dataclasses import replace
 
 from .base import (
     CheckoutSession,
+    FeeUnavailable,
     InvalidSignature,
     PaymentProvider,
     RefundFailed,
@@ -18,6 +19,8 @@ class FakeProvider(PaymentProvider):
     sessions = {}
     by_key = {}
     refunds = {}
+    # Set by a test: a payment intent's PaymentFee.
+    fees = {}
     # Set by a test to make every refund fail (4.32).
     fail_refunds = False
 
@@ -26,6 +29,7 @@ class FakeProvider(PaymentProvider):
         cls.sessions.clear()
         cls.by_key.clear()
         cls.refunds.clear()
+        cls.fees.clear()
         cls.fail_refunds = False
 
     def create_checkout_session(self, *, reference, amount_pence,
@@ -79,3 +83,8 @@ class FakeProvider(PaymentProvider):
             }
             self.by_key[idempotency_key] = refund_id
         return self.by_key[idempotency_key]
+
+    def payment_fee(self, payment_intent_id):
+        if payment_intent_id not in self.fees:
+            raise FeeUnavailable('The fake has no fee for this payment.')
+        return self.fees[payment_intent_id]

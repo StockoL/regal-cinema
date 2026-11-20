@@ -8,7 +8,7 @@ from django.utils import timezone
 
 from accounts.models import get_system_user
 from payments import get_provider
-from payments.base import RefundFailed
+from payments.base import FeeUnavailable, RefundFailed
 from screenings.models import Seat
 
 from .basket import check_basket
@@ -148,6 +148,21 @@ def confirm_booking(booking):
         booking.paid_at = timezone.now()
         booking.save(update_fields=['status', 'paid_at'])
     return booking
+
+
+def record_payment_fee(booking_pk):
+    """Store what Stripe kept from a paid booking and what reached the
+    venue. Run after the booking is confirmed and committed, so if the
+    lookup fails the booking still stands and the fee is filled in by a
+    later try (4.13)."""
+    booking = Booking.objects.get(pk=booking_pk)
+    try:
+        fee = get_provider().payment_fee(booking.stripe_payment_intent_id)
+    except FeeUnavailable:
+        return
+    booking.stripe_fee_pence = fee.fee_pence
+    booking.stripe_net_pence = fee.net_pence
+    booking.save(update_fields=['stripe_fee_pence', 'stripe_net_pence'])
 
 
 def refund_late_payment(booking):

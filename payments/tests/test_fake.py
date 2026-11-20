@@ -4,7 +4,13 @@ from datetime import datetime, timezone
 from django.test import SimpleTestCase, override_settings
 
 from payments import get_provider
-from payments.base import InvalidSignature, RefundFailed, WebhookEvent
+from payments.base import (
+    FeeUnavailable,
+    InvalidSignature,
+    PaymentFee,
+    RefundFailed,
+    WebhookEvent,
+)
 from payments.fake import FakeProvider
 
 
@@ -106,3 +112,19 @@ class FakeRefundTests(SimpleTestCase):
         with self.assertRaises(RefundFailed):
             self.refund()
         self.assertEqual(FakeProvider.refunds, {})
+
+
+class FakeFeeTests(SimpleTestCase):
+    """The fee Stripe kept, as the fake reports it."""
+
+    def setUp(self):
+        FakeProvider.reset()
+
+    def test_a_fee_set_by_the_test_is_reported(self):
+        FakeProvider.fees['pi_1'] = PaymentFee(fee_pence=34, net_pence=916)
+        self.assertEqual(FakeProvider().payment_fee('pi_1'),
+                         PaymentFee(fee_pence=34, net_pence=916))
+
+    def test_an_unknown_payment_has_no_fee_yet(self):
+        with self.assertRaises(FeeUnavailable):
+            FakeProvider().payment_fee('pi_unknown')
