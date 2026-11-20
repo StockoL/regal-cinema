@@ -3,13 +3,13 @@ from datetime import timedelta
 
 from django.conf import settings
 from django.db import IntegrityError, transaction
-from django.db.models import Q
 from django.utils import timezone
 
 from accounts.models import get_system_user
 from payments import get_provider
 from payments.base import FeeUnavailable, RefundFailed
 from screenings.models import Seat
+from screenings.services import layout_seats
 
 from .basket import check_basket
 from .emails import queue_booking_confirmation, queue_late_payment_refund
@@ -300,10 +300,7 @@ def seat_plan(screening, own_booking=None):
     4.17). The customer's own held seats count as available to them.
     Seats out of use and other layouts' seats aren't shown, so they
     leave a gap in the grid."""
-    seats = screening.screen.seats.filter(
-        Q(layout__isnull=True) | Q(layout=screening.layout_id),
-        is_active=True,
-    ).order_by('row_index', 'column_index')
+    seats = layout_seats(screening.screen_id, screening.layout_id)
     closed = set(screening.closed_areas.values_list('area', flat=True))
     held = screening.holds.live()
     if own_booking is not None:

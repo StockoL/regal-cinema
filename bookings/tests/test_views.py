@@ -2,6 +2,7 @@ import re
 from datetime import timedelta
 
 from django.contrib.auth import get_user_model
+from django.core.cache import cache
 from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
@@ -630,6 +631,7 @@ class SeatMapQueryTests(TestCase):
         self.url = reverse('bookings:screening_seats',
                            args=[self.screening.pk])
         self.add_seats(range(1, 3))
+        cache.clear()
 
     def add_seats(self, numbers):
         for number in numbers:
@@ -640,12 +642,22 @@ class SeatMapQueryTests(TestCase):
             )
 
     def test_the_seat_map_page_makes_a_fixed_number_of_queries(self):
+        """Five once the room's layout is cached: the screening, any
+        booking of theirs, the closed areas, live holds and live sales."""
         self.client.get(self.url)
-        with self.assertNumQueries(6):
+        with self.assertNumQueries(5):
             self.client.get(self.url)
 
     def test_a_bigger_room_makes_no_more_queries(self):
         self.add_seats(range(3, 60))
         self.client.get(self.url)
-        with self.assertNumQueries(6):
+        with self.assertNumQueries(5):
             self.client.get(self.url)
+
+    def test_a_seat_taken_out_of_use_goes_at_once(self):
+        self.client.get(self.url)
+        seat = Seat.objects.get(number=1)
+        seat.is_active = False
+        seat.save()
+        html = self.client.get(self.url).content.decode()
+        self.assertNotIn(f'value="{seat.pk}"', html)
