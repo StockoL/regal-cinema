@@ -161,6 +161,7 @@ def refund_late_payment(booking):
     booking.save(update_fields=['status'])
     refund = Refund.objects.create(
         booking=booking, amount_pence=booking.amount_charged_pence,
+        stripe_payment_intent_id=booking.stripe_payment_intent_id,
         reason='Paid after the seats were sold to someone else',
         created_by=get_system_user(),
     )
@@ -172,10 +173,10 @@ def send_refund(refund_pk):
     """Ask the provider for a pending refund and record the answer. The
     idempotency key comes from the refund's row, so sending it again,
     as a retry does, can never pay out twice (4.13, 4.32)."""
-    refund = Refund.objects.select_related('booking').get(pk=refund_pk)
+    refund = Refund.objects.get(pk=refund_pk)
     try:
         refund.stripe_refund_id = get_provider().refund(
-            payment_intent_id=refund.booking.stripe_payment_intent_id,
+            payment_intent_id=refund.stripe_payment_intent_id,
             amount_pence=refund.amount_pence,
             idempotency_key=f'refund-{refund.pk}',
         )
