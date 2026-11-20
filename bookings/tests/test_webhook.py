@@ -1,10 +1,12 @@
 import json
 
+from django.contrib.auth import get_user_model
+from django.core import mail
 from django.test import TestCase
 from django.urls import reverse
 
 from accounts.models import get_system_user
-from bookings.models import Booking, Refund, StripeEvent
+from bookings.models import Booking, OutboundEmail, Refund, StripeEvent
 from bookings.services import confirm_booking, start_booking
 from bookings.tests.test_holds import make_screening
 from payments.base import PaymentFee
@@ -154,6 +156,20 @@ class LatePaymentTests(TestCase):
         self.assertEqual(refund.created_by, get_system_user())
         self.assertEqual(FakeProvider.refunds[refund.stripe_refund_id],
                          {'payment_intent_id': 'pi_1', 'amount_pence': 950})
+
+    def test_the_customer_is_emailed_about_the_refund(self):
+        """4.13: told on the page and by email."""
+        self.booking.user = get_user_model().objects.create_user(
+            'customer@example.com', 'a-long-pw-1'
+        )
+        self.booking.save()
+        self.send()
+        sent, = mail.outbox
+        self.assertEqual(sent.to, ['customer@example.com'])
+        self.assertIn('refund', sent.subject.lower())
+        self.assertIn('£9.50', sent.body)
+        self.assertEqual(self.booking.emails.get().kind,
+                         OutboundEmail.Kind.REFUND_ISSUED)
 
     def test_a_refund_that_fails_is_kept_with_its_reason(self):
         FakeProvider.fail_refunds = True

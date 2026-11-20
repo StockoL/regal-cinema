@@ -1,0 +1,16 @@
+{% load screenings_extras %}<!doctype html>
+<html lang="en-GB">
+<head><meta charset="utf-8"><title>Your Regal Cinema booking {{ booking.reference }}</title></head>
+<body>
+  <h1>Your booking is confirmed</h1>
+  <p>Booking reference <strong>{{ booking.reference }}</strong>. Show it at the door, or read it out at the box office.</p>
+  <p>{{ booking.screening.film.title }}, {{ booking.screening.date_time|date:"l j F" }} at {{ booking.screening.date_time|time:"g:i a" }}</p>
+  <ul>
+    {% for sold in seats %}<li>{{ sold.seat.label }}, {{ sold.ticket_type.name }}{% if sold.ticket_type.proof_reminder %}. {{ sold.ticket_type.proof_reminder }}{% endif %}</li>
+    {% endfor %}{% if booking.infant_count %}<li>{{ booking.infant_count }} under 2{{ booking.infant_count|pluralize }}, on a lap</li>{% endif %}
+  </ul>
+  {% if booking.amount_charged_pence is not None %}<p>Paid: {{ booking.amount_charged_pence|pounds }}</p>{% endif %}
+  <p>Questions? Call the box office on <a href="tel:+441632960123">01632 960 123</a>.</p>
+  <p>Regal Cinema is a fictional venue created for a course project. It isn't connected to any real cinema.</p>
+</body>
+</html>

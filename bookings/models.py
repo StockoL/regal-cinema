@@ -207,6 +207,60 @@ class Refund(models.Model):
         return f'{self.amount_pence}p refund for {self.booking.reference}'
 
 
+class OutboundEmail(models.Model):
+    """An email waiting to go, or gone. It's written in the same
+    transaction as the change it reports and sent after the commit, so
+    a failed send never undoes a booking, and it can be tried again
+    (4.2, 4.32)."""
+
+    class Kind(models.TextChoices):
+        CONFIRMATION = 'confirmation', 'Confirmation'
+        REMINDER = 'reminder', 'Reminder'
+        CANCELLATION = 'cancellation', 'Cancellation'
+        REFUND_ISSUED = 'refund_issued', 'Refund issued'
+        SCREENING_CANCELLED = 'screening_cancelled', 'Screening cancelled'
+        VOUCHER_ISSUED = 'voucher_issued', 'Voucher issued'
+        MEMBERSHIP_RENEWAL = 'membership_renewal', 'Membership renewal'
+
+    class Status(models.TextChoices):
+        QUEUED = 'queued', 'Queued'
+        SENT = 'sent', 'Sent'
+        FAILED = 'failed', 'Failed'
+
+    kind = models.CharField(max_length=25, choices=Kind.choices)
+    # Not every email is about a booking, and losing the link is
+    # harmless, since the email stands on its own (4.21).
+    booking = models.ForeignKey(
+        Booking, on_delete=models.SET_NULL, related_name='emails',
+        null=True, blank=True,
+    )
+    recipient = models.EmailField()
+    subject = models.CharField(max_length=200)
+    text_body = models.TextField()
+    html_body = models.TextField(blank=True)
+    status = models.CharField(max_length=10, choices=Status.choices,
+                              default=Status.QUEUED)
+    attempts = models.PositiveSmallIntegerField(default=0)
+    last_error = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    sent_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        constraints = [
+            # Sending one twice would confuse a customer.
+            models.UniqueConstraint(
+                fields=['booking', 'kind'],
+                condition=models.Q(kind__in=[
+                    'confirmation', 'reminder', 'cancellation',
+                ]),
+                name='one_of_each_booking_email',
+            ),
+        ]
+
+    def __str__(self):
+        return f'{self.get_kind_display()} to {self.recipient}'
+
+
 class SeatBookingQuerySet(models.QuerySet):
 
     def live(self):

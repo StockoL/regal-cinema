@@ -33,6 +33,7 @@ class ConfirmingPageTests(TestCase):
     def test_a_pending_booking_is_still_being_confirmed(self):
         response = self.client.get(self.url)
         self.assertContains(response, "We're confirming your payment")
+        self.assertContains(response, "We'll email you as soon as")
         self.assertContains(response, f'href="{self.url}"')
         self.assertNotContains(response, 'Booking confirmed')
 

@@ -12,6 +12,7 @@ from payments.base import FeeUnavailable, RefundFailed
 from screenings.models import Seat
 
 from .basket import check_basket
+from .emails import queue_booking_confirmation, queue_late_payment_refund
 from .models import Booking, Refund, SeatBooking, SeatHold
 
 
@@ -147,6 +148,7 @@ def confirm_booking(booking):
         booking.status = Booking.Status.PAID
         booking.paid_at = timezone.now()
         booking.save(update_fields=['status', 'paid_at'])
+        queue_booking_confirmation(booking)
     return booking
 
 
@@ -173,6 +175,7 @@ def refund_late_payment(booking):
     booking.holds.all().delete()
     booking.status = Booking.Status.REFUNDED
     booking.save(update_fields=['status'])
+    queue_late_payment_refund(booking)
     return queue_refund(
         booking, booking.stripe_payment_intent_id,
         booking.amount_charged_pence,
