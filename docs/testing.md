@@ -129,8 +129,8 @@ Each way a payment can go wrong has a named test, run against the fake payment p
 | Confirming fails halfway | Nothing partial is saved | `test_a_lost_seat_saves_nothing` | Partly: a lost seat saves nothing; a failure forced halfway is planned as `test_a_failed_confirmation_saves_nothing` |
 | The webhook arrives before the customer is back from Stripe | Confirmed once, and the confirming page shows the booking | `test_a_webhook_before_the_redirect_confirms_once` | Planned |
 | A second payment for a booking already paid | The second payment is refunded against itself, and the booking left as it was | `test_a_second_payment_is_refunded` | Written. Listing it for staff waits for the needs-attention page |
-| The card is declined | Stripe shows it, and the booking stays pending | `test_a_declined_card_leaves_the_booking_pending` | Planned |
-| Stripe times out | Nothing is confirmed, and the customer can try again | `test_a_timeout_confirms_nothing` | Planned |
+| The card is declined | Stripe shows it and lets the customer try another card; the booking stays pending with its seats | `test_a_declined_card_leaves_the_booking_pending` | Written |
+| Stripe times out | Nothing is saved, and the customer is back on checkout with their seats held and a message to try again | `test_a_timeout_confirms_nothing` | Written |
 | The webhook arrives late | Confirmed when it arrives, or earlier by the scheduled check | `test_a_late_webhook_confirms_once` | Planned |
 | The webhook never arrives | `reconcile_pending` or Check with Stripe confirms it | `test_a_missing_webhook_is_recovered` | Planned |
 | An email can't be sent | The booking stands, the email is retried, and after five tries it's listed for staff | `test_an_email_that_cant_be_sent_leaves_the_booking_paid`, `test_after_five_tries_it_is_marked_failed` | Written. The retries wait for the scheduled job, and the list for the needs-attention page |
