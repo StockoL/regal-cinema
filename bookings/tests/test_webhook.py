@@ -11,12 +11,14 @@ from payments.fake import FakeProvider
 from screenings.models import ScreeningPrice, TicketType
 
 
-def completed(session_id, event_id='evt_1', payment_status='paid'):
+def completed(session_id, event_id='evt_1', payment_status='paid',
+              reference=None, payment_intent='pi_1'):
     return {
         'id': event_id, 'type': 'checkout.session.completed',
         'data': {'object': {
             'id': session_id, 'payment_status': payment_status,
-            'payment_intent': 'pi_1', 'amount_total': 950,
+            'payment_intent': payment_intent, 'amount_total': 950,
+            'client_reference_id': reference,
         }},
     }
 
@@ -86,6 +88,12 @@ class WebhookTests(TestCase):
     def test_a_session_not_yet_paid_confirms_nothing(self):
         self.send(completed('cs_fake_1', payment_status='unpaid'))
         self.assertEqual(self.status(), Booking.Status.PENDING)
+
+    def test_a_payment_on_a_replaced_session_still_finds_its_booking(self):
+        """The basket changed after Pay, so the booking holds a newer
+        session, but the old one was paid. The reference finds it."""
+        self.send(completed('cs_fake_old', reference=self.booking.reference))
+        self.assertEqual(self.status(), Booking.Status.PAID)
 
     def test_a_session_for_something_else_is_acknowledged(self):
         """A membership or gift voucher, once those exist (4.13)."""
