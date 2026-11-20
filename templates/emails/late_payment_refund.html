@@ -1,0 +1,12 @@
+{% load screenings_extras %}<!doctype html>
+<html lang="en-GB">
+<head><meta charset="utf-8"><title>Your Regal Cinema payment is being refunded</title></head>
+<body>
+  <h1>We're refunding your payment</h1>
+  <p>We're sorry: your seats for {{ booking.screening.film.title }} on {{ booking.screening.date_time|date:"l j F" }} were sold to someone else before your payment reached us.</p>
+  <p>We're refunding the {{ booking.amount_charged_pence|pounds }} you paid to the card you paid with. Card refunds usually take 5 to 10 working days to appear.</p>
+  <p>Booking reference {{ booking.reference }}</p>
+  <p>Questions? Call the box office on <a href="tel:+441632960123">01632 960 123</a>.</p>
+  <p>Regal Cinema is a fictional venue created for a course project. It isn't connected to any real cinema.</p>
+</body>
+</html>

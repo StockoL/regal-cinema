@@ -1,0 +1,10 @@
+{% autoescape off %}{% load screenings_extras %}We're sorry: your seats for {{ booking.screening.film.title }} on {{ booking.screening.date_time|date:"l j F" }} were sold to someone else before your payment reached us.
+
+We're refunding the {{ booking.amount_charged_pence|pounds }} you paid to the card you paid with. Card refunds usually take 5 to 10 working days to appear.
+
+Booking reference: {{ booking.reference }}
+
+Questions? Call the box office on 01632 960 123.
+
+Regal Cinema is a fictional venue created for a course project. It isn't connected to any real cinema.
+{% endautoescape %}
