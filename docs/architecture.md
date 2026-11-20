@@ -657,7 +657,7 @@ WhiteNoise serves static files compressed with hashed names, `ConditionalGetMidd
 
 ## 4.34 Scaling notes
 
-Rate limits (4.29) use Django's database cache, because `render.yaml` runs two workers and the default cache lives inside each one: a limit kept there would count per worker, letting through twice as many attempts. The listing cache (4.33) stays in each worker's memory, which only means a page might be built once per worker. That's acceptable for a course project on one small instance. A real venue would want a shared cache such as Redis, pooled database connections, an always-on paid instance with more workers, and a proper worker for background jobs instead of a scheduled endpoint.
+Rate limits (4.29) use Django's database cache, because `render.yaml` runs two workers and the default cache lives inside each one: a limit kept there would count per worker, letting through twice as many attempts. The listing cache and the seat layout cache (4.33) stay in each worker's memory, which means a page might be built once per worker, and a change to a seat clears only the worker that saved it. So both expire after 60 seconds, and the other worker's copy is never more than a minute out of date. Holding a seat always reads the database, so a stale layout can show a seat but never sell one. That's acceptable for a course project on one small instance. A real venue would want a shared cache such as Redis, pooled database connections, an always-on paid instance with more workers, and a proper worker for background jobs instead of a scheduled endpoint.
 
 ## 4.35 Choices I didn't make
 
