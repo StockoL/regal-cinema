@@ -336,18 +336,18 @@ Limitations I've accepted, or that wait for a later phase, as opposed to things 
 
 ## 8. Deployment check
 
-On the [live site](https://regal-cinema.onrender.com), after each deploy. The results so far come from the [development log](development_log.md). The deploys since 9 November haven't been checked row by row yet; that happens with the next one.
+On the [live site](https://regal-cinema.onrender.com), after each deploy. The first two columns come from the [development log](development_log.md). The last was checked from my computer on 20 November, after `f736d35` deployed with the payment work. The deploy before it, `ef2fdf3`, timed out: its build and migration succeeded, but the instance never started, with no output from gunicorn at all. It booted and answered its health check on my machine with production settings, so I deployed again, and that one went live. Render kept the previous deploy running in between.
 
-| ID | Check | Expected | At the first deploy, 25 October | After the accounts, 9 November |
-| -- | ----- | -------- | ------------------------------- | ------------------------------ |
-| <a id="d01"></a>D01 | The site loads | `/health/` and the pages answer 200 | Pass: `/health/` and the admin login answered 200 from gunicorn | Pass: every page checked loaded. One 500 earlier that day, fixed in `4ed4f2d` |
-| <a id="d02"></a>D02 | `http://` goes to `https://` | A plain HTTP request ends on the `https://` address | Pass: 301 to HTTPS, from Render | Not recorded |
-| <a id="d03"></a>D03 | `DEBUG` is off | A made-up address shows a plain 404, not Django's debug page | Pass: a plain 404 with no debug page | Not recorded |
-| <a id="d04"></a>D04 | Security headers | HSTS, `X-Frame-Options: DENY`, and a `Secure` CSRF cookie | Pass: all three | Not recorded |
-| <a id="d05"></a>D05 | Static files | Hashed stylesheets load through WhiteNoise | Pass: the admin's hashed CSS loaded | Not recorded |
-| <a id="d06"></a>D06 | The deployment check | `check --deploy` with only the warnings left on purpose | One error: the console email backend, refused in production | Pass: only the two HSTS warnings, left on purpose |
-| <a id="d07"></a>D07 | The admin | Log in to the live admin with the production superuser | Pass: created from my own machine against Neon, and logged in | Not recorded |
-| <a id="d08"></a>D08 | Payments | A test-mode payment on the live site confirmed by the dashboard's webhook endpoint | Not part of this deploy | Not part of this deploy |
+| ID | Check | Expected | At the first deploy, 25 October | After the accounts, 9 November | After the payment work, 20 November |
+| -- | ----- | -------- | ------------------------------- | ------------------------------ | ------------------------------ |
+| <a id="d01"></a>D01 | The site loads | `/health/` and the pages answer 200 | Pass: `/health/` and the admin login answered 200 from gunicorn | Pass: every page checked loaded. One 500 earlier that day, fixed in `4ed4f2d` | Pass: `/health/` and the home page answered 200 |
+| <a id="d02"></a>D02 | `http://` goes to `https://` | A plain HTTP request ends on the `https://` address | Pass: 301 to HTTPS, from Render | Not recorded | Pass: 301 to `https://regal-cinema.onrender.com/` |
+| <a id="d03"></a>D03 | `DEBUG` is off | A made-up address shows a plain 404, not Django's debug page | Pass: a plain 404 with no debug page | Not recorded | Pass: 404 with the site's own page, and no debug page |
+| <a id="d04"></a>D04 | Security headers | HSTS, `X-Frame-Options: DENY`, and a `Secure` CSRF cookie | Pass: all three | Not recorded | Pass: HSTS and `X-Frame-Options: DENY` on the home page, and the admin's CSRF cookie marked `Secure` |
+| <a id="d05"></a>D05 | Static files | Hashed stylesheets load through WhiteNoise | Pass: the admin's hashed CSS loaded | Not recorded | Pass: the hashed `main.css` answered 200 |
+| <a id="d06"></a>D06 | The deployment check | `check --deploy` with only the warnings left on purpose | One error: the console email backend, refused in production | Pass: only the two HSTS warnings, left on purpose | Not run against the live settings; locally with `DEBUG` off, only the two HSTS warnings ([section 1](#1-checks-run-findings-and-how-each-was-resolved)) |
+| <a id="d07"></a>D07 | The admin | Log in to the live admin with the production superuser | Pass: created from my own machine against Neon, and logged in | Not recorded | Not recorded |
+| <a id="d08"></a>D08 | Payments | A test-mode payment on the live site confirmed by the dashboard's webhook endpoint | Not part of this deploy | Not part of this deploy | Partly: the webhook refuses an unsigned request with a 400. A test-mode payment waits for the real screening flow ([row M24](#m24)) |
 
 [↑ Back to contents](#contents)
 
