@@ -183,6 +183,9 @@ class Refund(models.Model):
     )
     amount_pence = models.PositiveIntegerField()
     reason = models.CharField(max_length=200)
+    # The payment this refunds: usually the booking's own, but a second
+    # payment for a booking already paid is refunded against itself.
+    stripe_payment_intent_id = models.CharField(max_length=255)
     stripe_refund_id = models.CharField(max_length=255, null=True,
                                         blank=True)
     status = models.CharField(max_length=10, choices=Status.choices,

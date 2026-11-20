@@ -118,7 +118,7 @@ Each way a payment can go wrong has a named test, run against the fake payment p
 | A refund fails | Stored as failed with the provider's reason | `test_a_refund_that_fails_is_kept_with_its_reason` | Written. Retrying it waits for the scheduled job |
 | Confirming fails halfway | Nothing partial is saved | `test_a_lost_seat_saves_nothing` | Partly: a lost seat saves nothing; a failure forced halfway is planned as `test_a_failed_confirmation_saves_nothing` |
 | The webhook arrives before the customer is back from Stripe | Confirmed once, and the confirming page shows the booking | `test_a_webhook_before_the_redirect_confirms_once` | Planned |
-| A second payment for a booking already paid | The second payment is refunded and listed for staff | `test_a_second_payment_is_refunded` | Planned |
+| A second payment for a booking already paid | The second payment is refunded against itself, and the booking left as it was | `test_a_second_payment_is_refunded` | Written. Listing it for staff waits for the needs-attention page |
 | The card is declined | Stripe shows it, and the booking stays pending | `test_a_declined_card_leaves_the_booking_pending` | Planned |
 | Stripe times out | Nothing is confirmed, and the customer can try again | `test_a_timeout_confirms_nothing` | Planned |
 | The webhook arrives late | Confirmed when it arrives, or earlier by the scheduled check | `test_a_late_webhook_confirms_once` | Planned |
@@ -289,6 +289,7 @@ Taken from the commit history and the development log. Each was found while buil
 | `92741de` | Paying again after a session expired built the same idempotency key, so Stripe would have handed back the expired session and the customer could never pay. `test_paying_after_the_session_expired_gets_a_new_one` |
 | `7f80e4e` | Pay was a plain outlined button under a filled Cancel, so the page's main action looked weaker than letting the seats go. Found in a screenshot for the development log. `test_the_checkout_page_has_a_pay_button` |
 | `1eb564e`, `676aac9` | Tickets that need proof, such as Student or Companion, didn't say so at checkout or on the confirmation, though journey 2 and 4.2 ask for it. Found in a screenshot for the development log. `test_checkout_reminds_them_beside_the_ticket` and `test_the_confirmation_reminds_them_too` |
+| `493f1aa` | A payment on a session that had been replaced, after the basket changed, found no booking and was kept with nothing to show for it. The webhook now falls back to the booking reference every session carries. `test_a_payment_on_a_replaced_session_still_finds_its_booking` |
 
 ### The overlap bug in full
 
@@ -310,7 +311,7 @@ Limitations I've accepted, or that wait for a later phase, as opposed to things 
 | ----- | ------ | ---------------------- |
 | A real payment hasn't been made end to end | The webhook, confirming and refunds are tested against the fake provider and signed test events, not yet against a real Stripe payment | Deferred until screenings can be created through the real flow, so the journey starts where a customer's would ([row M24](#m24)) |
 | Stripe's page offers payment methods other than cards | A customer could pay with Klarna, Revolut Pay, Amazon Pay or Link, which the refund and reconciliation design doesn't cover | Stripe's API no longer takes the methods per session; they have to be switched off in the Stripe dashboard |
-| A payment on a session that was replaced isn't matched to its booking | If a customer changes their basket after pressing Pay and then pays on the old session too, that payment isn't found | The old session should be expired when the basket changes (4.32). That comes with changing a booking during payment |
+| A session that was replaced stays open at Stripe | If a customer changes their basket after pressing Pay, the old session can still be paid. The payment is matched to the booking by its reference, and refunded if the booking is already paid, but the customer is charged and refunded when they needn't be | The old session should be expired when the basket changes (4.32). That comes with changing a booking during payment |
 | A failed refund stays failed | Nothing retries it yet | The retry is part of the scheduled job (4.32), not built yet |
 | Voucher race condition (4.13) | Two simultaneous checkouts on one code have a narrow window in which both could succeed | Unlikely and low in severity, since a voucher has to be typed in. Solving it would need a second holding mechanism like `SeatHold` |
 | No membership auto-renewal (4.18) | A lapsed membership must be bought again by hand | Automatic recurring billing is out of scope |

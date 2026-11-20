@@ -11,12 +11,14 @@ from payments.fake import FakeProvider
 from screenings.models import ScreeningPrice, TicketType
 
 
-def completed(session_id, event_id='evt_1', payment_status='paid'):
+def completed(session_id, event_id='evt_1', payment_status='paid',
+              reference=None, payment_intent='pi_1'):
     return {
         'id': event_id, 'type': 'checkout.session.completed',
         'data': {'object': {
             'id': session_id, 'payment_status': payment_status,
-            'payment_intent': 'pi_1', 'amount_total': 950,
+            'payment_intent': payment_intent, 'amount_total': 950,
+            'client_reference_id': reference,
         }},
     }
 
@@ -87,6 +89,12 @@ class WebhookTests(TestCase):
         self.send(completed('cs_fake_1', payment_status='unpaid'))
         self.assertEqual(self.status(), Booking.Status.PENDING)
 
+    def test_a_payment_on_a_replaced_session_still_finds_its_booking(self):
+        """The basket changed after Pay, so the booking holds a newer
+        session, but the old one was paid. The reference finds it."""
+        self.send(completed('cs_fake_old', reference=self.booking.reference))
+        self.assertEqual(self.status(), Booking.Status.PAID)
+
     def test_a_session_for_something_else_is_acknowledged(self):
         """A membership or gift voucher, once those exist (4.13)."""
         response = self.send(completed('cs_fake_other'))
@@ -152,3 +160,53 @@ class LatePaymentTests(TestCase):
         refund = self.booking.refunds.get()
         self.assertEqual(refund.status, Refund.Status.FAILED)
         self.assertIn('told to fail', refund.error)
+
+
+class DuplicatePaymentTests(TestCase):
+    """A second payment for a booking already paid is refunded
+    automatically (architecture 4.32, "Paying twice")."""
+
+    def setUp(self):
+        FakeProvider.reset()
+        screening, (seat, _) = make_screening()
+        adult = TicketType.objects.get(name='Adult')
+        ScreeningPrice.objects.create(screening=screening, ticket_type=adult,
+                                      price_pence=950)
+        self.booking = start_booking(screening, [(seat, adult)], 0, 'a')
+        self.booking.stripe_checkout_session_id = 'cs_fake_1'
+        self.booking.save()
+        self.send(completed('cs_fake_1'))
+
+    def send(self, event):
+        payload = json.dumps(event).encode()
+        with self.captureOnCommitCallbacks(execute=True):
+            return self.client.post(
+                WebhookTests.url, payload, content_type='application/json',
+                HTTP_STRIPE_SIGNATURE=FakeProvider.sign(payload),
+            )
+
+    def test_a_second_payment_is_refunded(self):
+        """Named in the testing doc's failure modes (4.32)."""
+        response = self.send(completed(
+            'cs_fake_old', event_id='evt_2', payment_intent='pi_2',
+            reference=self.booking.reference,
+        ))
+        self.assertEqual(response.status_code, 200)
+        self.booking.refresh_from_db()
+        self.assertEqual(self.booking.status, Booking.Status.PAID)
+        self.assertEqual(self.booking.stripe_payment_intent_id, 'pi_1')
+        self.assertEqual(self.booking.seats.count(), 1)
+        refund = self.booking.refunds.get()
+        self.assertEqual(
+            (refund.reason, refund.stripe_payment_intent_id,
+             refund.amount_pence, refund.status),
+            ('duplicate_payment', 'pi_2', 950, Refund.Status.SUCCEEDED),
+        )
+        self.assertEqual(
+            FakeProvider.refunds[refund.stripe_refund_id]['payment_intent_id'],
+            'pi_2',
+        )
+
+    def test_the_same_payment_again_refunds_nothing(self):
+        self.send(completed('cs_fake_1', event_id='evt_2'))
+        self.assertFalse(self.booking.refunds.exists())
