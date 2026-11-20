@@ -123,7 +123,7 @@ Each way a payment can go wrong has a named test, run against the fake payment p
 | Stripe times out | Nothing is confirmed, and the customer can try again | `test_a_timeout_confirms_nothing` | Planned |
 | The webhook arrives late | Confirmed when it arrives, or earlier by the scheduled check | `test_a_late_webhook_confirms_once` | Planned |
 | The webhook never arrives | `reconcile_pending` or Check with Stripe confirms it | `test_a_missing_webhook_is_recovered` | Planned |
-| An email can't be sent | The booking stands, the email is retried, and after five tries it's listed for staff | `test_a_failed_email_is_retried_then_listed` | Planned |
+| An email can't be sent | The booking stands, the email is retried, and after five tries it's listed for staff | `test_an_email_that_cant_be_sent_leaves_the_booking_paid`, `test_after_five_tries_it_is_marked_failed` | Written. The retries wait for the scheduled job, and the list for the needs-attention page |
 
 ### Load testing
 
@@ -313,6 +313,7 @@ Limitations I've accepted, or that wait for a later phase, as opposed to things 
 | Stripe's page offers payment methods other than cards | A customer could pay with Klarna, Revolut Pay, Amazon Pay or Link, which the refund and reconciliation design doesn't cover | Stripe's API no longer takes the methods per session; they have to be switched off in the Stripe dashboard |
 | A session that was replaced stays open at Stripe | If a customer changes their basket after pressing Pay, the old session can still be paid. The payment is matched to the booking by its reference, and refunded if the booking is already paid, but the customer is charged and refunded when they needn't be | The old session should be expired when the basket changes (4.32). That comes with changing a booking during payment |
 | A failed refund stays failed | Nothing retries it yet | The retry is part of the scheduled job (4.32), not built yet |
+| An email that couldn't be sent waits in the outbox | The booking stands and the attempt is recorded, but nothing tries again until the scheduled job is built | The retry is part of the same scheduled job (4.32) |
 | A Stripe fee that couldn't be looked up stays empty | The booking is paid, but its fee and net are missing from the reports until filled in | The later try is part of the same scheduled job (4.32) |
 | Voucher race condition (4.13) | Two simultaneous checkouts on one code have a narrow window in which both could succeed | Unlikely and low in severity, since a voucher has to be typed in. Solving it would need a second holding mechanism like `SeatHold` |
 | No membership auto-renewal (4.18) | A lapsed membership must be bought again by hand | Automatic recurring billing is out of scope |
