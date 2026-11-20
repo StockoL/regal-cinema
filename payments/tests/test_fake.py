@@ -8,6 +8,7 @@ from payments.base import (
     FeeUnavailable,
     InvalidSignature,
     PaymentFee,
+    PaymentUnavailable,
     RefundFailed,
     WebhookEvent,
 )
@@ -57,6 +58,13 @@ class FakeProviderTests(SimpleTestCase):
         self.assertFalse(
             self.provider.get_checkout_session(session.id).is_open
         )
+
+    def test_it_can_be_told_it_cant_be_reached(self):
+        """For the timeout failure mode (4.32)."""
+        FakeProvider.fail_checkout = True
+        with self.assertRaises(PaymentUnavailable):
+            create(self.provider)
+        self.assertEqual(FakeProvider.sessions, {})
 
     def test_it_remembers_what_each_session_was_for(self):
         session = create(self.provider, amount=2450)

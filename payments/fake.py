@@ -7,6 +7,7 @@ from .base import (
     FeeUnavailable,
     InvalidSignature,
     PaymentProvider,
+    PaymentUnavailable,
     RefundFailed,
     WebhookEvent,
 )
@@ -23,6 +24,8 @@ class FakeProvider(PaymentProvider):
     fees = {}
     # Set by a test to make every refund fail (4.32).
     fail_refunds = False
+    # Set by a test to make creating a session time out (4.32).
+    fail_checkout = False
 
     @classmethod
     def reset(cls):
@@ -31,10 +34,13 @@ class FakeProvider(PaymentProvider):
         cls.refunds.clear()
         cls.fees.clear()
         cls.fail_refunds = False
+        cls.fail_checkout = False
 
     def create_checkout_session(self, *, reference, amount_pence,
                                 description, success_url, cancel_url,
                                 expires_at, idempotency_key):
+        if self.fail_checkout:
+            raise PaymentUnavailable('The fake provider was told to time out.')
         if idempotency_key in self.by_key:
             return self.by_key[idempotency_key]
         session_id = f'cs_fake_{len(self.sessions) + 1}'

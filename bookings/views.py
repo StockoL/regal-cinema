@@ -6,6 +6,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.views.decorators.http import require_POST
 
+from payments.base import PaymentUnavailable
 from screenings.models import Screening
 
 from .basket import BasketError
@@ -251,6 +252,12 @@ def booking_pay(request, reference):
         messages.error(request, 'Your hold on these seats ran out. '
                                 'Please choose your seats again.')
         return redirect('bookings:screening_seats', pk=booking.screening.pk)
+    except PaymentUnavailable:
+        # Nothing was saved, so the seats are held as they were (4.32).
+        messages.error(request, "We couldn't reach the payment provider. "
+                                'Your seats are still held, so please try '
+                                'again.')
+        return redirect(checkout)
     # 303, so the browser fetches Stripe's page rather than posting again.
     response = redirect(session.url)
     response.status_code = 303

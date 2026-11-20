@@ -45,6 +45,12 @@ class InvalidSignature(Exception):
     be trusted (4.13)."""
 
 
+class PaymentUnavailable(Exception):
+    """The provider couldn't be reached or didn't answer in time, so no
+    session was made. Nothing is confirmed, and the customer can try
+    again (4.32)."""
+
+
 class RefundFailed(Exception):
     """The provider refused a refund. The message is its reason, kept so
     staff can see why (4.2, 4.32)."""
@@ -59,8 +65,9 @@ class PaymentProvider(ABC):
     def create_checkout_session(self, *, reference, amount_pence,
                                 description, success_url, cancel_url,
                                 expires_at, idempotency_key):
-        """Return a CheckoutSession. The same idempotency_key returns
-        the same session, so a repeated request can't make two."""
+        """Return a CheckoutSession, or raise PaymentUnavailable. The
+        same idempotency_key returns the same session, so a repeated
+        request can't make two."""
 
     @abstractmethod
     def get_checkout_session(self, session_id):

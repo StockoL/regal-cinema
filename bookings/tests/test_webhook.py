@@ -115,6 +115,20 @@ class WebhookTests(TestCase):
         self.assertEqual(self.status(), Booking.Status.PENDING)
         self.assertTrue(StripeEvent.objects.filter(event_id='evt_2').exists())
 
+    def test_a_declined_card_leaves_the_booking_pending(self):
+        """Named in the testing doc's failure modes (4.32). Stripe's page
+        shows the decline and lets the customer try another card in the
+        same session; the event is acknowledged and changes nothing."""
+        response = self.send({
+            'id': 'evt_3', 'type': 'payment_intent.payment_failed',
+            'data': {'object': {'id': 'pi_1', 'last_payment_error': {
+                'code': 'card_declined',
+            }}},
+        })
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(self.status(), Booking.Status.PENDING)
+        self.assertEqual(self.booking.holds.count(), 1)
+
     def test_a_plain_link_does_nothing(self):
         self.assertEqual(self.client.get(self.url).status_code, 405)
 
