@@ -23,7 +23,7 @@
       <p><a href="{% url 'bookings:screening_seats' booking.screening.pk %}">Choose other seats</a></p>
     {% else %}
       <h1>We're confirming your payment</h1>
-      <p>This usually takes a few seconds.</p>
+      <p>This usually takes a few seconds. We'll email you as soon as it's done, so you don't need to wait on this page.</p>
       <p>Booking reference {{ booking.reference }}</p>
       <p><a href="{% url 'bookings:booking_confirming' booking.reference %}">Check again</a></p>
     {% endif %}
