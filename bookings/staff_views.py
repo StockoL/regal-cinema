@@ -23,6 +23,8 @@ from .services import (
     decline_cancellation,
     find_bookings,
     impossible_reference,
+    recheck_payment,
+    recheck_too_soon,
 )
 
 DECISIONS = [
@@ -146,6 +148,35 @@ def check_in_booking(request, reference):
     else:
         messages.success(request, f'Checked in {reference}.')
     return redirect(f"{reverse('bookings_staff:check_in')}?q={reference}")
+
+
+@require_POST
+@staff_permission_required('bookings.view_attention')
+def check_with_stripe(request, reference):
+    """Ask Stripe about a payment whose webhook never came (4.32). The
+    check-in search leaves pending bookings out, so this goes back to
+    the staff home until the needs-attention page lists them."""
+    booking = get_object_or_404(Booking, reference=reference)
+    if booking.status != Booking.Status.PENDING:
+        messages.error(request, f'{reference} is not waiting for payment.')
+    elif recheck_too_soon(booking):
+        messages.error(request, f'{reference} started paying less than five '
+                                f'minutes ago. Give Stripe a little longer.')
+    elif not recheck_payment(
+        booking, request.user,
+        'Paid on Stripe with no webhook. Found by Check with Stripe.',
+    ):
+        messages.info(request, f'Stripe says {reference} has not been paid.')
+    else:
+        booking.refresh_from_db()
+        if booking.status == Booking.Status.REFUNDED:
+            messages.error(request, f'{reference} was paid after its seats '
+                                    f'had gone, so the payment is being '
+                                    f'refunded.')
+        else:
+            messages.success(request, f'Stripe says {reference} was paid, '
+                                      f'so it is now confirmed.')
+    return redirect('staff:home')
 
 
 # The bookings that will be at the door: a request still waiting stands

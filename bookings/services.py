@@ -239,6 +239,18 @@ def settle_payment(booking, payment_intent_id, amount_pence):
         return True
 
 
+# The webhook usually comes within seconds, so it gets this long before
+# staff can ask Stripe themselves (4.32).
+RECHECK_AFTER = timedelta(minutes=5)
+
+
+def recheck_too_soon(booking):
+    """Whether the booking's session is too new for staff to ask Stripe
+    about yet."""
+    return (booking.checkout_started_at is None
+            or timezone.now() - booking.checkout_started_at < RECHECK_AFTER)
+
+
 def recheck_payment(booking, actor, reason):
     """Ask Stripe whether the booking's session was paid, for when its
     webhook never came (4.32). A paid session is settled just as the
