@@ -6,8 +6,8 @@ from django.test import TestCase
 from django.utils import timezone
 
 from accounts.models import get_system_user
-from bookings.models import Booking
-from bookings.reconcile import recheck_stuck_payments
+from bookings.models import Booking, Refund, SeatHold
+from bookings.reconcile import recheck_stuck_payments, tidy_up
 from bookings.services import start_booking, start_payment
 from bookings.tests.test_holds import make_screening
 from payments.fake import FakeProvider
@@ -84,4 +84,77 @@ class StuckPaymentTests(TestCase):
         out = StringIO()
         call_command('reconcile_pending', stdout=out)
         self.assertIn('Checked 1 stuck payment: 1 paid, 0 unreachable.',
+                      out.getvalue())
+
+
+class TidyUpTests(TestCase):
+    """The scheduled check clears away holds and pending bookings left
+    behind, and never a paid booking (architecture 4.32)."""
+
+    def setUp(self):
+        self.screening, (self.seat_1, self.seat_2) = make_screening()
+        self.adult = TicketType.objects.get(name='Adult')
+        self.booking = start_booking(self.screening,
+                                     [(self.seat_1, self.adult)], 0, 'a')
+
+    def expired(self, hours):
+        self.booking.holds.update(
+            expires_at=timezone.now() - timedelta(hours=hours),
+        )
+
+    def created(self, booking, days):
+        Booking.objects.filter(pk=booking.pk).update(
+            created_at=timezone.now() - timedelta(days=days),
+        )
+
+    def test_a_hold_expired_over_a_day_ago_is_deleted(self):
+        self.expired(hours=25)
+        self.assertEqual(tidy_up(), {'holds': 1, 'bookings': 0})
+        self.assertFalse(SeatHold.objects.exists())
+
+    def test_a_hold_expired_under_a_day_ago_is_kept(self):
+        """Lazy expiry already frees the seat (4.8), so there's no hurry."""
+        self.expired(hours=23)
+        self.assertEqual(tidy_up(), {'holds': 0, 'bookings': 0})
+        self.assertTrue(SeatHold.objects.exists())
+
+    def test_a_pending_booking_over_a_week_old_goes_with_its_holds(self):
+        self.created(self.booking, days=8)
+        self.assertEqual(tidy_up(), {'holds': 0, 'bookings': 1})
+        self.assertFalse(Booking.objects.exists())
+        self.assertFalse(SeatHold.objects.exists())
+
+    def test_a_pending_booking_under_a_week_old_is_kept(self):
+        self.created(self.booking, days=6)
+        tidy_up()
+        self.assertTrue(Booking.objects.filter(pk=self.booking.pk).exists())
+
+    def test_a_paid_booking_is_never_deleted(self):
+        paid = Booking.objects.create(screening=self.screening,
+                                      status=Booking.Status.PAID)
+        self.created(paid, days=30)
+        tidy_up()
+        self.assertTrue(Booking.objects.filter(pk=paid.pk).exists())
+
+    def test_a_pending_booking_with_money_on_record_is_kept(self):
+        """A refund row means a payment was taken, so it stays for the
+        accounts and the needs-attention page."""
+        Refund.objects.create(booking=self.booking, amount_pence=950,
+                              stripe_payment_intent_id='pi_1',
+                              created_by=get_system_user(),
+                              reason='duplicate_payment')
+        self.created(self.booking, days=8)
+        tidy_up()
+        self.assertTrue(Booking.objects.filter(pk=self.booking.pk).exists())
+
+    def test_running_twice_is_harmless(self):
+        self.created(self.booking, days=8)
+        tidy_up()
+        self.assertEqual(tidy_up(), {'holds': 0, 'bookings': 0})
+
+    def test_the_command_reports_what_it_removed(self):
+        self.created(self.booking, days=8)
+        out = StringIO()
+        call_command('reconcile_pending', stdout=out)
+        self.assertIn('Removed 0 expired holds and 1 abandoned booking.',
                       out.getvalue())
