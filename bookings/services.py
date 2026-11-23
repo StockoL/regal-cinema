@@ -2,6 +2,7 @@ import hashlib
 from datetime import timedelta
 
 from django.db import IntegrityError, transaction
+from django.db.models import Q
 from django.utils import timezone
 
 from accounts.models import get_system_user
@@ -354,6 +355,30 @@ def approve_cancellation(cancellation, staff, note):
                    booking=booking, voucher=voucher)
         queue_cancellation_approved(cancellation, voucher)
     return cancellation
+
+
+def find_bookings(query, on_date=None):
+    """The staff search box (4.32): a booking reference however it was
+    typed, in any case, with spaces, without its hyphen or its RGL, or
+    part of the customer's email address. A date narrows it to that
+    day's screenings. Bookings still at checkout aren't found."""
+    query = query.strip()
+    if not query:
+        return Booking.objects.none()
+    code = query.upper().replace(' ', '').replace('-', '')
+    if code.startswith('RGL'):
+        code = code[3:]
+    matches = Q(user__email__icontains=query)
+    if len(code) == 5:
+        matches |= Q(reference=f'RGL-{code}')
+    bookings = Booking.objects.filter(matches).exclude(
+        status=Booking.Status.PENDING
+    )
+    if on_date is not None:
+        bookings = bookings.filter(screening__date_time__date=on_date)
+    return (bookings.select_related('screening__film', 'screening__screen',
+                                    'user', 'checked_in_by')
+            .order_by('screening__date_time'))
 
 
 def release_seats(booking):
