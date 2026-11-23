@@ -268,6 +268,9 @@ class OutboundEmail(models.Model):
         CONFIRMATION = 'confirmation', 'Confirmation'
         REMINDER = 'reminder', 'Reminder'
         CANCELLATION = 'cancellation', 'Cancellation'
+        CANCELLATION_DECLINED = (
+            'cancellation_declined', 'Cancellation declined'
+        )
         REFUND_ISSUED = 'refund_issued', 'Refund issued'
         SCREENING_CANCELLED = 'screening_cancelled', 'Screening cancelled'
         VOUCHER_ISSUED = 'voucher_issued', 'Voucher issued'

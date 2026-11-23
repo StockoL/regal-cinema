@@ -42,6 +42,12 @@ class OutboundEmailModelTests(TestCase):
         self.email(kind=OutboundEmail.Kind.REFUND_ISSUED)
         self.assertEqual(self.booking.emails.count(), 2)
 
+    def test_a_customer_can_be_declined_more_than_once(self):
+        """They can ask again after a decline (4.22)."""
+        self.email(kind=OutboundEmail.Kind.CANCELLATION_DECLINED)
+        self.email(kind=OutboundEmail.Kind.CANCELLATION_DECLINED)
+        self.assertEqual(self.booking.emails.count(), 2)
+
     def test_an_email_outlives_its_booking(self):
         """4.21: losing the booking link is harmless."""
         email = self.email()
