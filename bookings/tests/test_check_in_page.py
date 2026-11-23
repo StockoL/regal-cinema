@@ -2,6 +2,7 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group, Permission
 from django.test import TestCase
 from django.urls import reverse
+from django.utils import timezone
 
 from bookings.models import Booking, SeatBooking
 from bookings.services import check_in
@@ -75,6 +76,17 @@ class CheckInPageTests(TestCase):
         response = self.search(self.booking.reference)
         self.assertContains(response, 'Cancelled')
         self.assertNotContains(response, 'Check in 2 seats')
+
+    def test_a_disputed_booking_is_flagged(self):
+        """4.13: staff see it, and nothing is cancelled."""
+        self.booking.disputed_at = timezone.now()
+        self.booking.save()
+        self.assertContains(self.search(self.booking.reference),
+                            "The customer's bank has disputed this payment")
+        self.booking.dispute_closed_at = timezone.now()
+        self.booking.save()
+        self.assertNotContains(self.search(self.booking.reference),
+                               'has disputed this payment')
 
     def test_nothing_found_says_so(self):
         self.assertContains(self.search('RGL-ZZZZZ'), 'Nothing found')
