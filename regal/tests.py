@@ -71,6 +71,26 @@ class StylesheetTests(TestCase):
         )
         self.assertIn('ul[role="list"]', styles)
         self.assertIn('padding-inline-start: 0', styles)
+        # Nor the browser's margin, which pushed a list down inside a
+        # table cell. Flow spacing still adds space between siblings.
+        self.assertIn('margin-block: 0', styles)
+
+    def test_printing_leaves_out_the_site_around_the_page(self):
+        """A guest list goes to the door on paper (4.32), so printing
+        drops the header, footer, skip link, messages and anything
+        marked no-print, and prints dark text on white."""
+        styles = ''.join(
+            read_css(path) for path in re.findall(
+                r'@import url\("([^"]+)"\) layer\(utilities\)',
+                read_css('main.css'),
+            )
+        )
+        self.assertIn('@media print', styles)
+        for selector in ('.skip-link', '.navbar', 'footer', '.no-print',
+                         '.alert'):
+            with self.subTest(selector=selector):
+                self.assertIn(selector, styles)
+        self.assertIn('CanvasText', styles)
 
     def test_every_token_used_is_defined(self):
         """A misspelt custom property fails silently in the browser."""

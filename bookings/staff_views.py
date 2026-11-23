@@ -1,9 +1,15 @@
+import csv
+from datetime import date, timedelta
+
 from django.contrib import messages
-from django.db.models import Prefetch
+from django.db.models import Count, Prefetch, Q
+from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
+from django.utils import timezone
 from django.views.decorators.http import require_POST
 
+from screenings.models import Screening
 from staff.models import AuditLogEntry
 from staff.views import staff_permission_required
 from venue.models import get_settings
@@ -140,3 +146,96 @@ def check_in_booking(request, reference):
     else:
         messages.success(request, f'Checked in {reference}.')
     return redirect(f"{reverse('bookings_staff:check_in')}?q={reference}")
+
+
+# The bookings that will be at the door: a request still waiting stands
+# until staff decide (4.22).
+AT_THE_DOOR = [Booking.Status.PAID, Booking.Status.CANCELLATION_REQUESTED]
+
+
+def guests(screening):
+    """A screening's bookings for the door, with their seats."""
+    return list(
+        screening.bookings.filter(status__in=AT_THE_DOOR)
+        .select_related('user', 'checked_in_by')
+        .prefetch_related(Prefetch(
+            'seats', queryset=SeatBooking.objects.live()
+            .select_related('seat', 'ticket_type')
+            .order_by('-seat__area', 'seat__row_index', 'seat__column_index'),
+        ))
+        .order_by('reference')
+    )
+
+
+@staff_permission_required('bookings.view_bookings')
+def guest_list(request, pk):
+    """Everyone expected at one screening, to print or take to the door
+    if the site is down (journey 14; 4.32)."""
+    screening = get_object_or_404(
+        Screening.objects.select_related('film', 'screen'), pk=pk
+    )
+    bookings = guests(screening)
+    return render(request, 'bookings/staff/guest_list.html', {
+        'screening': screening,
+        'bookings': bookings,
+        'seat_count': sum(len(b.seats.all()) for b in bookings),
+        'checked_in_count': sum(1 for b in bookings if b.checked_in_at),
+    })
+
+
+@staff_permission_required('bookings.view_bookings')
+def guest_list_download(request, pk):
+    """The guest list as a CSV file, to keep or print if the site goes
+    down before the door opens (4.32)."""
+    screening = get_object_or_404(Screening.objects.select_related('film'),
+                                  pk=pk)
+    name = (f'guest-list-{screening.film.slug}-'
+            f'{timezone.localdate(screening.date_time).isoformat()}.csv')
+    response = HttpResponse(content_type='text/csv; charset=utf-8')
+    response['Content-Disposition'] = f'attachment; filename="{name}"'
+    writer = csv.writer(response)
+    writer.writerow(['Reference', 'Customer', 'Seats', 'Under 2s', 'Status',
+                     'Checked in'])
+    for booking in guests(screening):
+        seats = '; '.join(
+            f'{sold.seat.label}, {sold.ticket_type.name}'
+            + (f'. {sold.ticket_type.proof_reminder}'
+               if sold.ticket_type.proof_reminder else '')
+            for sold in booking.seats.all()
+        )
+        checked_in = (
+            timezone.localtime(booking.checked_in_at).strftime('%H:%M')
+            if booking.checked_in_at else ''
+        )
+        writer.writerow([
+            booking.reference,
+            booking.user.email if booking.user else 'At the venue',
+            seats, booking.infant_count, booking.get_status_display(),
+            checked_in,
+        ])
+    return response
+
+
+@staff_permission_required('bookings.view_bookings')
+def screening_list(request):
+    """One day's screenings, today by default, each with its bookings
+    and a link to its guest list (4.32). Staff see private and
+    cancelled screenings too, labelled."""
+    try:
+        day = date.fromisoformat(request.GET.get('date', ''))
+    except ValueError:
+        day = timezone.localdate()
+    screenings = (
+        Screening.objects.filter(date_time__date=day)
+        .select_related('film', 'screen')
+        .annotate(booking_count=Count(
+            'bookings', filter=Q(bookings__status__in=AT_THE_DOOR),
+        ))
+        .order_by('date_time')
+    )
+    return render(request, 'bookings/staff/screening_list.html', {
+        'day': day,
+        'previous_day': day - timedelta(days=1),
+        'next_day': day + timedelta(days=1),
+        'screenings': screenings,
+    })

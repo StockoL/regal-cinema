@@ -1,0 +1,18 @@
+/* Printing a staff page, such as a screening's guest list for the door
+   (architecture 4.32): only the page itself, dark text on white. The
+   system colours Canvas and CanvasText are the printer's own white and
+   black, so no colour is written in here. */
+@media print {
+  .skip-link,
+  .navbar,
+  body > footer,
+  .alert,
+  .no-print {
+    display: none !important;
+  }
+
+  body {
+    background: Canvas;
+    color: CanvasText;
+  }
+}

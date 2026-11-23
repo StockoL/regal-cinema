@@ -1,0 +1,35 @@
+{% extends 'base.html' %}
+
+{% block title %}Screenings{% endblock %}
+
+{% block content %}
+<div class="wrapper region flow">
+  <p><a href="{% url 'staff:home' %}">Staff</a></p>
+  <h1>Screenings</h1>
+  <nav class="cluster" aria-label="Day">
+    <a href="?date={{ previous_day.isoformat }}">Previous day</a>
+    <span>{{ day|date:"l j F Y" }}</span>
+    <a href="?date={{ next_day.isoformat }}">Next day</a>
+  </nav>
+  {% if screenings %}
+    <div class="table-wrapper">
+    <table class="table">
+      <thead><tr><th scope="col">Time</th><th scope="col">Film</th><th scope="col">Screen</th><th scope="col">Bookings</th><th scope="col"><span class="visually-hidden">Guest list</span></th></tr></thead>
+      <tbody>
+        {% for screening in screenings %}
+          <tr>
+            <td>{{ screening.date_time|time:"g:i a" }}</td>
+            <td>{{ screening.film.title }}{% if screening.is_cancelled %} <span class="badge">Cancelled</span>{% elif screening.is_private %} <span class="badge">Private</span>{% endif %}</td>
+            <td>{{ screening.screen.name }}</td>
+            <td>{{ screening.booking_count }} booking{{ screening.booking_count|pluralize }}</td>
+            <td><a href="{% url 'bookings_staff:guest_list' screening.pk %}">Guest list</a></td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    </div>
+  {% else %}
+    <p>No screenings on this day.</p>
+  {% endif %}
+</div>
+{% endblock %}
