@@ -38,6 +38,41 @@ class HealthCheckTests(TestCase):
         self.assertEqual(response.status_code, 200)
 
 
+@override_settings(SCHEDULED_TASK_TOKEN='a-long-random-token')
+class ScheduledTaskTests(TestCase):
+    """The one address cron-job.org calls to run the scheduled work,
+    which needs the secret token (architecture 4.32)."""
+
+    url = '/tasks/run/'
+
+    def run_tasks(self, token='a-long-random-token'):
+        return self.client.post(self.url,
+                                HTTP_AUTHORIZATION=f'Bearer {token}')
+
+    def test_the_address(self):
+        self.assertEqual(reverse('scheduled_tasks'), self.url)
+
+    def test_the_right_token_runs_reconcile_pending(self):
+        response = self.run_tasks()
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response['Content-Type'], 'text/plain')
+        self.assertContains(response, 'Checked 0 stuck payments')
+
+    def test_a_wrong_or_missing_token_is_refused(self):
+        self.assertEqual(self.run_tasks('a-guess').status_code, 403)
+        self.assertEqual(self.client.post(self.url).status_code, 403)
+
+    def test_with_no_token_set_nothing_can_run_it(self):
+        with self.settings(SCHEDULED_TASK_TOKEN=''):
+            self.assertEqual(self.run_tasks('').status_code, 403)
+
+    def test_only_a_post_runs_it(self):
+        response = self.client.get(
+            self.url, HTTP_AUTHORIZATION='Bearer a-long-random-token',
+        )
+        self.assertEqual(response.status_code, 405)
+
+
 class StylesheetTests(TestCase):
     """LooseLeaf UI first, then this project's own styles in LooseLeaf's
     cascade layers, with colours that keep WCAG AA contrast

@@ -209,6 +209,13 @@ STRIPE_WEBHOOK_SECRET = os.environ.get('STRIPE_WEBHOOK_SECRET', '')
 TEST_RUNNER = 'regal.test_runner.RegalTestRunner'
 
 
+# Scheduled work (architecture 4.32)
+
+# The bearer token cron-job.org sends to /tasks/run/. Left empty,
+# nothing can run the scheduled work.
+SCHEDULED_TASK_TOKEN = os.environ.get('SCHEDULED_TASK_TOKEN', '')
+
+
 # Caches (architecture 4.29, 4.34)
 
 # Rate limits count in the database, so the two workers in render.yaml
