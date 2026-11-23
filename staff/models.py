@@ -33,6 +33,10 @@ class AuditLogEntry(models.Model):
         'bookings.Booking', on_delete=models.PROTECT,
         related_name='audit_entries', null=True, blank=True,
     )
+    related_voucher = models.ForeignKey(
+        'membership.Voucher', on_delete=models.PROTECT,
+        related_name='audit_entries', null=True, blank=True,
+    )
     reason = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
 

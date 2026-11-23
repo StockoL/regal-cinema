@@ -7,14 +7,22 @@ from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
 
-from bookings.models import Booking, Cancellation, OutboundEmail
+from bookings.models import (
+    Booking,
+    Cancellation,
+    OutboundEmail,
+    SeatBooking,
+)
 from bookings.services import (
     CancellationNotAllowed,
+    approve_cancellation,
     cancellation_state,
     decline_cancellation,
     request_cancellation,
 )
 from bookings.tests.test_holds import make_screening
+from membership.models import Voucher
+from screenings.models import TicketType
 from staff.models import AuditLogEntry
 from venue.models import VenueSettings
 
@@ -268,3 +276,98 @@ class DeclineCancellationTests(TestCase):
         self.decline()
         self.booking.refresh_from_db()
         self.assertEqual(cancellation_state(self.booking), 'open')
+
+
+class ApproveCancellationTests(TestCase):
+    """Staff agreeing to a request: a voucher for the booking's value
+    less the venue's fee, and the seats back on sale (journey 7, "Staff
+    decision"; architecture 4.22)."""
+
+    def setUp(self):
+        self.screening, (self.seat, _) = make_screening()
+        self.screening.date_time = timezone.now() + timedelta(days=3)
+        self.screening.save()
+        self.customer = get_user_model().objects.create_user(
+            'customer@example.com', 'a-long-pw-1'
+        )
+        self.staff = get_user_model().objects.create_user(
+            'staff@example.com', 'a-long-pw-1', is_staff=True,
+        )
+        self.booking = Booking.objects.create(
+            screening=self.screening, user=self.customer,
+            status=Booking.Status.PAID, amount_charged_pence=1850,
+        )
+        self.sold = SeatBooking.objects.create(
+            booking=self.booking, screening=self.screening, seat=self.seat,
+            ticket_type=TicketType.objects.get(name='Adult'),
+            price_pence=1850, vat_rate_percent=20,
+        )
+        self.request = request_cancellation(self.booking, 'Wrong night')
+
+    def approve(self, note='Plenty of time to resell'):
+        with self.captureOnCommitCallbacks(execute=True):
+            return approve_cancellation(self.request, self.staff, note)
+
+    def test_a_voucher_is_issued_for_the_value_less_the_fee(self):
+        VenueSettings.objects.update(cancellation_fee_pence=300)
+        self.approve()
+        voucher = Voucher.objects.get()
+        self.assertEqual(
+            (voucher.initial_value_pence, voucher.remaining_value_pence,
+             voucher.source, voucher.source_booking, voucher.is_active),
+            (1550, 1550, Voucher.Source.BOOKING_CANCELLED, self.booking,
+             True),
+        )
+        self.request.refresh_from_db()
+        self.assertEqual(
+            (self.request.status, self.request.outcome,
+             self.request.fee_pence, self.request.decided_by),
+            (Cancellation.Status.APPROVED, Cancellation.Outcome.VOUCHER,
+             300, self.staff),
+        )
+
+    def test_the_seats_go_back_on_sale_at_once(self):
+        self.approve()
+        self.booking.refresh_from_db()
+        self.assertEqual(self.booking.status, Booking.Status.CANCELLED)
+        self.sold.refresh_from_db()
+        self.assertIsNotNone(self.sold.released_at)
+
+    def test_it_is_logged_with_the_voucher(self):
+        self.approve()
+        entry = AuditLogEntry.objects.get()
+        self.assertEqual(
+            (entry.actor, entry.action_type, entry.related_booking,
+             entry.related_voucher, entry.reason),
+            (self.staff, AuditLogEntry.Action.BOOKING_CANCELLED,
+             self.booking, Voucher.objects.get(),
+             'Plenty of time to resell'),
+        )
+
+    def test_the_customer_is_emailed_the_voucher_code(self):
+        self.approve()
+        sent, = mail.outbox
+        self.assertEqual(sent.to, ['customer@example.com'])
+        self.assertIn(Voucher.objects.get().code, sent.body)
+        self.assertIn('£18.50', sent.body)
+        self.assertEqual(self.booking.emails.get().kind,
+                         OutboundEmail.Kind.CANCELLATION)
+
+    def test_without_an_amount_charged_the_seat_prices_are_its_value(self):
+        """A booking marked paid by hand in the admin."""
+        Booking.objects.filter(pk=self.booking.pk).update(
+            amount_charged_pence=None
+        )
+        self.approve()
+        self.assertEqual(Voucher.objects.get().initial_value_pence, 1850)
+
+    def test_a_note_is_needed_to_approve(self):
+        with self.assertRaises(ValueError):
+            self.approve(note='')
+        self.assertFalse(Voucher.objects.exists())
+
+    def test_a_decided_request_cant_be_approved(self):
+        self.approve()
+        with self.assertRaises(CancellationNotAllowed):
+            self.approve()
+        self.assertEqual(Voucher.objects.count(), 1)

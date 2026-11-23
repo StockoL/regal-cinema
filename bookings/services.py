@@ -5,6 +5,7 @@ from django.db import IntegrityError, transaction
 from django.utils import timezone
 
 from accounts.models import get_system_user
+from membership.models import Voucher
 from payments import get_provider
 from payments.base import FeeUnavailable, RefundFailed
 from screenings.models import Seat
@@ -16,6 +17,7 @@ from venue.models import get_settings
 from .basket import check_basket
 from .emails import (
     queue_booking_confirmation,
+    queue_cancellation_approved,
     queue_cancellation_declined,
     queue_late_payment_refund,
 )
@@ -275,37 +277,82 @@ def request_cancellation(booking, reason=''):
     return cancellation
 
 
-def decline_cancellation(cancellation, staff, note):
-    """Staff turn a customer's request down (4.22). The note is required
-    and goes to the customer. The booking returns to paid, the decision
-    is logged with the staff member's name, and the customer can ask
-    again later. Raises ValueError without a note, and
+def decide(cancellation, staff, note, status):
+    """Lock a waiting request and its booking, and record the decision
+    on the request. Shared by approving and declining, which each need
+    a note (4.22). Raises ValueError without a note, and
     CancellationNotAllowed if the request isn't waiting."""
     if not note or not note.strip():
-        raise ValueError('Declining needs a note to the customer.')
+        raise ValueError('A decision needs a note to the customer.')
+    cancellation = Cancellation.objects.select_for_update().get(
+        pk=cancellation.pk
+    )
+    if cancellation.status != Cancellation.Status.REQUESTED:
+        raise CancellationNotAllowed()
+    # Lock the booking alone: its customer is an optional join.
+    cancellation.booking = (
+        Booking.objects.select_for_update(of=('self',))
+        .select_related('screening__film', 'user')
+        .get(pk=cancellation.booking_id)
+    )
+    cancellation.status = status
+    cancellation.decided_by = staff
+    cancellation.decided_at = timezone.now()
+    cancellation.decision_note = note.strip()
+    return cancellation
+
+
+def decline_cancellation(cancellation, staff, note):
+    """Staff turn a customer's request down (4.22). The note goes to the
+    customer. The booking returns to paid, the decision is logged with
+    the staff member's name, and the customer can ask again later."""
     with transaction.atomic():
-        cancellation = Cancellation.objects.select_for_update().get(
-            pk=cancellation.pk
-        )
-        if cancellation.status != Cancellation.Status.REQUESTED:
-            raise CancellationNotAllowed()
-        # Lock the booking alone: its customer is an optional join.
-        booking = (
-            Booking.objects.select_for_update(of=('self',))
-            .select_related('screening__film', 'user')
-            .get(pk=cancellation.booking_id)
-        )
-        cancellation.status = Cancellation.Status.DECLINED
-        cancellation.decided_by = staff
-        cancellation.decided_at = timezone.now()
-        cancellation.decision_note = note.strip()
-        cancellation.save(update_fields=['status', 'decided_by',
-                                         'decided_at', 'decision_note'])
+        cancellation = decide(cancellation, staff, note,
+                              Cancellation.Status.DECLINED)
+        cancellation.save()
+        booking = cancellation.booking
         booking.status = Booking.Status.PAID
         booking.save(update_fields=['status'])
         log_action(staff, AuditLogEntry.Action.CANCELLATION_DECLINED,
                    note, booking=booking)
-        queue_cancellation_declined(booking, note.strip())
+        queue_cancellation_declined(booking, cancellation.decision_note)
+    return cancellation
+
+
+def booking_value(booking):
+    """What a booking was worth to the customer: what was charged, or,
+    for one marked paid by hand, its seats' stored prices. Never worked
+    out again from today's prices (4.2)."""
+    if booking.amount_charged_pence is not None:
+        return booking.amount_charged_pence
+    return sum(booking.seats.values_list('price_pence', flat=True))
+
+
+def approve_cancellation(cancellation, staff, note):
+    """Staff agree to a customer's request (4.22). The customer gets a
+    voucher for the booking's value less the venue's cancellation fee,
+    the seats go back on sale at once, the booking is cancelled, and the
+    decision is logged with the voucher. The customer is emailed the
+    code."""
+    with transaction.atomic():
+        cancellation = decide(cancellation, staff, note,
+                              Cancellation.Status.APPROVED)
+        booking = cancellation.booking
+        fee = get_settings().cancellation_fee_pence
+        value = max(booking_value(booking) - fee, 0)
+        voucher = Voucher.objects.create(
+            initial_value_pence=value, remaining_value_pence=value,
+            source=Voucher.Source.BOOKING_CANCELLED, source_booking=booking,
+        )
+        cancellation.outcome = Cancellation.Outcome.VOUCHER
+        cancellation.fee_pence = fee
+        cancellation.save()
+        release_seats(booking)
+        booking.status = Booking.Status.CANCELLED
+        booking.save(update_fields=['status'])
+        log_action(staff, AuditLogEntry.Action.BOOKING_CANCELLED, note,
+                   booking=booking, voucher=voucher)
+        queue_cancellation_approved(cancellation, voucher)
     return cancellation
 
 

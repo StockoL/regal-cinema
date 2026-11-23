@@ -14,7 +14,9 @@ FRONT_OF_HOUSE = [
 
 # A Manager holds every permission in the project's own apps, which
 # includes editing their records in the admin.
-PROJECT_APPS = ['accounts', 'screenings', 'bookings', 'venue', 'staff']
+PROJECT_APPS = [
+    'accounts', 'screenings', 'bookings', 'venue', 'staff', 'membership',
+]
 
 
 def ensure_groups(**kwargs):

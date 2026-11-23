@@ -72,6 +72,23 @@ def queue_cancellation_declined(booking, note):
     )
 
 
+def queue_cancellation_approved(cancellation, voucher):
+    """Tell the customer their booking is cancelled, with the voucher
+    code to spend (4.22). This is the booking's one cancellation
+    email."""
+    booking = cancellation.booking
+    if booking.user is None:
+        return None
+    return queue_email(
+        OutboundEmail.Kind.CANCELLATION, booking.user.email,
+        'booking_cancelled', {
+            'booking': booking, 'cancellation': cancellation,
+            'voucher': voucher,
+        },
+        booking=booking,
+    )
+
+
 def send_outbound_email(email_pk):
     """Send one queued email and record what happened. A failure is
     counted and kept, never raised, so it can't undo the change the

@@ -10,6 +10,7 @@
       {% if booking.infant_count %}<li>{{ booking.infant_count }} under 2{{ booking.infant_count|pluralize }}, on a lap</li>{% endif %}
     </ul>
     <p>Reference {{ booking.reference }}.{% if booking.amount_charged_pence is not None %} {{ booking.amount_charged_pence|pounds }} {% if booking.status == 'refunded' %}refunded{% else %}paid{% endif %}{% endif %}</p>
+    {% for voucher in booking.vouchers_issued.all %}<p>Voucher {{ voucher.code }} for {{ voucher.initial_value_pence|pounds }}, valid until {{ voucher.expires_at|date:"j F Y" }}. It has been emailed to you.</p>{% endfor %}
     {% if offer_cancel and booking.cancel_state %}<p><a class="button" data-variant="secondary" href="{% url 'bookings:cancellation_request' booking.reference %}">Request a cancellation</a></p>{% endif %}
   </div>
 </li>
