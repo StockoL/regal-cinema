@@ -424,3 +424,36 @@ class VerificationBannerTests(TestCase):
         self.client.force_login(self.user)
         self.assertEqual(self.client.get(url).status_code, 405)
         self.assertEqual(len(mail.outbox), 0)
+
+
+class AccountRateLimitTests(TestCase):
+    """Repeated tries at the account forms are slowed (journey 11,
+    "Rate limits"; architecture 4.29)."""
+
+    def tries(self, url, data, times):
+        return [self.client.post(url, data).status_code
+                for _ in range(times)]
+
+    def test_logging_in_allows_ten_tries_in_fifteen_minutes(self):
+        codes = self.tries(reverse('accounts:login'),
+                           {'username': 'x@example.com', 'password': 'no'}, 11)
+        self.assertNotIn(429, codes[:10])
+        self.assertEqual(codes[10], 429)
+
+    def test_the_staff_login_is_limited_too(self):
+        codes = self.tries(reverse('staff:login'),
+                           {'username': 'x@example.com', 'password': 'no'}, 11)
+        self.assertEqual(codes[10], 429)
+
+    def test_registering_allows_five_an_hour(self):
+        codes = self.tries(reverse('accounts:register'),
+                           {'email': 'bad', 'password1': 'x',
+                            'password2': 'y'}, 6)
+        self.assertNotIn(429, codes[:5])
+        self.assertEqual(codes[5], 429)
+
+    def test_asking_for_a_reset_allows_five_an_hour(self):
+        codes = self.tries(reverse('accounts:password_reset'),
+                           {'email': 'x@example.com'}, 6)
+        self.assertNotIn(429, codes[:5])
+        self.assertEqual(codes[5], 429)

@@ -1,6 +1,8 @@
 from django.contrib.auth import views as auth_views
 from django.urls import path, reverse_lazy
 
+from regal.ratelimit import rate_limit
+
 from . import views
 from .forms import LoginForm, NewPasswordForm
 
@@ -11,18 +13,24 @@ urlpatterns = [
     path('verify/send-again/', views.resend_verification,
          name='resend_verification'),
     path('verify/<str:token>/', views.verify_email, name='verify_email'),
-    path('login/', auth_views.LoginView.as_view(
-        template_name='accounts/login.html',
-        authentication_form=LoginForm,
-        redirect_authenticated_user=True,
+    # Rate limited, sharing one count with the staff login (4.29).
+    path('login/', rate_limit('login', limit=10, window=15 * 60)(
+        auth_views.LoginView.as_view(
+            template_name='accounts/login.html',
+            authentication_form=LoginForm,
+            redirect_authenticated_user=True,
+        )
     ), name='login'),
     path('logout/', auth_views.LogoutView.as_view(), name='logout'),
     # Password reset, on Django's signed tokens (4.16).
-    path('password-reset/', auth_views.PasswordResetView.as_view(
-        template_name='accounts/password_reset_form.html',
-        email_template_name='accounts/password_reset_email.txt',
-        subject_template_name='accounts/password_reset_subject.txt',
-        success_url=reverse_lazy('accounts:password_reset_done'),
+    path('password-reset/', rate_limit('password-reset', limit=5,
+                                       window=60 * 60)(
+        auth_views.PasswordResetView.as_view(
+            template_name='accounts/password_reset_form.html',
+            email_template_name='accounts/password_reset_email.txt',
+            subject_template_name='accounts/password_reset_subject.txt',
+            success_url=reverse_lazy('accounts:password_reset_done'),
+        )
     ), name='password_reset'),
     path('password-reset/sent/', auth_views.PasswordResetDoneView.as_view(
         template_name='accounts/password_reset_done.html',
