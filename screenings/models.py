@@ -1,6 +1,5 @@
 from datetime import timedelta
 
-from django.conf import settings
 from django.contrib.postgres.constraints import ExclusionConstraint
 from django.contrib.postgres.fields import (
     DateTimeRangeField,
@@ -390,10 +389,11 @@ class Screening(models.Model):
         return self.seats().count()
 
     def calculate_ends_at(self):
+        venue = get_settings()
         minutes = (
-            settings.SCREENING_TRAILER_MINUTES
+            venue.trailer_minutes
             + self.film.duration_minutes
-            + settings.SCREENING_TURNAROUND_MINUTES
+            + venue.turnaround_minutes
         )
         return self.date_time + timedelta(minutes=minutes)
 
