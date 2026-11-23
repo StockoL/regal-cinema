@@ -188,3 +188,24 @@ class DatabaseSettingsTests(TestCase):
         database = django_settings.DATABASES['default']
         self.assertGreater(database['CONN_MAX_AGE'], 0)
         self.assertTrue(database['CONN_HEALTH_CHECKS'])
+
+
+class CacheSettingsTests(TestCase):
+    """Rate limits count in a cache both workers share; the layout and
+    listing caches stay in each worker's memory (4.29, 4.34)."""
+
+    def test_rate_limits_count_in_the_database(self):
+        self.assertEqual(
+            django_settings.CACHES['ratelimit']['BACKEND'],
+            'django.core.cache.backends.db.DatabaseCache',
+        )
+
+    def test_everything_else_stays_in_each_workers_memory(self):
+        self.assertEqual(
+            django_settings.CACHES['default']['BACKEND'],
+            'django.core.cache.backends.locmem.LocMemCache',
+        )
+
+    def test_the_deploy_makes_the_cache_table(self):
+        build = (Path(django_settings.BASE_DIR) / 'build.sh').read_text()
+        self.assertIn('python manage.py createcachetable', build)

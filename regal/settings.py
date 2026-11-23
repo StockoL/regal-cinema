@@ -207,3 +207,19 @@ PAYMENT_PROVIDER = 'payments.stripe_provider.StripeProvider'
 STRIPE_SECRET_KEY = os.environ.get('STRIPE_SECRET_KEY', '')
 STRIPE_WEBHOOK_SECRET = os.environ.get('STRIPE_WEBHOOK_SECRET', '')
 TEST_RUNNER = 'regal.test_runner.RegalTestRunner'
+
+
+# Caches (architecture 4.29, 4.34)
+
+# Rate limits count in the database, so the two workers in render.yaml
+# share the same counts. The seat layout and listing caches stay in
+# each worker's memory, where a copy only ever lasts a minute.
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+    },
+    'ratelimit': {
+        'BACKEND': 'django.core.cache.backends.db.DatabaseCache',
+        'LOCATION': 'rate_limit_cache',
+    },
+}
