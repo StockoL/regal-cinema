@@ -24,6 +24,7 @@
         <nav id="main-nav" class="navbar__menu" aria-label="Main">
           <a class="navbar__link" href="{% url 'screenings:screening_list' %}"{% if current == 'screenings:screening_list' %} aria-current="page"{% endif %}>What's on</a>
           {% if user.is_authenticated %}
+            <a class="navbar__link" href="{% url 'bookings:booking_list' %}"{% if current == 'bookings:booking_list' %} aria-current="page"{% endif %}>My bookings</a>
             {# Logging out changes state, so it's a form, not a link. #}
             <form method="post" action="{% url 'accounts:logout' %}">
               {% csrf_token %}
