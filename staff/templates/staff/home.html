@@ -7,6 +7,7 @@
   <div class="center flow">
     <h1>Staff</h1>
     <ul class="flow" role="list">
+      {% if perms.bookings.cancel_booking %}<li><a href="{% url 'bookings_staff:cancellation_list' %}">Cancellation requests</a></li>{% endif %}
       {% if perms.venue.manage_venue_settings %}<li><a href="{% url 'admin:venue_venuesettings_change' 1 %}">Venue settings</a></li>{% endif %}
       <li><a href="{% url 'admin:index' %}">The admin, for films, screenings, seat plans and ticket types</a></li>
     </ul>
