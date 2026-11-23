@@ -44,7 +44,8 @@ class CancellationQueueTests(TestCase):
         response = self.client.get(self.url)
         for words in (self.booking.reference, 'customer@example.com',
                       'Nosferatu', 'ill', 'voucher for £18.50',
-                      'Note to customer (needed to decline)', 'Decline'):
+                      'Note to customer (needed to decline)', 'Decline',
+                      'class="textarea"'):
             with self.subTest(words=words):
                 self.assertContains(response, words)
 

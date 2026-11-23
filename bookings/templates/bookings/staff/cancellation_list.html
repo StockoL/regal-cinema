@@ -23,7 +23,7 @@
               {% csrf_token %}
               <div class="field">
                 <label for="note-{{ cancellation.pk }}">Note to customer (needed to decline)</label>
-                <textarea id="note-{{ cancellation.pk }}" name="note" rows="3"></textarea>
+                <textarea class="textarea" id="note-{{ cancellation.pk }}" name="note" rows="3"></textarea>
               </div>
               <button class="button" type="submit" data-variant="secondary">Decline</button>
             </form>
