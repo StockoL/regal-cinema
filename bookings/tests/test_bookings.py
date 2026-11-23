@@ -38,6 +38,23 @@ class BookingTests(TestCase):
         self.assertIsNone(booking.stripe_fee_pence)
         self.assertIsNone(booking.stripe_net_pence)
 
+    def test_a_new_booking_isnt_checked_in(self):
+        booking = self.book()
+        self.assertIsNone(booking.checked_in_at)
+        self.assertIsNone(booking.checked_in_by)
+
+    def test_the_check_in_outlives_the_staff_account(self):
+        """4.21: SET_NULL, as the sale still stands."""
+        staff = get_user_model().objects.create_user(
+            'staff@example.com', 'a-long-pw-1', is_staff=True,
+        )
+        booking = self.book(checked_in_at=timezone.now(),
+                            checked_in_by=staff)
+        staff.delete()
+        booking.refresh_from_db()
+        self.assertIsNone(booking.checked_in_by)
+        self.assertIsNotNone(booking.checked_in_at)
+
     def test_each_booking_gets_a_reference_to_read_out(self):
         booking = self.book()
         self.assertRegex(booking.reference, r'^RGL-[A-Z2-9]{5}$')

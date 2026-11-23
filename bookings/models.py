@@ -130,6 +130,13 @@ class Booking(models.Model):
         settings.AUTH_USER_MODEL, on_delete=models.SET_NULL,
         related_name='bookings_taken', null=True, blank=True,
     )
+    # Who let the party in at the door, and when (4.2). The audit entry
+    # still names them if the staff account goes.
+    checked_in_at = models.DateTimeField(null=True, blank=True)
+    checked_in_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL,
+        related_name='bookings_checked_in', null=True, blank=True,
+    )
     # Under 2s, free and on a lap, so they have no seat (4.2).
     infant_count = models.PositiveSmallIntegerField(default=0)
     # How many seats the customer chose, so confirming can tell if a
