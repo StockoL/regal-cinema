@@ -381,6 +381,28 @@ def find_bookings(query, on_date=None):
             .order_by('screening__date_time'))
 
 
+class CheckInRefused(Exception):
+    """The booking isn't paid, or the party is already in."""
+
+
+def check_in(booking, staff):
+    """Let a party in at the door (4.2). The booking records who and
+    when, and the audit entry's reason is the status reached, so staff
+    type nothing at the door (4.9). A booking can only be checked in
+    once, and only when it's paid."""
+    with transaction.atomic():
+        booking = Booking.objects.select_for_update().get(pk=booking.pk)
+        if (booking.status != Booking.Status.PAID
+                or booking.checked_in_at is not None):
+            raise CheckInRefused()
+        booking.checked_in_at = timezone.now()
+        booking.checked_in_by = staff
+        booking.save(update_fields=['checked_in_at', 'checked_in_by'])
+        log_action(staff, AuditLogEntry.Action.CHECKED_IN, 'Checked in',
+                   booking=booking)
+    return booking
+
+
 def release_seats(booking):
     """Put a booking's sold seats back on sale at once. The rows are
     kept with released_at set, never deleted, so the sale stays on
