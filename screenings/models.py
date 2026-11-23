@@ -45,6 +45,7 @@ class Film(models.Model):
 
     class Meta:
         ordering = ['title']
+        permissions = [('manage_films', 'Can add and edit films')]
 
     def __str__(self):
         return self.title
@@ -337,6 +338,10 @@ class Screening(models.Model):
 
     class Meta:
         ordering = ['date_time']
+        permissions = [
+            ('manage_screenings', 'Can schedule and edit screenings'),
+            ('cancel_screening', 'Can cancel a screening'),
+        ]
         constraints = [
             # Half-open ranges, so one screening may start at the moment
             # the previous one ends. Cancelled screenings are kept, hidden

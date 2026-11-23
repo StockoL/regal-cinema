@@ -142,6 +142,15 @@ class Booking(models.Model):
 
     class Meta:
         ordering = ['-created_at']
+        # Each sensitive staff action has its own permission (4.9).
+        permissions = [
+            ('view_bookings', 'Can look up bookings and guest lists'),
+            ('check_in_booking', 'Can check a party in'),
+            ('create_in_venue_booking', 'Can take a booking at the venue'),
+            ('cancel_booking', 'Can approve, decline or cancel a booking'),
+            ('refund_booking', 'Can refund a booking to the card'),
+            ('view_attention', 'Can see what needs attention'),
+        ]
 
     def __str__(self):
         return f'{self.reference} for {self.screening}'

@@ -1,0 +1,15 @@
+{% extends 'base.html' %}
+
+{% block title %}Staff{% endblock %}
+
+{% block content %}
+<div class="wrapper region">
+  <div class="center flow">
+    <h1>Staff</h1>
+    <ul class="flow" role="list">
+      {% if perms.venue.manage_venue_settings %}<li><a href="{% url 'admin:venue_venuesettings_change' 1 %}">Venue settings</a></li>{% endif %}
+      <li><a href="{% url 'admin:index' %}">The admin, for films, screenings, seat plans and ticket types</a></li>
+    </ul>
+  </div>
+</div>
+{% endblock %}
