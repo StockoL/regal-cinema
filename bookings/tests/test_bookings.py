@@ -55,6 +55,16 @@ class BookingTests(TestCase):
         self.assertIsNone(booking.checked_in_by)
         self.assertIsNotNone(booking.checked_in_at)
 
+    def test_a_dispute_is_open_until_it_closes(self):
+        """4.2: open while disputed_at is set and dispute_closed_at
+        isn't."""
+        booking = self.book()
+        self.assertFalse(booking.dispute_open)
+        booking.disputed_at = timezone.now()
+        self.assertTrue(booking.dispute_open)
+        booking.dispute_closed_at = timezone.now()
+        self.assertFalse(booking.dispute_open)
+
     def test_each_booking_gets_a_reference_to_read_out(self):
         booking = self.book()
         self.assertRegex(booking.reference, r'^RGL-[A-Z2-9]{5}$')

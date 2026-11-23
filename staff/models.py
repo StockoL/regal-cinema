@@ -21,6 +21,8 @@ class AuditLogEntry(models.Model):
             'order_status_changed', 'Order status changed'
         )
         CHECKED_IN = 'checked_in', 'Checked in'
+        DISPUTE_OPENED = 'dispute_opened', 'Dispute opened'
+        DISPUTE_CLOSED = 'dispute_closed', 'Dispute closed'
 
     # Staff accounts are deactivated, never deleted, so the log always
     # names a real person, or the system user (4.21).
