@@ -214,7 +214,6 @@ class AccountMenuTests(TestCase):
         self.assertIn('<button', menu)
         self.assertNotIn(f'href="{reverse("accounts:login")}"', menu)
 
-
     def test_a_customer_can_reach_my_bookings(self):
         self.client.force_login(
             User.objects.create_user('customer@example.com', 'a-long-pw-1')
@@ -224,6 +223,7 @@ class AccountMenuTests(TestCase):
 
     def test_a_visitor_isnt_offered_my_bookings(self):
         self.assertNotIn('My bookings', self.menu())
+
 
 class PasswordResetTests(TestCase):
     """Choosing a new password from a link in an email. Uses Django's
