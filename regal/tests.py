@@ -71,6 +71,9 @@ class StylesheetTests(TestCase):
         )
         self.assertIn('ul[role="list"]', styles)
         self.assertIn('padding-inline-start: 0', styles)
+        # Nor the browser's margin, which pushed a list down inside a
+        # table cell. Flow spacing still adds space between siblings.
+        self.assertIn('margin-block: 0', styles)
 
     def test_printing_leaves_out_the_site_around_the_page(self):
         """A guest list goes to the door on paper (4.32), so printing

@@ -1,8 +1,11 @@
 /* LooseLeaf's reset drops the bullets from a list marked role="list",
    but the browser's left padding stays and indents every strip of
    buttons and every stack of cards. Those lists are layout, not prose,
-   so the padding goes too. */
+   so the padding goes too, and the browser's margin with it, which
+   otherwise pushes a list down inside a table cell. Flow spacing, in a
+   later layer, still adds space between siblings. */
 ul[role="list"],
 ol[role="list"] {
   padding-inline-start: 0;
+  margin-block: 0;
 }
