@@ -9,6 +9,6 @@
       {% for sold in booking.seats.all %}<li>{{ sold.seat.label }}, {{ sold.ticket_type.name }}</li>{% endfor %}
       {% if booking.infant_count %}<li>{{ booking.infant_count }} under 2{{ booking.infant_count|pluralize }}, on a lap</li>{% endif %}
     </ul>
-    <p>Reference {{ booking.reference }}.{% if booking.amount_charged_pence is not None %} {{ booking.amount_charged_pence|pounds }} paid{% endif %}</p>
+    <p>Reference {{ booking.reference }}.{% if booking.amount_charged_pence is not None %} {{ booking.amount_charged_pence|pounds }} {% if booking.status == 'refunded' %}refunded{% else %}paid{% endif %}{% endif %}</p>
   </div>
 </li>

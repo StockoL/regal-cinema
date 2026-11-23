@@ -84,6 +84,14 @@ class MyBookingsTests(TestCase):
         self.assertContains(response, booking.reference)
         self.assertContains(response, 'Cancelled')
 
+    def test_a_refunded_booking_says_what_comes_back(self):
+        booking = self.book(self.upcoming)
+        booking.status = Booking.Status.REFUNDED
+        booking.save()
+        response = self.client.get(self.url)
+        self.assertContains(response, '£9.50 refunded')
+        self.assertNotContains(response, '£9.50 paid')
+
     def test_an_unpaid_booking_isnt_listed(self):
         booking = self.book(self.upcoming, paid=False)
         self.assertNotContains(self.client.get(self.url), booking.reference)
