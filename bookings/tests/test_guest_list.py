@@ -5,6 +5,7 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 from django.test import TestCase
 from django.urls import reverse
+from django.utils import timezone
 
 from bookings.models import Booking, SeatBooking
 from bookings.services import check_in
@@ -144,3 +145,47 @@ class GuestListDownloadTests(GuestListSetUp):
     def test_downloading_needs_view_bookings(self):
         self.staff.groups.clear()
         self.assertEqual(self.client.get(self.download_url).status_code, 403)
+
+
+class StaffScreeningsTests(GuestListSetUp):
+    """The way into each screening's guest list: one day's screenings,
+    today by default (4.32)."""
+
+    screenings_url = reverse('bookings_staff:screening_list')
+
+    def day(self):
+        return timezone.localdate(self.screening.date_time).isoformat()
+
+    def test_a_days_screenings_link_to_their_guest_lists(self):
+        self.book('a@example.com', self.seat_1)
+        response = self.client.get(self.screenings_url, {'date': self.day()})
+        self.assertContains(response, 'Nosferatu')
+        self.assertContains(response, self.url_for_guests())
+        self.assertContains(response, '1 booking')
+
+    def url_for_guests(self):
+        return reverse('bookings_staff:guest_list',
+                       args=[self.screening.pk])
+
+    def test_another_day_leaves_them_out(self):
+        response = self.client.get(self.screenings_url,
+                                   {'date': '2027-01-01'})
+        self.assertNotContains(response, self.url_for_guests())
+        self.assertContains(response, 'No screenings on this day')
+
+    def test_a_cancelled_screening_is_shown_and_labelled(self):
+        """Staff still see what the public no longer does (4.11)."""
+        self.screening.cancelled_at = timezone.now()
+        self.screening.save()
+        page = self.client.get(self.screenings_url, {'date': self.day()})
+        self.assertContains(page,
+                            'Cancelled')
+
+    def test_it_needs_view_bookings(self):
+        self.staff.groups.clear()
+        response = self.client.get(self.screenings_url)
+        self.assertEqual(response.status_code, 403)
+
+    def test_the_staff_home_offers_it(self):
+        self.assertContains(self.client.get(reverse('staff:home')),
+                            self.screenings_url)

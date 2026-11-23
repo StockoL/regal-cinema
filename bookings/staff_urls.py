@@ -19,4 +19,5 @@ urlpatterns = [
          name='guest_list'),
     path('screenings/<int:pk>/guests/download/',
          staff_views.guest_list_download, name='guest_list_download'),
+    path('screenings/', staff_views.screening_list, name='screening_list'),
 ]

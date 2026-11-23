@@ -1,7 +1,8 @@
 import csv
+from datetime import date, timedelta
 
 from django.contrib import messages
-from django.db.models import Prefetch
+from django.db.models import Count, Prefetch, Q
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -213,3 +214,28 @@ def guest_list_download(request, pk):
             checked_in,
         ])
     return response
+
+
+@staff_permission_required('bookings.view_bookings')
+def screening_list(request):
+    """One day's screenings, today by default, each with its bookings
+    and a link to its guest list (4.32). Staff see private and
+    cancelled screenings too, labelled."""
+    try:
+        day = date.fromisoformat(request.GET.get('date', ''))
+    except ValueError:
+        day = timezone.localdate()
+    screenings = (
+        Screening.objects.filter(date_time__date=day)
+        .select_related('film', 'screen')
+        .annotate(booking_count=Count(
+            'bookings', filter=Q(bookings__status__in=AT_THE_DOOR),
+        ))
+        .order_by('date_time')
+    )
+    return render(request, 'bookings/staff/screening_list.html', {
+        'day': day,
+        'previous_day': day - timedelta(days=1),
+        'next_day': day + timedelta(days=1),
+        'screenings': screenings,
+    })
