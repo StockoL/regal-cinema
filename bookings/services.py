@@ -1,7 +1,6 @@
 import hashlib
 from datetime import timedelta
 
-from django.conf import settings
 from django.db import IntegrityError, transaction
 from django.utils import timezone
 
@@ -10,6 +9,7 @@ from payments import get_provider
 from payments.base import FeeUnavailable, RefundFailed
 from screenings.models import Seat
 from screenings.services import layout_seats
+from venue.models import get_settings
 
 from .basket import check_basket
 from .emails import queue_booking_confirmation, queue_late_payment_refund
@@ -70,7 +70,9 @@ def hold_seats(screening, choices, session_key, user=None, expires_at=None):
         if unavailable:
             raise SeatsUnavailable(unavailable)
         if expires_at is None:
-            expires_at = now + timedelta(minutes=settings.SEAT_HOLD_MINUTES)
+            expires_at = now + timedelta(
+                minutes=get_settings().seat_hold_minutes
+            )
         try:
             with transaction.atomic():
                 return SeatHold.objects.bulk_create([
@@ -358,7 +360,7 @@ def amend_booking(booking, choices, infants, session_key, user=None):
     if now >= cap:
         raise HoldTimeUsedUp()
     expires_at = min(
-        now + timedelta(minutes=settings.SEAT_HOLD_MINUTES), cap
+        now + timedelta(minutes=get_settings().seat_hold_minutes), cap
     )
     wanted = {seat.pk: ticket_type for seat, ticket_type in choices}
 

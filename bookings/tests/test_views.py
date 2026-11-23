@@ -3,7 +3,7 @@ from datetime import timedelta
 
 from django.contrib.auth import get_user_model
 from django.core.cache import cache
-from django.test import TestCase, override_settings
+from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
 
@@ -277,7 +277,6 @@ class ChooseSeatsTests(TestCase):
         self.assertRedirects(self.client.get(self.tickets_url), self.url)
 
 
-@override_settings(SEAT_HOLD_MINUTES=10)
 class TicketTypesTests(TestCase):
     """A ticket type for each seat, any infants, then the seats are held
     and a pending booking made (journey 2; 4.8 step 3)."""
@@ -386,7 +385,6 @@ class TicketTypesTests(TestCase):
         self.assertFalse(Booking.objects.exists())
 
 
-@override_settings(SEAT_HOLD_MINUTES=10)
 class CheckoutPlaceholderTests(TestCase):
     """Where a pending booking goes next. Payment comes later; for now
     it shows what's held and until when."""
@@ -413,7 +411,6 @@ class CheckoutPlaceholderTests(TestCase):
         self.assertEqual(self.client.get(self.url).status_code, 404)
 
 
-@override_settings(SEAT_HOLD_MINUTES=10)
 class CancelPendingBookingTests(TestCase):
     """Letting held seats go before paying. Journey 2, "Cancel" and
     "Seats never stuck"; architecture 4.8 step 6."""
@@ -457,7 +454,6 @@ class CancelPendingBookingTests(TestCase):
         self.assertTrue(SeatHold.objects.exists())
 
 
-@override_settings(SEAT_HOLD_MINUTES=10)
 class AmendFromThePagesTests(TestCase):
     """Going back from checkout to change anything. Journey 2, "Amend";
     architecture 4.8 step 11."""
@@ -642,16 +638,17 @@ class SeatMapQueryTests(TestCase):
             )
 
     def test_the_seat_map_page_makes_a_fixed_number_of_queries(self):
-        """Five once the room's layout is cached: the screening, any
-        booking of theirs, the closed areas, live holds and live sales."""
+        """Six once the room's layout is cached: the screening, the
+        venue settings for the online cut-off, any booking of theirs, the
+        closed areas, live holds and live sales."""
         self.client.get(self.url)
-        with self.assertNumQueries(5):
+        with self.assertNumQueries(6):
             self.client.get(self.url)
 
     def test_a_bigger_room_makes_no_more_queries(self):
         self.add_seats(range(3, 60))
         self.client.get(self.url)
-        with self.assertNumQueries(5):
+        with self.assertNumQueries(6):
             self.client.get(self.url)
 
     def test_a_seat_taken_out_of_use_goes_at_once(self):

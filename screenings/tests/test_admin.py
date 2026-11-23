@@ -2,7 +2,7 @@ from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
 from django.contrib.auth import get_user_model
-from django.test import TestCase, override_settings
+from django.test import TestCase
 from django.urls import reverse
 
 from screenings.models import (
@@ -16,8 +16,6 @@ from screenings.models import (
 )
 
 
-@override_settings(SCREENING_TRAILER_MINUTES=20,
-                   SCREENING_TURNAROUND_MINUTES=15)
 class ScreeningsAdminTests(TestCase):
     """The admin is for entering data and one-off fixes until the staff
     pages exist (features, permission model)."""

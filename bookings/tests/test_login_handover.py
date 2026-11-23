@@ -1,12 +1,11 @@
 from django.contrib.auth import get_user_model
-from django.test import TestCase, override_settings
+from django.test import TestCase
 from django.urls import reverse
 
 from bookings.models import Booking
 from bookings.tests import test_views
 
 
-@override_settings(SEAT_HOLD_MINUTES=10)
 class LoginHandoverTests(TestCase):
     """Held seats survive logging in mid-checkout: Django gives the
     session a new key at login, so the holds move to the account

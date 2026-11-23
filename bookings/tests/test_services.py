@@ -1,7 +1,7 @@
 from datetime import timedelta
 
 from django.contrib.auth import get_user_model
-from django.test import TestCase, override_settings
+from django.test import TestCase
 from django.utils import timezone
 
 from bookings.basket import BasketError
@@ -27,9 +27,9 @@ from screenings.models import (
     Seat,
     TicketType,
 )
+from venue.models import VenueSettings
 
 
-@override_settings(SEAT_HOLD_MINUTES=10)
 class HoldSeatsTests(TestCase):
     """Holding the chosen seats in one step, all or none. Journey 2,
     "Hold created" and "Conflict"; architecture 4.8 step 3 and 4."""
@@ -58,10 +58,12 @@ class HoldSeatsTests(TestCase):
         )
 
     def test_holds_last_the_venues_hold_time(self):
+        """A setting the venue changes in the admin (4.23)."""
+        VenueSettings.objects.update(seat_hold_minutes=15)
         before = timezone.now()
         hold, = self.hold([(self.seat_1, self.adult)])
         self.assertAlmostEqual(
-            hold.expires_at, before + timedelta(minutes=10),
+            hold.expires_at, before + timedelta(minutes=15),
             delta=timedelta(seconds=5),
         )
 
@@ -137,7 +139,6 @@ class HoldSeatsTests(TestCase):
         self.assertFalse(SeatHold.objects.exists())
 
 
-@override_settings(SEAT_HOLD_MINUTES=10)
 class StartBookingTests(TestCase):
     """Proceeding to checkout: the basket is checked, the seats held and
     a pending booking made, all in one step or not at all (architecture
@@ -378,7 +379,6 @@ class CancelPendingBookingTests(TestCase):
         self.assertTrue(Booking.objects.exists())
 
 
-@override_settings(SEAT_HOLD_MINUTES=10)
 class AmendBookingTests(TestCase):
     """Going back and changing anything before paying, without starting
     again. Journey 2, "Amend"; architecture 4.8 steps 11 and 12."""

@@ -66,6 +66,7 @@ INSTALLED_APPS = [
     'accounts',
     'screenings',
     'bookings',
+    'venue',
 ]
 
 MIDDLEWARE = [
@@ -126,19 +127,6 @@ FORM_RENDERER = 'django_looseleaf.renderers.LooseLeafFormRenderer'
 # The Regal theme, compiled from static/theme/design-tokens.json with
 # the LooseLeaf CLI: the dark auditorium palette in both schemes.
 LOOSELEAF_THEME = 'theme'
-
-# How long a screening holds its screen beyond the film itself: trailers
-# before, clearing the room after (architecture 4.1). Defaults until the
-# venue settings record (4.23) exists.
-SCREENING_TRAILER_MINUTES = 20
-SCREENING_TURNAROUND_MINUTES = 15
-# How long chosen seats are kept for a customer (4.8). The 30-minute
-# cap on total hold time is fixed, not a setting.
-SEAT_HOLD_MINUTES = 10
-# How many minutes before the listed start online sales close. 0 closes
-# them at the start, as the real venue's terms admit no one after the
-# film starts (4.23). The staff till isn't bound by it (4.14).
-ONLINE_SALES_CLOSE_MINUTES = 0
 
 
 # Password validation

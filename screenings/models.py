@@ -1,6 +1,5 @@
 from datetime import timedelta
 
-from django.conf import settings
 from django.contrib.postgres.constraints import ExclusionConstraint
 from django.contrib.postgres.fields import (
     DateTimeRangeField,
@@ -12,6 +11,8 @@ from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.utils import timezone
 from django.utils.text import slugify
+
+from venue.models import get_settings
 
 
 class Film(models.Model):
@@ -370,7 +371,7 @@ class Screening(models.Model):
         """Online booking stops this long before the listed start
         (4.23). Staff can still sell at the till (4.14)."""
         cutoff = self.date_time - timedelta(
-            minutes=settings.ONLINE_SALES_CLOSE_MINUTES
+            minutes=get_settings().online_sales_close_minutes
         )
         return timezone.now() >= cutoff
 
@@ -388,10 +389,11 @@ class Screening(models.Model):
         return self.seats().count()
 
     def calculate_ends_at(self):
+        venue = get_settings()
         minutes = (
-            settings.SCREENING_TRAILER_MINUTES
+            venue.trailer_minutes
             + self.film.duration_minutes
-            + settings.SCREENING_TURNAROUND_MINUTES
+            + venue.turnaround_minutes
         )
         return self.date_time + timedelta(minutes=minutes)
 

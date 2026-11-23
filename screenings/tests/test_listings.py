@@ -1,7 +1,7 @@
 from datetime import date, datetime, timedelta
 from zoneinfo import ZoneInfo
 
-from django.test import TestCase, override_settings
+from django.test import TestCase
 from django.utils import timezone
 
 from screenings.models import (
@@ -11,6 +11,7 @@ from screenings.models import (
     SeatingLayout,
     TicketClass,
 )
+from venue.models import VenueSettings
 
 LONDON = ZoneInfo('Europe/London')
 
@@ -84,12 +85,11 @@ class OnlineSalesCutoffTests(TestCase):
             date_time=timezone.now() + timedelta(minutes=minutes),
         )
 
-    @override_settings(ONLINE_SALES_CLOSE_MINUTES=0)
     def test_sales_stay_open_until_the_start(self):
         self.assertFalse(self.screening_starting_in(5).online_sales_closed)
         self.assertTrue(self.screening_starting_in(-1).online_sales_closed)
 
-    @override_settings(ONLINE_SALES_CLOSE_MINUTES=30)
     def test_a_venue_can_close_sales_earlier(self):
+        VenueSettings.objects.update(online_sales_close_minutes=30)
         self.assertTrue(self.screening_starting_in(20).online_sales_closed)
         self.assertFalse(self.screening_starting_in(40).online_sales_closed)

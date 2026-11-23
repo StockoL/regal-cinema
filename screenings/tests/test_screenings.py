@@ -5,7 +5,7 @@ from django import forms
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
 from django.db.models import ProtectedError
-from django.test import TestCase, override_settings
+from django.test import TestCase
 
 from screenings.models import (
     Film,
@@ -14,12 +14,11 @@ from screenings.models import (
     SeatingLayout,
     TicketClass,
 )
+from venue.models import VenueSettings
 
 LONDON = ZoneInfo('Europe/London')
 
 
-@override_settings(SCREENING_TRAILER_MINUTES=20,
-                   SCREENING_TURNAROUND_MINUTES=15)
 class ScreeningTests(TestCase):
     """Scheduling and the no-overlap rule (architecture 4.1, 4.21)."""
 
@@ -63,9 +62,9 @@ class ScreeningTests(TestCase):
         self.schedule(first.ends_at)
         self.assertEqual(Screening.objects.count(), 2)
 
-    @override_settings(SCREENING_TRAILER_MINUTES=0,
-                       SCREENING_TURNAROUND_MINUTES=0)
     def test_venue_can_set_both_times_to_zero(self):
+        VenueSettings.objects.update(trailer_minutes=0,
+                                     turnaround_minutes=0)
         self.schedule(self.start)
         self.schedule(self.start + timedelta(minutes=100))
         self.assertEqual(Screening.objects.count(), 2)
@@ -133,8 +132,8 @@ class ScreeningTests(TestCase):
 
     def test_changing_the_venue_times_leaves_saved_screenings_alone(self):
         screening = self.schedule(self.start)
-        with self.settings(SCREENING_TURNAROUND_MINUTES=60):
-            screening.refresh_from_db()
+        VenueSettings.objects.update(turnaround_minutes=60)
+        screening.refresh_from_db()
         self.assertEqual(
             screening.ends_at, self.start + timedelta(minutes=135)
         )
