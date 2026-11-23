@@ -15,4 +15,6 @@ urlpatterns = [
     path('check-in/', staff_views.check_in_search, name='check_in'),
     path('check-in/<str:reference>/', staff_views.check_in_booking,
          name='check_in_booking'),
+    path('screenings/<int:pk>/guests/', staff_views.guest_list,
+         name='guest_list'),
 ]

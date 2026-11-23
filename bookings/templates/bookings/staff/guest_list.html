@@ -1,0 +1,36 @@
+{% extends 'base.html' %}
+
+{% block title %}Guest list: {{ screening.film.title }}{% endblock %}
+
+{% block content %}
+<div class="wrapper region flow">
+  <p class="no-print"><a href="{% url 'staff:home' %}">Staff</a></p>
+  <h1>Guest list</h1>
+  <p>{{ screening.film.title }}, {{ screening.date_time|date:"l j F" }} at {{ screening.date_time|time:"g:i a" }}, {{ screening.screen.name }}</p>
+  <p>{{ bookings|length }} booking{{ bookings|length|pluralize }}, {{ seat_count }} seat{{ seat_count|pluralize }}, {{ checked_in_count }} checked in</p>
+  {% if bookings %}
+    <table class="table">
+      <thead>
+        <tr><th scope="col">Reference</th><th scope="col">Customer</th><th scope="col">Seats and tickets</th><th scope="col">Checked in</th></tr>
+      </thead>
+      <tbody>
+        {% for booking in bookings %}
+          <tr>
+            <td>{{ booking.reference }}{% if booking.status == 'cancellation_requested' %}<br>Cancellation requested{% endif %}</td>
+            <td>{% if booking.user %}{{ booking.user.email }}{% else %}At the venue{% endif %}</td>
+            <td>
+              <ul role="list">
+                {% for sold in booking.seats.all %}<li>{{ sold.seat.label }}, {{ sold.ticket_type.name }}{% if sold.ticket_type.proof_reminder %}. {{ sold.ticket_type.proof_reminder }}{% endif %}</li>{% endfor %}
+                {% if booking.infant_count %}<li>{{ booking.infant_count }} under 2{{ booking.infant_count|pluralize }}, on a lap</li>{% endif %}
+              </ul>
+            </td>
+            <td>{% if booking.checked_in_at %}Checked in at {{ booking.checked_in_at|time:"g:i a" }}{% else %}Not yet{% endif %}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p>Nobody has booked this screening.</p>
+  {% endif %}
+</div>
+{% endblock %}

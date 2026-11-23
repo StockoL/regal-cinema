@@ -4,6 +4,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.views.decorators.http import require_POST
 
+from screenings.models import Screening
 from staff.models import AuditLogEntry
 from staff.views import staff_permission_required
 from venue.models import get_settings
@@ -140,3 +141,38 @@ def check_in_booking(request, reference):
     else:
         messages.success(request, f'Checked in {reference}.')
     return redirect(f"{reverse('bookings_staff:check_in')}?q={reference}")
+
+
+# The bookings that will be at the door: a request still waiting stands
+# until staff decide (4.22).
+AT_THE_DOOR = [Booking.Status.PAID, Booking.Status.CANCELLATION_REQUESTED]
+
+
+def guests(screening):
+    """A screening's bookings for the door, with their seats."""
+    return list(
+        screening.bookings.filter(status__in=AT_THE_DOOR)
+        .select_related('user', 'checked_in_by')
+        .prefetch_related(Prefetch(
+            'seats', queryset=SeatBooking.objects.live()
+            .select_related('seat', 'ticket_type')
+            .order_by('-seat__area', 'seat__row_index', 'seat__column_index'),
+        ))
+        .order_by('reference')
+    )
+
+
+@staff_permission_required('bookings.view_bookings')
+def guest_list(request, pk):
+    """Everyone expected at one screening, to print or take to the door
+    if the site is down (journey 14; 4.32)."""
+    screening = get_object_or_404(
+        Screening.objects.select_related('film', 'screen'), pk=pk
+    )
+    bookings = guests(screening)
+    return render(request, 'bookings/staff/guest_list.html', {
+        'screening': screening,
+        'bookings': bookings,
+        'seat_count': sum(len(b.seats.all()) for b in bookings),
+        'checked_in_count': sum(1 for b in bookings if b.checked_in_at),
+    })
