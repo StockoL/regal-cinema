@@ -10,7 +10,8 @@ from django.utils import timezone
 from accounts.models import get_system_user
 from payments.base import PaymentUnavailable
 
-from .models import Booking, Refund, SeatHold
+from .emails import send_outbound_email
+from .models import Booking, OutboundEmail, Refund, SeatHold
 from .services import recheck_payment, send_refund
 
 # Younger sessions are left to the webhook; older ones have long since
@@ -87,4 +88,22 @@ def retry_refunds():
         refund.refresh_from_db(fields=['status'])
         if refund.status == Refund.Status.SUCCEEDED:
             counts['succeeded'] += 1
+    return counts
+
+
+def retry_emails():
+    """Send every outbox email still queued from over five minutes ago,
+    whether its first send failed or never ran. The fifth failure marks
+    it failed, and it's left for staff (4.20). Returns the counts."""
+    emails = OutboundEmail.objects.filter(
+        status=OutboundEmail.Status.QUEUED,
+        created_at__lt=timezone.now() - RETRY_AFTER,
+    )
+    counts = {'retried': 0, 'sent': 0}
+    for email in emails:
+        send_outbound_email(email.pk)
+        counts['retried'] += 1
+        email.refresh_from_db(fields=['status'])
+        if email.status == OutboundEmail.Status.SENT:
+            counts['sent'] += 1
     return counts

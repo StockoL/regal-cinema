@@ -1,14 +1,19 @@
 from datetime import timedelta
 from io import StringIO
+from smtplib import SMTPException
+from unittest import mock
 
+from django.core import mail
+from django.core.mail import EmailMultiAlternatives
 from django.core.management import call_command
 from django.test import TestCase
 from django.utils import timezone
 
 from accounts.models import get_system_user
-from bookings.models import Booking, Refund, SeatHold
+from bookings.models import Booking, OutboundEmail, Refund, SeatHold
 from bookings.reconcile import (
     recheck_stuck_payments,
+    retry_emails,
     retry_refunds,
     tidy_up,
 )
@@ -227,3 +232,52 @@ class RefundRetryTests(TestCase):
         out = StringIO()
         call_command('reconcile_pending', stdout=out)
         self.assertIn('Retried 1 refund: 1 succeeded.', out.getvalue())
+
+
+class EmailRetryTests(TestCase):
+    """An email the outbox couldn't send is tried again, up to five
+    times in all, then left failed for staff (architecture 4.20,
+    4.32)."""
+
+    def email(self, minutes_ago=10, **fields):
+        email = OutboundEmail.objects.create(
+            kind=OutboundEmail.Kind.CONFIRMATION,
+            recipient='customer@example.com', subject='Your booking',
+            text_body='Your seats', **fields,
+        )
+        OutboundEmail.objects.filter(pk=email.pk).update(
+            created_at=timezone.now() - timedelta(minutes=minutes_ago),
+        )
+        return email
+
+    def test_an_email_not_yet_sent_is_sent(self):
+        email = self.email(attempts=2, last_error='Mail is down')
+        self.assertEqual(retry_emails(), {'retried': 1, 'sent': 1})
+        email.refresh_from_db()
+        self.assertEqual(email.status, OutboundEmail.Status.SENT)
+        self.assertEqual(len(mail.outbox), 1)
+
+    def test_the_fifth_failure_gives_up(self):
+        email = self.email(attempts=4)
+        with mock.patch.object(EmailMultiAlternatives, 'send',
+                               side_effect=SMTPException('Mail is down')):
+            self.assertEqual(retry_emails(), {'retried': 1, 'sent': 0})
+        email.refresh_from_db()
+        self.assertEqual(email.status, OutboundEmail.Status.FAILED)
+
+    def test_an_email_just_queued_is_left_to_its_own_send(self):
+        self.email(minutes_ago=1)
+        self.assertEqual(retry_emails()['retried'], 0)
+        self.assertEqual(mail.outbox, [])
+
+    def test_sent_and_failed_emails_are_left_alone(self):
+        self.email(status=OutboundEmail.Status.SENT)
+        self.email(status=OutboundEmail.Status.FAILED, attempts=5)
+        self.assertEqual(retry_emails()['retried'], 0)
+        self.assertEqual(mail.outbox, [])
+
+    def test_the_command_reports_the_emails(self):
+        self.email()
+        out = StringIO()
+        call_command('reconcile_pending', stdout=out)
+        self.assertIn('Retried 1 email: 1 sent.', out.getvalue())
