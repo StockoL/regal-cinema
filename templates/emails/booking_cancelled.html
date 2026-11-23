@@ -1,0 +1,13 @@
+{% load screenings_extras %}<!doctype html>
+<html lang="en-GB">
+<head><meta charset="utf-8"><title>Your Regal Cinema booking {{ booking.reference }} is cancelled</title></head>
+<body>
+  <h1>Your cancellation is approved</h1>
+  <p>Your seats for {{ booking.screening.film.title }}, {{ booking.screening.date_time|date:"l j F" }} at {{ booking.screening.date_time|time:"g:i a" }}, have gone back on sale. Booking reference {{ booking.reference }}.</p>
+  <p>Your voucher for {{ voucher.initial_value_pence|pounds }}: <strong>{{ voucher.code }}</strong></p>
+  <p>Enter the code when you next book, for any film. It's valid until {{ voucher.expires_at|date:"j F Y" }}, and anything you don't spend stays on it for next time.{% if cancellation.fee_pence %} A cancellation fee of {{ cancellation.fee_pence|pounds }} was taken off.{% endif %}</p>
+  <p>Staff note: {{ cancellation.decision_note }}</p>
+  <p>Questions? Call the box office on <a href="tel:+441632960123">01632 960 123</a>.</p>
+  <p>Regal Cinema is a fictional venue created for a course project. It isn't connected to any real cinema.</p>
+</body>
+</html>
