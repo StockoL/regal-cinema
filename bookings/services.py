@@ -13,7 +13,7 @@ from venue.models import get_settings
 
 from .basket import check_basket
 from .emails import queue_booking_confirmation, queue_late_payment_refund
-from .models import Booking, Refund, SeatBooking, SeatHold
+from .models import Booking, Cancellation, Refund, SeatBooking, SeatHold
 
 
 class SeatsUnavailable(Exception):
@@ -221,6 +221,52 @@ def send_refund(refund_pk):
         refund.status = Refund.Status.FAILED
         refund.error = str(error)
     refund.save(update_fields=['stripe_refund_id', 'status', 'error'])
+
+
+class CancellationNotAllowed(Exception):
+    """The booking can't be cancelled online now: it isn't paid, it has
+    already been asked about, it's past, or it's inside the cutoff."""
+
+
+def cancellation_state(booking, venue=None):
+    """What a customer can do about cancelling a booking (4.22).
+
+    'open' when it's paid and more than the venue's cutoff away, so the
+    request form is offered; 'phone' when it's paid but inside the
+    cutoff and still to come, so the page gives the box office; None
+    for a booking that's past, not paid or already being dealt with.
+    A page listing many bookings passes the venue settings in, so they
+    are read once.
+    """
+    if booking.status != Booking.Status.PAID:
+        return None
+    starts = booking.screening.date_time
+    now = timezone.now()
+    if starts <= now:
+        return None
+    venue = venue or get_settings()
+    cutoff = timedelta(hours=venue.cancellation_cutoff_hours)
+    return 'open' if now < starts - cutoff else 'phone'
+
+
+def request_cancellation(booking, reason=''):
+    """A customer asks to cancel a booking (4.22). A Cancellation is
+    recorded with their reason and the booking moves to
+    cancellation_requested, for staff to approve or decline. Raises
+    CancellationNotAllowed if it can't be asked for online."""
+    with transaction.atomic():
+        booking = Booking.objects.select_for_update().select_related(
+            'screening'
+        ).get(pk=booking.pk)
+        if cancellation_state(booking) != 'open':
+            raise CancellationNotAllowed()
+        cancellation = Cancellation.objects.create(
+            booking=booking, kind=Cancellation.Kind.CUSTOMER_REQUEST,
+            reason=reason,
+        )
+        booking.status = Booking.Status.CANCELLATION_REQUESTED
+        booking.save(update_fields=['status'])
+    return cancellation
 
 
 def release_seats(booking):
