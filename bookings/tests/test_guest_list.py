@@ -1,3 +1,6 @@
+import csv
+import io
+
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 from django.test import TestCase
@@ -11,9 +14,8 @@ from screenings.models import TicketType
 User = get_user_model()
 
 
-class GuestListTests(TestCase):
-    """Everyone expected at one screening, for the door (journey 14,
-    "Guest list"; architecture 4.32; wireframe brief 20)."""
+class GuestListSetUp(TestCase):
+    """A screening, two seats and a Front of House member logged in."""
 
     def setUp(self):
         self.screening, (self.seat_1, self.seat_2) = make_screening()
@@ -36,6 +38,11 @@ class GuestListTests(TestCase):
             price_pence=950, vat_rate_percent=20,
         )
         return booking
+
+
+class GuestListTests(GuestListSetUp):
+    """Everyone expected at one screening, for the door (journey 14,
+    "Guest list"; architecture 4.32; wireframe brief 20)."""
 
     def test_the_address_is_under_staff_bookings(self):
         self.assertEqual(
@@ -89,3 +96,43 @@ class GuestListTests(TestCase):
         self.book('b@example.com', self.seat_2)
         with self.assertNumQueries(7):
             self.client.get(self.url)
+
+
+class GuestListDownloadTests(GuestListSetUp):
+    """The same rows as a file, for when the site is down (4.32)."""
+
+    def setUp(self):
+        super().setUp()
+        self.download_url = reverse('bookings_staff:guest_list_download',
+                                    args=[self.screening.pk])
+
+    def rows(self):
+        response = self.client.get(self.download_url)
+        return list(csv.reader(io.StringIO(response.content.decode())))
+
+    def test_it_downloads_as_a_named_csv_file(self):
+        response = self.client.get(self.download_url)
+        self.assertEqual(response['Content-Type'], 'text/csv; charset=utf-8')
+        self.assertEqual(
+            response['Content-Disposition'],
+            'attachment; filename="guest-list-nosferatu-2026-12-05.csv"',
+        )
+
+    def test_it_holds_a_row_for_each_booking(self):
+        booking = self.book('jo@example.com', self.seat_2, ticket='Student',
+                            infant_count=1)
+        header, row = self.rows()
+        self.assertEqual(header, ['Reference', 'Customer', 'Seats',
+                                  'Under 2s', 'Status', 'Checked in'])
+        self.assertEqual(row, [
+            booking.reference, 'jo@example.com',
+            'Stalls, seat 2, Student. Bring proof of age or status', '1',
+            'Paid', '',
+        ])
+
+    def test_the_page_links_to_it(self):
+        self.assertContains(self.client.get(self.url), self.download_url)
+
+    def test_downloading_needs_view_bookings(self):
+        self.staff.groups.clear()
+        self.assertEqual(self.client.get(self.download_url).status_code, 403)

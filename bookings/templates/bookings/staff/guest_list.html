@@ -7,6 +7,7 @@
   <p class="no-print"><a href="{% url 'staff:home' %}">Staff</a></p>
   <h1>Guest list</h1>
   <p>{{ screening.film.title }}, {{ screening.date_time|date:"l j F" }} at {{ screening.date_time|time:"g:i a" }}, {{ screening.screen.name }}</p>
+  <p class="no-print"><a href="{% url 'bookings_staff:guest_list_download' screening.pk %}">Download as a spreadsheet (CSV)</a></p>
   <p>{{ bookings|length }} booking{{ bookings|length|pluralize }}, {{ seat_count }} seat{{ seat_count|pluralize }}, {{ checked_in_count }} checked in</p>
   {% if bookings %}
     <table class="table">

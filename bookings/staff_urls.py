@@ -17,4 +17,6 @@ urlpatterns = [
          name='check_in_booking'),
     path('screenings/<int:pk>/guests/', staff_views.guest_list,
          name='guest_list'),
+    path('screenings/<int:pk>/guests/download/',
+         staff_views.guest_list_download, name='guest_list_download'),
 ]

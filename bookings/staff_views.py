@@ -1,7 +1,11 @@
+import csv
+
 from django.contrib import messages
 from django.db.models import Prefetch
+from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
+from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 from screenings.models import Screening
@@ -176,3 +180,36 @@ def guest_list(request, pk):
         'seat_count': sum(len(b.seats.all()) for b in bookings),
         'checked_in_count': sum(1 for b in bookings if b.checked_in_at),
     })
+
+
+@staff_permission_required('bookings.view_bookings')
+def guest_list_download(request, pk):
+    """The guest list as a CSV file, to keep or print if the site goes
+    down before the door opens (4.32)."""
+    screening = get_object_or_404(Screening.objects.select_related('film'),
+                                  pk=pk)
+    name = (f'guest-list-{screening.film.slug}-'
+            f'{timezone.localdate(screening.date_time).isoformat()}.csv')
+    response = HttpResponse(content_type='text/csv; charset=utf-8')
+    response['Content-Disposition'] = f'attachment; filename="{name}"'
+    writer = csv.writer(response)
+    writer.writerow(['Reference', 'Customer', 'Seats', 'Under 2s', 'Status',
+                     'Checked in'])
+    for booking in guests(screening):
+        seats = '; '.join(
+            f'{sold.seat.label}, {sold.ticket_type.name}'
+            + (f'. {sold.ticket_type.proof_reminder}'
+               if sold.ticket_type.proof_reminder else '')
+            for sold in booking.seats.all()
+        )
+        checked_in = (
+            timezone.localtime(booking.checked_in_at).strftime('%H:%M')
+            if booking.checked_in_at else ''
+        )
+        writer.writerow([
+            booking.reference,
+            booking.user.email if booking.user else 'At the venue',
+            seats, booking.infant_count, booking.get_status_display(),
+            checked_in,
+        ])
+    return response
