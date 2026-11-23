@@ -159,6 +159,48 @@ class Booking(models.Model):
                 return reference
 
 
+class Cancellation(models.Model):
+    """One cancellation of a booking, whoever started it, so a declined
+    request and a customer's choice of refund over voucher both have
+    somewhere to be recorded (4.2, 4.11, 4.22)."""
+
+    class Kind(models.TextChoices):
+        CUSTOMER_REQUEST = 'customer_request', 'Customer request'
+        SCREENING_CANCELLED = 'screening_cancelled', 'Screening cancelled'
+
+    class Status(models.TextChoices):
+        REQUESTED = 'requested', 'Requested'
+        APPROVED = 'approved', 'Approved'
+        DECLINED = 'declined', 'Declined'
+
+    class Outcome(models.TextChoices):
+        VOUCHER = 'voucher', 'Voucher'
+        REFUND = 'refund', 'Refund'
+
+    booking = models.ForeignKey(
+        Booking, on_delete=models.PROTECT, related_name='cancellations'
+    )
+    kind = models.CharField(max_length=25, choices=Kind.choices)
+    reason = models.TextField(blank=True)
+    requested_at = models.DateTimeField(auto_now_add=True)
+    status = models.CharField(max_length=10, choices=Status.choices,
+                              default=Status.REQUESTED)
+    # Empty until staff decide.
+    outcome = models.CharField(max_length=10, choices=Outcome.choices,
+                               blank=True)
+    decided_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL,
+        related_name='cancellations_decided', null=True, blank=True,
+    )
+    decided_at = models.DateTimeField(null=True, blank=True)
+    decision_note = models.TextField(blank=True)
+    # The venue's cancellation fee taken off the voucher, as it was then.
+    fee_pence = models.PositiveIntegerField(default=0)
+
+    def __str__(self):
+        return f'{self.get_kind_display()} for {self.booking.reference}'
+
+
 class StripeEvent(models.Model):
     """A Stripe event that has been handled. Stripe can send the same
     event more than once, and one already here is ignored (4.13)."""
