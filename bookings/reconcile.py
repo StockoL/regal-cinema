@@ -4,13 +4,14 @@ twice."""
 
 from datetime import timedelta
 
+from django.db.models import Q
 from django.utils import timezone
 
 from accounts.models import get_system_user
 from payments.base import PaymentUnavailable
 
-from .models import Booking, SeatHold
-from .services import recheck_payment
+from .models import Booking, Refund, SeatHold
+from .services import recheck_payment, send_refund
 
 # Younger sessions are left to the webhook; older ones have long since
 # expired unpaid, or been settled.
@@ -20,6 +21,9 @@ STUCK_UNTIL = timedelta(hours=24)
 # are kept before they're cleared away.
 HOLDS_KEPT_FOR = timedelta(hours=24)
 ABANDONED_AFTER = timedelta(days=7)
+# Something queued this recently is still being sent after its commit,
+# so a retry leaves it alone.
+RETRY_AFTER = timedelta(minutes=5)
 
 
 def recheck_stuck_payments():
@@ -64,3 +68,23 @@ def tidy_up():
         cancellations__isnull=True, audit_entries__isnull=True,
     ).delete()
     return {'holds': holds, 'bookings': deleted.get('bookings.Booking', 0)}
+
+
+def retry_refunds():
+    """Send again every refund that failed, and any still pending from
+    over five minutes ago, whose send after the commit never ran. Each
+    keeps its idempotency key, so one Stripe already made isn't paid
+    twice. Returns the counts."""
+    refunds = Refund.objects.filter(
+        Q(status=Refund.Status.FAILED)
+        | Q(status=Refund.Status.PENDING,
+            created_at__lt=timezone.now() - RETRY_AFTER)
+    )
+    counts = {'retried': 0, 'succeeded': 0}
+    for refund in refunds:
+        send_refund(refund.pk)
+        counts['retried'] += 1
+        refund.refresh_from_db(fields=['status'])
+        if refund.status == Refund.Status.SUCCEEDED:
+            counts['succeeded'] += 1
+    return counts

@@ -1,13 +1,17 @@
 from django.core.management.base import BaseCommand
 
-from bookings.reconcile import recheck_stuck_payments, tidy_up
+from bookings.reconcile import (
+    recheck_stuck_payments,
+    retry_refunds,
+    tidy_up,
+)
 
 
 class Command(BaseCommand):
     help = (
         'Ask Stripe about pending bookings whose webhook never came, '
-        'then clear away old holds and abandoned bookings (architecture '
-        '4.32). Safe to run twice.'
+        'send failed refunds again, then clear away old holds and '
+        'abandoned bookings (architecture 4.32). Safe to run twice.'
     )
 
     def handle(self, *args, **options):
@@ -16,6 +20,12 @@ class Command(BaseCommand):
         self.stdout.write(
             f"Checked {counts['checked']} stuck {payments}: "
             f"{counts['paid']} paid, {counts['unreachable']} unreachable."
+        )
+        refunds = retry_refunds()
+        noun = 'refund' if refunds['retried'] == 1 else 'refunds'
+        self.stdout.write(
+            f"Retried {refunds['retried']} {noun}: "
+            f"{refunds['succeeded']} succeeded."
         )
         removed = tidy_up()
         holds = 'hold' if removed['holds'] == 1 else 'holds'

@@ -7,7 +7,11 @@ from django.utils import timezone
 
 from accounts.models import get_system_user
 from bookings.models import Booking, Refund, SeatHold
-from bookings.reconcile import recheck_stuck_payments, tidy_up
+from bookings.reconcile import (
+    recheck_stuck_payments,
+    retry_refunds,
+    tidy_up,
+)
 from bookings.services import start_booking, start_payment
 from bookings.tests.test_holds import make_screening
 from payments.fake import FakeProvider
@@ -158,3 +162,68 @@ class TidyUpTests(TestCase):
         call_command('reconcile_pending', stdout=out)
         self.assertIn('Removed 0 expired holds and 1 abandoned booking.',
                       out.getvalue())
+
+
+class RefundRetryTests(TestCase):
+    """A refund that failed, or never got sent, is sent again with the
+    same idempotency key, so it can't pay out twice (architecture 4.13,
+    4.32)."""
+
+    def setUp(self):
+        FakeProvider.reset()
+        screening, _ = make_screening()
+        self.booking = Booking.objects.create(
+            screening=screening, status=Booking.Status.REFUNDED,
+        )
+
+    def refund(self, status, minutes_ago=10):
+        refund = Refund.objects.create(
+            booking=self.booking, amount_pence=950, reason='duplicate',
+            stripe_payment_intent_id='pi_1', status=status,
+            created_by=get_system_user(),
+        )
+        Refund.objects.filter(pk=refund.pk).update(
+            created_at=timezone.now() - timedelta(minutes=minutes_ago),
+        )
+        return refund
+
+    def test_a_failed_refund_is_sent_again(self):
+        refund = self.refund(Refund.Status.FAILED)
+        self.assertEqual(retry_refunds(), {'retried': 1, 'succeeded': 1})
+        refund.refresh_from_db()
+        self.assertEqual(refund.status, Refund.Status.SUCCEEDED)
+        self.assertEqual(len(FakeProvider.refunds), 1)
+
+    def test_one_that_fails_again_stays_failed(self):
+        refund = self.refund(Refund.Status.FAILED)
+        FakeProvider.fail_refunds = True
+        self.assertEqual(retry_refunds(), {'retried': 1, 'succeeded': 0})
+        refund.refresh_from_db()
+        self.assertEqual(refund.status, Refund.Status.FAILED)
+
+    def test_a_pending_refund_left_unsent_is_sent(self):
+        self.refund(Refund.Status.PENDING)
+        self.assertEqual(retry_refunds()['succeeded'], 1)
+
+    def test_a_pending_refund_just_made_is_left_to_its_own_send(self):
+        self.refund(Refund.Status.PENDING, minutes_ago=1)
+        self.assertEqual(retry_refunds()['retried'], 0)
+
+    def test_a_refund_that_went_through_is_left_alone(self):
+        self.refund(Refund.Status.SUCCEEDED)
+        self.assertEqual(retry_refunds()['retried'], 0)
+        self.assertEqual(FakeProvider.refunds, {})
+
+    def test_sending_again_never_pays_out_twice(self):
+        """Stripe saw the first try, but the answer was lost."""
+        refund = self.refund(Refund.Status.PENDING)
+        FakeProvider().refund(payment_intent_id='pi_1', amount_pence=950,
+                              idempotency_key=f'refund-{refund.pk}')
+        retry_refunds()
+        self.assertEqual(len(FakeProvider.refunds), 1)
+
+    def test_the_command_reports_the_refunds(self):
+        self.refund(Refund.Status.FAILED)
+        out = StringIO()
+        call_command('reconcile_pending', stdout=out)
+        self.assertIn('Retried 1 refund: 1 succeeded.', out.getvalue())
