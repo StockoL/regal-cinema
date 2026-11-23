@@ -1,18 +1,21 @@
 from datetime import timedelta
 
 from django.contrib.auth import get_user_model
+from django.core import mail
 from django.db.models import ProtectedError
 from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
 
-from bookings.models import Booking, Cancellation
+from bookings.models import Booking, Cancellation, OutboundEmail
 from bookings.services import (
     CancellationNotAllowed,
     cancellation_state,
+    decline_cancellation,
     request_cancellation,
 )
 from bookings.tests.test_holds import make_screening
+from staff.models import AuditLogEntry
 from venue.models import VenueSettings
 
 
@@ -190,3 +193,78 @@ class CancellationPageTests(TestCase):
     def test_a_visitor_is_asked_to_log_in(self):
         self.client.logout()
         self.assertEqual(self.client.get(self.url).status_code, 302)
+
+
+class DeclineCancellationTests(TestCase):
+    """Staff turning a request down (journey 7, "Request declined";
+    architecture 4.22)."""
+
+    def setUp(self):
+        self.screening, _ = make_screening()
+        self.screening.date_time = timezone.now() + timedelta(days=3)
+        self.screening.save()
+        self.customer = get_user_model().objects.create_user(
+            'customer@example.com', 'a-long-pw-1'
+        )
+        self.staff = get_user_model().objects.create_user(
+            'staff@example.com', 'a-long-pw-1', is_staff=True,
+        )
+        self.booking = Booking.objects.create(
+            screening=self.screening, user=self.customer,
+            status=Booking.Status.PAID,
+        )
+        self.request = request_cancellation(self.booking, 'Wrong night')
+
+    def decline(self, note='Nearly sold out, so the seats would go empty'):
+        with self.captureOnCommitCallbacks(execute=True):
+            return decline_cancellation(self.request, self.staff, note)
+
+    def test_the_booking_goes_back_to_paid(self):
+        self.decline()
+        self.booking.refresh_from_db()
+        self.assertEqual(self.booking.status, Booking.Status.PAID)
+        self.request.refresh_from_db()
+        self.assertEqual(
+            (self.request.status, self.request.decided_by,
+             self.request.decision_note),
+            (Cancellation.Status.DECLINED, self.staff,
+             'Nearly sold out, so the seats would go empty'),
+        )
+        self.assertIsNotNone(self.request.decided_at)
+
+    def test_the_decision_is_logged_with_the_staff_member(self):
+        self.decline()
+        entry = AuditLogEntry.objects.get()
+        self.assertEqual(
+            (entry.actor, entry.action_type, entry.related_booking,
+             entry.reason),
+            (self.staff, AuditLogEntry.Action.CANCELLATION_DECLINED,
+             self.booking, 'Nearly sold out, so the seats would go empty'),
+        )
+
+    def test_the_customer_is_told_with_the_note(self):
+        self.decline()
+        sent, = mail.outbox
+        self.assertEqual(sent.to, ['customer@example.com'])
+        self.assertIn('Nearly sold out', sent.body)
+        self.assertIn(self.booking.reference, sent.body)
+        self.assertEqual(self.booking.emails.get().kind,
+                         OutboundEmail.Kind.CANCELLATION_DECLINED)
+
+    def test_a_note_is_needed_to_decline(self):
+        with self.assertRaises(ValueError):
+            self.decline(note='  ')
+        self.request.refresh_from_db()
+        self.assertEqual(self.request.status, Cancellation.Status.REQUESTED)
+        self.assertFalse(AuditLogEntry.objects.exists())
+
+    def test_a_decided_request_cant_be_declined_again(self):
+        self.decline()
+        with self.assertRaises(CancellationNotAllowed):
+            self.decline()
+        self.assertEqual(AuditLogEntry.objects.count(), 1)
+
+    def test_the_customer_can_ask_again_afterwards(self):
+        self.decline()
+        self.booking.refresh_from_db()
+        self.assertEqual(cancellation_state(self.booking), 'open')

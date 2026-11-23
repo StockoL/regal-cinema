@@ -1,0 +1,52 @@
+{% extends 'base.html' %}
+{% load screenings_extras %}
+
+{% block title %}Cancellation requests{% endblock %}
+
+{% block content %}
+<div class="wrapper region flow">
+  <p><a href="{% url 'staff:home' %}">Staff</a></p>
+  <h1>Cancellation requests</h1>
+  <h2>Waiting ({{ waiting|length }})</h2>
+  {% if waiting %}
+    <ul class="flow" role="list">
+      {% for cancellation in waiting %}
+        {% with booking=cancellation.booking %}
+        <li class="card">
+          <div class="card__body flow">
+            <h3>{{ booking.screening.film.title }}, {{ booking.screening.date_time|date:"D j M" }}, {{ booking.screening.date_time|time:"g:i a" }}</h3>
+            <p>{{ booking.reference }} · {{ booking.user.email }} · asked {{ cancellation.requested_at|date:"D j M, g:i a" }}{% if booking.amount_charged_pence is not None %} · {{ booking.amount_charged_pence|pounds }} paid{% endif %}</p>
+            <p>{% for sold in booking.seats.all %}{{ sold.seat.label }}, {{ sold.ticket_type.name }}{% if not forloop.last %}; {% endif %}{% endfor %}{% if booking.infant_count %}; {{ booking.infant_count }} under 2{{ booking.infant_count|pluralize }}{% endif %}</p>
+            {% if cancellation.reason %}<blockquote><p>{{ cancellation.reason }}</p></blockquote>{% endif %}
+            <p>If approved: {% if cancellation.voucher_pence is not None %}voucher for {{ cancellation.voucher_pence|pounds }}{% else %}a voucher for what was paid{% endif %} (fee {{ fee_pence|pounds }}), valid one year, and the seats are released.</p>
+            <form class="flow" method="post" action="{% url 'bookings_staff:cancellation_decline' cancellation.pk %}">
+              {% csrf_token %}
+              <div class="field">
+                <label for="note-{{ cancellation.pk }}">Note to customer (needed to decline)</label>
+                <textarea class="textarea" id="note-{{ cancellation.pk }}" name="note" rows="3"></textarea>
+              </div>
+              <button class="button" type="submit" data-variant="secondary">Decline</button>
+            </form>
+          </div>
+        </li>
+        {% endwith %}
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p>Nothing is waiting.</p>
+  {% endif %}
+  <h2>Recent decisions</h2>
+  {% if recent %}
+    <table class="table">
+      <thead><tr><th scope="col">When</th><th scope="col">What</th><th scope="col">Booking and reason</th><th scope="col">Who</th></tr></thead>
+      <tbody>
+        {% for entry in recent %}
+          <tr><td>{{ entry.created_at|date:"D j M, g:i a" }}</td><td>{{ entry.get_action_type_display }}</td><td>{% if entry.related_booking %}{{ entry.related_booking.reference }}: {% endif %}{{ entry.reason }}</td><td>{{ entry.actor.email }}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p>No decisions yet.</p>
+  {% endif %}
+</div>
+{% endblock %}

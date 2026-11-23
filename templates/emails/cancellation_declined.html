@@ -1,0 +1,12 @@
+<!doctype html>
+<html lang="en-GB">
+<head><meta charset="utf-8"><title>Your Regal Cinema booking {{ booking.reference }} stands</title></head>
+<body>
+  <h1>Your booking stands</h1>
+  <p>Staff couldn't cancel your booking, so it stands, and your seats are still yours.</p>
+  <p>{{ booking.screening.film.title }}, {{ booking.screening.date_time|date:"l j F" }} at {{ booking.screening.date_time|time:"g:i a" }}. Booking reference {{ booking.reference }}.</p>
+  <p>Staff note: {{ note }}</p>
+  <p>Questions? Call the box office on <a href="tel:+441632960123">01632 960 123</a>.</p>
+  <p>Regal Cinema is a fictional venue created for a course project. It isn't connected to any real cinema.</p>
+</body>
+</html>

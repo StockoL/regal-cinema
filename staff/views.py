@@ -21,6 +21,20 @@ def staff_required(view):
     return wrapped
 
 
+def staff_permission_required(permission):
+    """A staff page for one action: staff only, and then only those
+    holding that action's permission. Never a role (4.9)."""
+    def decorator(view):
+        @staff_required
+        @wraps(view)
+        def wrapped(request, *args, **kwargs):
+            if not request.user.has_perm(permission):
+                raise PermissionDenied
+            return view(request, *args, **kwargs)
+        return wrapped
+    return decorator
+
+
 @staff_required
 def home(request):
     """The staff area's front page, offering the tools this member of
