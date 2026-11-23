@@ -18,6 +18,8 @@ urlpatterns = [
     path('booking/<str:reference>/confirming/', views.booking_confirming,
          name='booking_confirming'),
     path('account/bookings/', views.booking_list, name='booking_list'),
+    path('account/bookings/<str:reference>/cancel/',
+         views.cancellation_request, name='cancellation_request'),
     path('payments/webhook/', webhooks.stripe_webhook,
          name='stripe_webhook'),
 ]

@@ -1,0 +1,34 @@
+{% extends 'base.html' %}
+{% load screenings_extras %}
+
+{% block title %}Request a cancellation{% endblock %}
+
+{% block content %}
+<div class="wrapper region">
+  <div class="center flow">
+    <h1>Request a cancellation</h1>
+    <ul class="flow" role="list">{% include 'bookings/_booking_card.html' %}</ul>
+    {% if state == 'open' %}
+      <div class="card">
+        <div class="card__body flow">
+          <h2>What happens next</h2>
+          <p>A member of staff will look at your request. If they approve it, you get {% if voucher_pence is not None %}a voucher for {{ voucher_pence|pounds }}{% else %}a voucher for what you paid{% endif %}, valid for one year, and your seats go back on sale. Money isn't returned to your card unless a manager decides to make an exception.</p>
+          <p>Cancellation fee: {{ venue.cancellation_fee_pence|pounds }}. Food and drink is included in the voucher.</p>
+        </div>
+      </div>
+      <form class="flow" method="post" novalidate>
+        {% csrf_token %}
+        {{ form }}
+        <button class="button" type="submit" data-variant="primary">Send request</button>
+      </form>
+      <p><a class="button" data-variant="secondary" href="{% url 'bookings:booking_list' %}">Keep my booking</a></p>
+    {% else %}
+      <div class="alert flow" data-status="info">
+        <p>This screening is less than {{ venue.cancellation_cutoff_hours }} hours away, so it can't be cancelled online. Please call the box office on <a href="tel:{{ venue.phone|cut:' ' }}">{{ venue.phone }}</a>: staff may still be able to help.</p>
+        {% if venue.opening_hours %}<p>Opening hours: {{ venue.opening_hours|linebreaksbr }}</p>{% endif %}
+      </div>
+      <p><a href="{% url 'bookings:booking_list' %}">Back to my bookings</a></p>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

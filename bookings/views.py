@@ -10,17 +10,22 @@ from django.views.decorators.http import require_POST
 
 from payments.base import PaymentUnavailable
 from screenings.models import Screening
+from venue.models import get_settings
 
 from .basket import BasketError
+from .forms import CancellationRequestForm
 from .handover import remember_booking
 from .models import Booking, SeatBooking
 from .services import (
+    CancellationNotAllowed,
     HoldTimeUsedUp,
     HoldsExpired,
     SeatsUnavailable,
     amend_booking,
     basket_total,
     cancel_pending_booking,
+    cancellation_state,
+    request_cancellation,
     seat_plan,
     start_booking,
     start_payment,
@@ -310,6 +315,43 @@ def booking_list(request):
         'upcoming': [b for b in bookings if b.screening.date_time >= now],
         'past': [b for b in reversed(bookings)
                  if b.screening.date_time < now],
+    })
+
+
+@login_required
+def cancellation_request(request, reference):
+    """Asking to cancel a booking from My bookings (journey 7, 4.22).
+    Outside the cutoff the customer sends a request for staff to decide;
+    inside it, the page gives the box office instead. A booking that
+    can't be cancelled online has no page."""
+    booking = get_object_or_404(
+        request.user.bookings.select_related('screening__film',
+                                             'screening__screen'),
+        reference=reference,
+    )
+    state = cancellation_state(booking)
+    if state is None:
+        raise Http404("This booking can't be cancelled online.")
+    venue = get_settings()
+    form = CancellationRequestForm(request.POST or None)
+    if state == 'open' and request.method == 'POST' and form.is_valid():
+        try:
+            request_cancellation(booking, form.cleaned_data['reason'])
+        except CancellationNotAllowed:
+            raise Http404("This booking can't be cancelled online.")
+        messages.success(request, 'Your request has been sent. Staff will '
+                                  'confirm it, and your booking stands '
+                                  'until they do.')
+        return redirect('bookings:booking_list')
+    charged = booking.amount_charged_pence
+    return render(request, 'bookings/cancellation_request.html', {
+        'booking': booking,
+        'state': state,
+        'form': form,
+        'venue': venue,
+        'voucher_pence': (None if charged is None
+                          else max(charged - venue.cancellation_fee_pence,
+                                   0)),
     })
 
 

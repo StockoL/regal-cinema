@@ -3,6 +3,7 @@ from datetime import timedelta
 from django.contrib.auth import get_user_model
 from django.db.models import ProtectedError
 from django.test import TestCase
+from django.urls import reverse
 from django.utils import timezone
 
 from bookings.models import Booking, Cancellation
@@ -118,3 +119,74 @@ class RequestCancellationTests(TestCase):
         with self.assertRaises(CancellationNotAllowed):
             request_cancellation(self.booking)
         self.assertEqual(self.booking.cancellations.count(), 1)
+
+
+class CancellationPageTests(TestCase):
+    """The page a customer reaches from My bookings (journey 7;
+    wireframe 18)."""
+
+    def setUp(self):
+        self.screening, _ = make_screening()
+        self.starts_in(48)
+        self.user = get_user_model().objects.create_user(
+            'customer@example.com', 'a-long-pw-1'
+        )
+        self.booking = Booking.objects.create(
+            screening=self.screening, user=self.user,
+            status=Booking.Status.PAID, amount_charged_pence=1850,
+        )
+        self.client.force_login(self.user)
+        self.url = reverse('bookings:cancellation_request',
+                           args=[self.booking.reference])
+
+    def starts_in(self, hours):
+        self.screening.date_time = timezone.now() + timedelta(hours=hours)
+        self.screening.save()
+
+    def test_the_address_is_under_my_bookings(self):
+        self.assertEqual(
+            self.url, f'/account/bookings/{self.booking.reference}/cancel/'
+        )
+
+    def test_it_says_what_happens_next(self):
+        VenueSettings.objects.update(cancellation_fee_pence=300)
+        response = self.client.get(self.url)
+        for words in ('What happens next', 'a voucher for £15.50',
+                      'Cancellation fee: £3.00', 'Send request',
+                      'Keep my booking', self.booking.reference):
+            with self.subTest(words=words):
+                self.assertContains(response, words)
+
+    def test_sending_it_records_the_request(self):
+        response = self.client.post(self.url, {'reason': 'Wrong night'},
+                                    follow=True)
+        self.assertRedirects(response, reverse('bookings:booking_list'))
+        self.assertContains(response, 'Staff will confirm')
+        cancellation = self.booking.cancellations.get()
+        self.assertEqual(cancellation.reason, 'Wrong night')
+
+    def test_inside_the_cutoff_it_gives_the_box_office(self):
+        """Journey 7, "Inside cutoff"."""
+        VenueSettings.objects.update(opening_hours='Daily from 11am')
+        self.starts_in(5)
+        response = self.client.get(self.url)
+        self.assertContains(response, '01632 960 123')
+        self.assertContains(response, 'Daily from 11am')
+        self.assertNotContains(response, 'Send request')
+        self.client.post(self.url)
+        self.assertFalse(self.booking.cancellations.exists())
+
+    def test_a_past_booking_has_no_cancellation_page(self):
+        """Journey 7, "Past or cancelled"."""
+        self.starts_in(-2)
+        self.assertEqual(self.client.get(self.url).status_code, 404)
+
+    def test_someone_elses_booking_is_not_found(self):
+        self.client.force_login(get_user_model().objects.create_user(
+            'other@example.com', 'a-long-pw-1'
+        ))
+        self.assertEqual(self.client.get(self.url).status_code, 404)
+
+    def test_a_visitor_is_asked_to_log_in(self):
+        self.client.logout()
+        self.assertEqual(self.client.get(self.url).status_code, 302)
