@@ -210,6 +210,33 @@ def refund_duplicate_payment(booking, payment_intent_id, amount_pence):
                         'duplicate_payment')
 
 
+def settle_payment(booking, payment_intent_id, amount_pence):
+    """Act on Stripe's word that a booking's session was paid, whether
+    it came by webhook or by asking Stripe (4.32). A pending booking is
+    confirmed, or refunded if its seats have gone. A settled booking
+    paid again by a different payment has that payment refunded. The
+    booking is locked first, so two reports of one payment act once."""
+    with transaction.atomic():
+        booking = Booking.objects.select_for_update().get(pk=booking.pk)
+        if booking.status != Booking.Status.PENDING:
+            if payment_intent_id != booking.stripe_payment_intent_id:
+                refund_duplicate_payment(booking, payment_intent_id,
+                                         amount_pence)
+            return
+        # Recorded before confirming, so a refund can find the payment
+        # even if the seats turn out to be lost.
+        booking.stripe_payment_intent_id = payment_intent_id
+        booking.amount_charged_pence = amount_pence
+        booking.save(update_fields=['stripe_payment_intent_id',
+                                    'amount_charged_pence'])
+        try:
+            confirm_booking(booking)
+        except SeatsLost:
+            refund_late_payment(booking)
+        else:
+            transaction.on_commit(lambda: record_payment_fee(booking.pk))
+
+
 def queue_refund(booking, payment_intent_id, amount_pence, reason):
     """Record a pending refund, named to the system user, and send it to
     the provider once the transaction has committed (4.13)."""
