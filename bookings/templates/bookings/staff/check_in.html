@@ -1,0 +1,55 @@
+{% extends 'base.html' %}
+
+{% block title %}Check-in{% endblock %}
+
+{% block content %}
+<div class="wrapper region">
+  <div class="center flow">
+    <p><a href="{% url 'staff:home' %}">Staff</a></p>
+    <h1>Check-in</h1>
+    <form class="flow" method="get" role="search">
+      <div class="field">
+        <label for="q">Booking reference or customer email</label>
+        <input class="input" id="q" name="q" type="search" value="{{ query }}" autocapitalize="characters" autocomplete="off">
+      </div>
+      <button class="button" type="submit" data-variant="secondary">Find</button>
+    </form>
+    {% if query %}
+      {% if found %}
+        <ul class="flow" role="list">
+          {% for booking in found %}
+            {% with seats=booking.seats.all %}
+            <li class="card">
+              <div class="card__body flow">
+                <div class="cluster" style="--cluster-justify: space-between;">
+                  <h2>{{ booking.screening.film.title }}</h2>
+                  <p class="cluster">{% if booking.screening.film.age_rating %}<span class="badge">Rated {{ booking.screening.film.age_rating }}</span>{% endif %}<span class="badge">{{ booking.get_status_display }}</span></p>
+                </div>
+                <p>{{ booking.screening.date_time|date:"D j M" }}, {{ booking.screening.date_time|time:"g:i a" }}, {{ booking.screening.screen.name }}</p>
+                <p>{% if booking.user %}{{ booking.user.email }} · {% endif %}{{ booking.reference }}</p>
+                <ul role="list">
+                  {% for sold in seats %}<li>{{ sold.seat.label }}, {{ sold.ticket_type.name }}{% if sold.ticket_type.proof_reminder %}. {{ sold.ticket_type.proof_reminder }}{% endif %}</li>{% endfor %}
+                  {% if booking.infant_count %}<li>{{ booking.infant_count }} under 2{{ booking.infant_count|pluralize }}, on a lap</li>{% endif %}
+                </ul>
+                {% if booking.checked_in_at %}
+                  <p>Checked in at {{ booking.checked_in_at|time:"g:i a" }} on {{ booking.checked_in_at|date:"D j M" }}{% if booking.checked_in_by %} by {{ booking.checked_in_by.email }}{% endif %}.</p>
+                {% elif can_check_in and booking.status == 'paid' %}
+                  <form method="post" action="{% url 'bookings_staff:check_in_booking' booking.reference %}">
+                    {% csrf_token %}
+                    <button class="button" type="submit" data-variant="primary">Check in {{ seats|length }} seat{{ seats|length|pluralize }}{% if booking.infant_count %} and {{ booking.infant_count }} infant{{ booking.infant_count|pluralize }}{% endif %}</button>
+                  </form>
+                {% endif %}
+              </div>
+            </li>
+            {% endwith %}
+          {% endfor %}
+        </ul>
+      {% else %}
+        {% if impossible_reference %}<p>Booking references never contain 0, O, 1, I or L.</p>{% endif %}
+        <p>Nothing found for "{{ query }}". Check the date, or search by email.</p>
+      {% endif %}
+    {% endif %}
+    <p>Checking in is recorded with your name and the time.</p>
+  </div>
+</div>
+{% endblock %}

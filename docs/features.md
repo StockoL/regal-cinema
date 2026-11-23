@@ -56,7 +56,7 @@ Staff-facing:
 - Front of House: "Check with Stripe" on a pending booking whose Checkout Session is more than five minutes old ([4.32](architecture.md#432-when-things-go-wrong))
 - Front of House: a guest list for each screening, to print or download for the door
 - Front of House: deactivate a customer account with a reason, and see every booking under one email address
-- Front of House: one search box for a reference, whatever its case or look-alike characters, or part of an email address, and a timeline on each booking
+- Front of House: one search box for a reference, whatever its case or spacing and with or without its `RGL-` prefix, or part of an email address, and a timeline on each booking
 - Manager: move a paid booking to other seats in the same screening, with a reason
 - Manager: refund individual tickets or food lines, with a reason ([4.32](architecture.md#432-when-things-go-wrong))
 - Manager: issue complimentary tickets through in-venue booking, with a required reason ([4.14](architecture.md#414-payment-methods-and-till-reconciliation))

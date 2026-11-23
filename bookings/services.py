@@ -2,6 +2,7 @@ import hashlib
 from datetime import timedelta
 
 from django.db import IntegrityError, transaction
+from django.db.models import Q
 from django.utils import timezone
 
 from accounts.models import get_system_user
@@ -21,7 +22,14 @@ from .emails import (
     queue_cancellation_declined,
     queue_late_payment_refund,
 )
-from .models import Booking, Cancellation, Refund, SeatBooking, SeatHold
+from .models import (
+    REFERENCE_CHARACTERS,
+    Booking,
+    Cancellation,
+    Refund,
+    SeatBooking,
+    SeatHold,
+)
 
 
 class SeatsUnavailable(Exception):
@@ -354,6 +362,67 @@ def approve_cancellation(cancellation, staff, note):
                    booking=booking, voucher=voucher)
         queue_cancellation_approved(cancellation, voucher)
     return cancellation
+
+
+def reference_code(query):
+    """What staff typed, as the five characters after RGL-: any case,
+    with spaces or a hyphen, with or without the RGL."""
+    code = query.strip().upper().replace(' ', '').replace('-', '')
+    return code[3:] if code.startswith('RGL') else code
+
+
+def impossible_reference(query):
+    """Whether what was typed is shaped like a reference but holds a
+    character references never have (0, O, 1, I or L, see 4.2), so the
+    page can say why nothing was found. An email address is left
+    alone, since it often has an l in it."""
+    code = reference_code(query)
+    return ('@' not in query and len(code) == 5 and code.isalnum()
+            and any(c not in REFERENCE_CHARACTERS for c in code))
+
+
+def find_bookings(query, on_date=None):
+    """The staff search box (4.32): a booking reference however it was
+    typed, in any case, with spaces, without its hyphen or its RGL, or
+    part of the customer's email address. A date narrows it to that
+    day's screenings. Bookings still at checkout aren't found."""
+    query = query.strip()
+    if not query:
+        return Booking.objects.none()
+    code = reference_code(query)
+    matches = Q(user__email__icontains=query)
+    if len(code) == 5:
+        matches |= Q(reference=f'RGL-{code}')
+    bookings = Booking.objects.filter(matches).exclude(
+        status=Booking.Status.PENDING
+    )
+    if on_date is not None:
+        bookings = bookings.filter(screening__date_time__date=on_date)
+    return (bookings.select_related('screening__film', 'screening__screen',
+                                    'user', 'checked_in_by')
+            .order_by('screening__date_time'))
+
+
+class CheckInRefused(Exception):
+    """The booking isn't paid, or the party is already in."""
+
+
+def check_in(booking, staff):
+    """Let a party in at the door (4.2). The booking records who and
+    when, and the audit entry's reason is the status reached, so staff
+    type nothing at the door (4.9). A booking can only be checked in
+    once, and only when it's paid."""
+    with transaction.atomic():
+        booking = Booking.objects.select_for_update().get(pk=booking.pk)
+        if (booking.status != Booking.Status.PAID
+                or booking.checked_in_at is not None):
+            raise CheckInRefused()
+        booking.checked_in_at = timezone.now()
+        booking.checked_in_by = staff
+        booking.save(update_fields=['checked_in_at', 'checked_in_by'])
+        log_action(staff, AuditLogEntry.Action.CHECKED_IN, 'Checked in',
+                   booking=booking)
+    return booking
 
 
 def release_seats(booking):

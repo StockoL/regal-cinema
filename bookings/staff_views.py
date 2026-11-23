@@ -1,17 +1,22 @@
 from django.contrib import messages
 from django.db.models import Prefetch
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.views.decorators.http import require_POST
 
 from staff.models import AuditLogEntry
 from staff.views import staff_permission_required
 from venue.models import get_settings
 
-from .models import Cancellation, SeatBooking
+from .models import Booking, Cancellation, SeatBooking
 from .services import (
     CancellationNotAllowed,
+    CheckInRefused,
     approve_cancellation,
+    check_in,
     decline_cancellation,
+    find_bookings,
+    impossible_reference,
 )
 
 DECISIONS = [
@@ -97,3 +102,41 @@ def cancellation_decline(request, pk):
         messages.success(request, f'Declined the request for {reference}. '
                                   f'The customer has been told.')
     return redirect('bookings_staff:cancellation_list')
+
+
+@staff_permission_required('bookings.view_bookings')
+def check_in_search(request):
+    """The door: find a booking by reference or email and let the party
+    in (journey 14; 4.32; wireframe 22)."""
+    query = request.GET.get('q', '').strip()
+    found = []
+    if query:
+        found = find_bookings(query).prefetch_related(Prefetch(
+            'seats', queryset=SeatBooking.objects.live()
+            .select_related('seat', 'ticket_type')
+            .order_by('-seat__area', 'seat__row_index', 'seat__column_index'),
+        ))
+    return render(request, 'bookings/staff/check_in.html', {
+        'query': query,
+        'found': found,
+        'can_check_in': request.user.has_perm('bookings.check_in_booking'),
+        'impossible_reference': impossible_reference(query),
+    })
+
+
+@require_POST
+@staff_permission_required('bookings.check_in_booking')
+def check_in_booking(request, reference):
+    """Check one party in, then come back to the same search."""
+    booking = get_object_or_404(Booking, reference=reference)
+    try:
+        check_in(booking, request.user)
+    except CheckInRefused:
+        if booking.checked_in_at:
+            messages.error(request, f'{reference} is already checked in.')
+        else:
+            messages.error(request, f"{reference} isn't paid, so it can't "
+                                    f'be checked in.')
+    else:
+        messages.success(request, f'Checked in {reference}.')
+    return redirect(f"{reverse('bookings_staff:check_in')}?q={reference}")
