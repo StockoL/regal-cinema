@@ -12,4 +12,7 @@ urlpatterns = [
          name='cancellation_approve'),
     path('cancellations/<int:pk>/decline/', staff_views.cancellation_decline,
          name='cancellation_decline'),
+    path('check-in/', staff_views.check_in_search, name='check_in'),
+    path('check-in/<str:reference>/', staff_views.check_in_booking,
+         name='check_in_booking'),
 ]
