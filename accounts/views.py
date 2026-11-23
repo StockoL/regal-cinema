@@ -5,10 +5,13 @@ from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_POST
 from django.shortcuts import redirect, render
 
+from regal.ratelimit import rate_limit
+
 from .forms import RegisterForm
 from .verification import send_verification_email, verify
 
 
+@rate_limit('register', limit=5, window=60 * 60)
 def register(request):
     """Create an account and log straight in. Verification never blocks
     a booking (4.16)."""

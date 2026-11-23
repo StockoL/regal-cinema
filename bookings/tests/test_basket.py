@@ -26,6 +26,14 @@ class BasketRuleTests(TestCase):
     def test_an_ordinary_basket_passes(self):
         check_basket(self.pg, self.tickets('Adult', 'Child'), 1)
 
+    def test_a_basket_can_be_up_to_the_venues_limit(self):
+        """4.23, 4.29: max_tickets_per_booking."""
+        check_basket(self.pg, self.tickets(*['Adult'] * 4), max_tickets=4)
+        with self.assertRaises(BasketError) as caught:
+            check_basket(self.pg, self.tickets(*['Adult'] * 5),
+                         max_tickets=4)
+        self.assertIn('up to 4 tickets', str(caught.exception))
+
     def test_a_basket_needs_a_seat(self):
         self.assert_refused(self.pg, [], says='at least one seat')
 

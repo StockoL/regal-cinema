@@ -10,11 +10,18 @@ class BasketError(Exception):
     the customer."""
 
 
-def check_basket(film, ticket_types, infants=0):
+def check_basket(film, ticket_types, infants=0, max_tickets=None):
     """Raise BasketError if the basket breaks a rule. ticket_types has
-    one entry per seat."""
+    one entry per seat. max_tickets is the venue's limit for one booking
+    (4.23), passed in so this stays clear of the database."""
     if not ticket_types:
         raise BasketError('Choose at least one seat.')
+
+    if max_tickets is not None and len(ticket_types) > max_tickets:
+        raise BasketError(
+            f'You can book up to {max_tickets} tickets at once. For a '
+            'larger group, call the box office.'
+        )
 
     if infants and not film.allows_infants:
         raise BasketError(

@@ -311,6 +311,13 @@ class TicketTypesTests(TestCase):
                 data[f'type_{seat.pk}'] = self.types[name].pk
         return self.client.post(self.url, data)
 
+    def test_holding_seats_allows_twenty_tries_in_ten_minutes(self):
+        """4.29: so nobody can hold and release seats by the hundred."""
+        codes = [self.client.post(self.url, {}).status_code
+                 for _ in range(21)]
+        self.assertNotIn(429, codes[:20])
+        self.assertEqual(codes[20], 429)
+
     def test_only_priced_types_the_film_allows_are_offered(self):
         film = self.screening.film
         film.age_rating = '15'

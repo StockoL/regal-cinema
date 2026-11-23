@@ -114,7 +114,8 @@ def start_booking(screening, choices, infants, session_key, user=None):
     so a refusal at any step leaves nothing behind (4.2, 4.8 step 3).
     Raises BasketError or SeatsUnavailable."""
     check_basket(
-        screening.film, [ticket_type for _, ticket_type in choices], infants
+        screening.film, [ticket_type for _, ticket_type in choices], infants,
+        max_tickets=get_settings().max_tickets_per_booking,
     )
     with transaction.atomic():
         holds = hold_seats(screening, choices, session_key, user=user)
@@ -555,6 +556,7 @@ def amend_booking(booking, choices, infants, session_key, user=None):
     check_basket(
         booking.screening.film,
         [ticket_type for _, ticket_type in choices], infants,
+        max_tickets=get_settings().max_tickets_per_booking,
     )
     check_ticket_types(booking.screening, choices)
     now = timezone.now()

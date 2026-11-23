@@ -9,6 +9,7 @@ from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 from payments.base import PaymentUnavailable
+from regal.ratelimit import rate_limit
 from screenings.models import Screening
 from venue.models import get_settings
 
@@ -109,6 +110,7 @@ def offered_ticket_types(screening):
     ]
 
 
+@rate_limit('hold-seats', limit=20, window=10 * 60)
 def screening_tickets(request, pk):
     """A ticket type for each chosen seat and any infants, then the
     seats are held in a pending booking (journey 2; 4.8 step 3)."""

@@ -3,11 +3,15 @@ from pathlib import Path
 
 from django.conf import settings as django_settings
 from django.contrib.staticfiles import finders
-from django.test import TestCase, override_settings
+from django.core.cache import caches
+from django.db import connection
+from django.http import HttpResponse
+from django.test import RequestFactory, TestCase, override_settings
 from django.urls import reverse
 from django_looseleaf import tokens
 
 from regal.email_config import email_settings
+from regal.ratelimit import rate_limit
 
 
 class HealthCheckTests(TestCase):
@@ -188,3 +192,71 @@ class DatabaseSettingsTests(TestCase):
         database = django_settings.DATABASES['default']
         self.assertGreater(database['CONN_MAX_AGE'], 0)
         self.assertTrue(database['CONN_HEALTH_CHECKS'])
+
+
+class CacheSettingsTests(TestCase):
+    """Rate limits count in a cache both workers share; the layout and
+    listing caches stay in each worker's memory (4.29, 4.34)."""
+
+    def test_rate_limits_count_in_the_database(self):
+        self.assertEqual(
+            django_settings.CACHES['ratelimit']['BACKEND'],
+            'django.core.cache.backends.db.DatabaseCache',
+        )
+
+    def test_everything_else_stays_in_each_workers_memory(self):
+        self.assertEqual(
+            django_settings.CACHES['default']['BACKEND'],
+            'django.core.cache.backends.locmem.LocMemCache',
+        )
+
+    def test_the_deploy_makes_the_cache_table(self):
+        build = (Path(django_settings.BASE_DIR) / 'build.sh').read_text()
+        self.assertIn('python manage.py createcachetable', build)
+
+
+@rate_limit('test', limit=2, window=60)
+def limited_view(request):
+    return HttpResponse('done')
+
+
+class RateLimitTests(TestCase):
+    """Repeated attempts are slowed with a plain 429 page, counted in
+    the shared cache without keeping anyone's address (4.29)."""
+
+    def setUp(self):
+        caches['ratelimit'].clear()
+        self.factory = RequestFactory()
+
+    def post(self, address='203.0.113.7'):
+        return limited_view(self.factory.post(
+            '/', HTTP_X_FORWARDED_FOR=f'{address}, 10.0.0.1',
+        ))
+
+    def test_attempts_within_the_limit_go_through(self):
+        self.assertEqual(self.post().status_code, 200)
+        self.assertEqual(self.post().status_code, 200)
+
+    def test_one_too_many_gets_a_plain_429_page(self):
+        self.post()
+        self.post()
+        response = self.post()
+        self.assertEqual(response.status_code, 429)
+        self.assertContains(response, 'Too many attempts', status_code=429)
+
+    def test_each_visitor_has_their_own_count(self):
+        self.post()
+        self.post()
+        self.assertEqual(self.post(address='198.51.100.2').status_code, 200)
+
+    def test_only_sending_a_form_counts(self):
+        for _ in range(3):
+            response = limited_view(self.factory.get('/'))
+        self.assertEqual(response.status_code, 200)
+
+    def test_no_address_is_kept(self):
+        self.post()
+        with connection.cursor() as cursor:
+            cursor.execute('SELECT cache_key FROM rate_limit_cache')
+            keys = ' '.join(row[0] for row in cursor.fetchall())
+        self.assertNotIn('203.0.113.7', keys)

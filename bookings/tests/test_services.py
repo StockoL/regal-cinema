@@ -171,6 +171,13 @@ class StartBookingTests(TestCase):
             {(self.seat_1, self.adult), (self.seat_2, self.child)},
         )
 
+    def test_the_venues_ticket_limit_applies(self):
+        VenueSettings.objects.update(max_tickets_per_booking=1)
+        with self.assertRaises(BasketError):
+            self.start([(self.seat_1, self.adult),
+                        (self.seat_2, self.adult)])
+        self.assertFalse(Booking.objects.exists())
+
     def test_a_basket_that_breaks_a_rule_makes_nothing(self):
         with self.assertRaises(BasketError):
             self.start([(self.seat_1, self.child)])
