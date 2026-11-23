@@ -237,6 +237,22 @@ def settle_payment(booking, payment_intent_id, amount_pence):
             transaction.on_commit(lambda: record_payment_fee(booking.pk))
 
 
+def recheck_payment(booking):
+    """Ask Stripe whether the booking's session was paid, for when its
+    webhook never came (4.32). A paid session is settled just as the
+    webhook would settle it, so running this alongside the webhook acts
+    once. Returns whether Stripe said it was paid."""
+    if not booking.stripe_checkout_session_id:
+        return False
+    session = get_provider().get_checkout_session(
+        booking.stripe_checkout_session_id
+    )
+    if not session.paid:
+        return False
+    settle_payment(booking, session.payment_intent_id, session.amount_pence)
+    return True
+
+
 def queue_refund(booking, payment_intent_id, amount_pence, reason):
     """Record a pending refund, named to the system user, and send it to
     the provider once the transaction has committed (4.13)."""
