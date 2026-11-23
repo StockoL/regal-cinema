@@ -1,9 +1,11 @@
 from django.contrib import messages
+from django.contrib.auth.decorators import login_required
 from django.contrib.auth.views import redirect_to_login
-from django.db.models import Q
+from django.db.models import Prefetch, Q
 from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
+from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 from payments.base import PaymentUnavailable
@@ -11,7 +13,7 @@ from screenings.models import Screening
 
 from .basket import BasketError
 from .handover import remember_booking
-from .models import Booking
+from .models import Booking, SeatBooking
 from .services import (
     HoldTimeUsedUp,
     HoldsExpired,
@@ -283,6 +285,31 @@ def booking_confirming(request, reference):
         'refunded': booking.status == Booking.Status.REFUNDED,
         'seats': seats.order_by('-seat__area', 'seat__row_index',
                                 'seat__column_index'),
+    })
+
+
+@login_required
+def booking_list(request):
+    """My bookings: everything the customer has paid for, upcoming first
+    and then past, each with its status. A cancelled booking stays with
+    its status rather than disappearing (journey 7; brief decision 6).
+    Unpaid bookings are left out: they're still at checkout."""
+    bookings = (
+        request.user.bookings.exclude(status=Booking.Status.PENDING)
+        .select_related('screening__film', 'screening__screen')
+        .prefetch_related(Prefetch(
+            'seats',
+            queryset=SeatBooking.objects.select_related('seat',
+                                                        'ticket_type')
+            .order_by('-seat__area', 'seat__row_index', 'seat__column_index'),
+        ))
+        .order_by('screening__date_time')
+    )
+    now = timezone.now()
+    return render(request, 'bookings/booking_list.html', {
+        'upcoming': [b for b in bookings if b.screening.date_time >= now],
+        'past': [b for b in reversed(bookings)
+                 if b.screening.date_time < now],
     })
 
 

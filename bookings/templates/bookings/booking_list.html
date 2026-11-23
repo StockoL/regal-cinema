@@ -1,0 +1,29 @@
+{% extends 'base.html' %}
+
+{% block title %}My bookings{% endblock %}
+
+{% block content %}
+<div class="wrapper region">
+  <div class="center flow">
+    <h1>My bookings</h1>
+    {% if upcoming or past %}
+      <h2>Upcoming</h2>
+      {% if upcoming %}
+        <ul class="flow" role="list">
+          {% for booking in upcoming %}{% include 'bookings/_booking_card.html' %}{% endfor %}
+        </ul>
+      {% else %}
+        <p>Nothing coming up. <a href="{% url 'screenings:screening_list' %}">See what's on</a></p>
+      {% endif %}
+      {% if past %}
+        <h2>Past</h2>
+        <ul class="flow" role="list">
+          {% for booking in past %}{% include 'bookings/_booking_card.html' %}{% endfor %}
+        </ul>
+      {% endif %}
+    {% else %}
+      <p>You haven't booked anything yet. <a href="{% url 'screenings:screening_list' %}">See what's on</a></p>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
