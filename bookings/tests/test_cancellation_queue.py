@@ -9,6 +9,7 @@ from django.utils import timezone
 from bookings.models import Booking, Cancellation
 from bookings.services import request_cancellation
 from bookings.tests.test_holds import make_screening
+from membership.models import Voucher
 
 User = get_user_model()
 
@@ -44,7 +45,8 @@ class CancellationQueueTests(TestCase):
         response = self.client.get(self.url)
         for words in (self.booking.reference, 'customer@example.com',
                       'Nosferatu', 'ill', 'voucher for £18.50',
-                      'Note to customer (needed to decline)', 'Decline',
+                      'Note to customer (needed either way)', 'Decline',
+                      'Approve, issue voucher',
                       'class="textarea"'):
             with self.subTest(words=words):
                 self.assertContains(response, words)
@@ -56,6 +58,25 @@ class CancellationQueueTests(TestCase):
         self.assertContains(response, 'Declined')
         self.booking.refresh_from_db()
         self.assertEqual(self.booking.status, Booking.Status.PAID)
+
+    def test_approving_issues_the_voucher_and_says_so(self):
+        approve_url = reverse('bookings_staff:cancellation_approve',
+                              args=[self.request.pk])
+        response = self.client.post(approve_url,
+                                    {'note': 'Plenty of time to resell'},
+                                    follow=True)
+        self.assertRedirects(response, self.url)
+        voucher = Voucher.objects.get()
+        self.assertContains(response, voucher.code)
+        self.booking.refresh_from_db()
+        self.assertEqual(self.booking.status, Booking.Status.CANCELLED)
+
+    def test_approving_without_a_note_changes_nothing(self):
+        approve_url = reverse('bookings_staff:cancellation_approve',
+                              args=[self.request.pk])
+        response = self.client.post(approve_url, {'note': ''}, follow=True)
+        self.assertContains(response, 'Write a note to the customer')
+        self.assertFalse(Voucher.objects.exists())
 
     def test_a_decided_request_moves_to_recent_decisions(self):
         self.client.post(self.decline_url, {'note': 'Nearly sold out'})

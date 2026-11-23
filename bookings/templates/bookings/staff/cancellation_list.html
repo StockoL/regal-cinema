@@ -22,10 +22,13 @@
             <form class="flow" method="post" action="{% url 'bookings_staff:cancellation_decline' cancellation.pk %}">
               {% csrf_token %}
               <div class="field">
-                <label for="note-{{ cancellation.pk }}">Note to customer (needed to decline)</label>
+                <label for="note-{{ cancellation.pk }}">Note to customer (needed either way)</label>
                 <textarea class="textarea" id="note-{{ cancellation.pk }}" name="note" rows="3"></textarea>
               </div>
-              <button class="button" type="submit" data-variant="secondary">Decline</button>
+              <div class="cluster">
+                <button class="button" type="submit" data-variant="primary" formaction="{% url 'bookings_staff:cancellation_approve' cancellation.pk %}">Approve, issue voucher</button>
+                <button class="button" type="submit" data-variant="secondary">Decline</button>
+              </div>
             </form>
           </div>
         </li>

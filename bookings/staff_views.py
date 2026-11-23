@@ -8,7 +8,11 @@ from staff.views import staff_permission_required
 from venue.models import get_settings
 
 from .models import Cancellation, SeatBooking
-from .services import CancellationNotAllowed, decline_cancellation
+from .services import (
+    CancellationNotAllowed,
+    approve_cancellation,
+    decline_cancellation,
+)
 
 DECISIONS = [
     AuditLogEntry.Action.CANCELLATION_DECLINED,
@@ -47,6 +51,31 @@ def cancellation_list(request):
         'fee_pence': fee,
         'recent': recent,
     })
+
+
+@require_POST
+@staff_permission_required('bookings.cancel_booking')
+def cancellation_approve(request, pk):
+    """Approve one request: the customer gets a voucher and the seats go
+    back on sale (4.22). Approving issues the voucher, so this needs
+    cancel_booking, not issue_voucher."""
+    cancellation = get_object_or_404(Cancellation, pk=pk)
+    reference = cancellation.booking.reference
+    try:
+        cancellation = approve_cancellation(cancellation, request.user,
+                                            request.POST.get('note', ''))
+    except ValueError:
+        messages.error(request, f'Write a note to the customer to approve '
+                                f'{reference}.')
+    except CancellationNotAllowed:
+        messages.error(request, f'The request for {reference} has already '
+                                f'been decided.')
+    else:
+        voucher = cancellation.booking.vouchers_issued.get()
+        messages.success(request, f'Approved {reference}. Voucher '
+                                  f'{voucher.code} has been emailed to the '
+                                  f'customer.')
+    return redirect('bookings_staff:cancellation_list')
 
 
 @require_POST
