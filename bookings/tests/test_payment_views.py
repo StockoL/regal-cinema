@@ -1,5 +1,5 @@
 from django.contrib.auth import get_user_model
-from django.test import TestCase, override_settings
+from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
 
@@ -9,7 +9,6 @@ from bookings.tests import test_views
 from payments.fake import FakeProvider
 
 
-@override_settings(SEAT_HOLD_MINUTES=10)
 class ConfirmingPageTests(TestCase):
     """Where Stripe sends the customer back to. Coming back confirms
     nothing: only the webhook does (journey 6, "Confirming"; 4.13 step
@@ -59,7 +58,6 @@ class ConfirmingPageTests(TestCase):
         self.assertNotContains(response, "We're confirming your payment")
 
 
-@override_settings(SEAT_HOLD_MINUTES=10)
 class PayTests(TestCase):
     """Choosing Pay sends the customer to Stripe's page (journey 6,
     "Sent to Stripe"; architecture 4.13 step 3)."""
@@ -151,7 +149,6 @@ class PayTests(TestCase):
         self.assertEqual(self.client.get(self.url).status_code, 405)
 
 
-@override_settings(SEAT_HOLD_MINUTES=10)
 class PaymentNotCompletedTests(TestCase):
     """Backing out of Stripe's page (journey 6, "Payment not completed";
     architecture 4.13 step 6)."""
@@ -192,7 +189,6 @@ class PaymentNotCompletedTests(TestCase):
         self.assertContains(response, '4242 4242 4242 4242')
 
 
-@override_settings(SEAT_HOLD_MINUTES=10)
 class ProofReminderTests(TestCase):
     """A ticket that needs proof says what to bring, at checkout and on
     the confirmation (journey 2, "Proof reminder"; architecture 4.2)."""
