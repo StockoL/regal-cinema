@@ -534,8 +534,11 @@ def start_payment(booking, success_url, cancel_url):
         idempotency_key=f'checkout-{key}',
     )
     with transaction.atomic():
-        booking.stripe_checkout_session_id = session.id
-        booking.save(update_fields=['stripe_checkout_session_id'])
+        if session.id != booking.stripe_checkout_session_id:
+            booking.stripe_checkout_session_id = session.id
+            booking.checkout_started_at = timezone.now()
+            booking.save(update_fields=['stripe_checkout_session_id',
+                                        'checkout_started_at'])
         booking.holds.update(expires_at=session.expires_at)
     return session
 
