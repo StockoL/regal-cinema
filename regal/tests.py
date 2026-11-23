@@ -1,3 +1,4 @@
+import logging
 import re
 from pathlib import Path
 
@@ -71,6 +72,22 @@ class ScheduledTaskTests(TestCase):
             self.url, HTTP_AUTHORIZATION='Bearer a-long-random-token',
         )
         self.assertEqual(response.status_code, 405)
+
+
+class LoggingSettingsTests(TestCase):
+    """The site's own log lines, such as what the scheduled work did,
+    reach the console, which is where Render collects its logs."""
+
+    def test_the_sites_own_info_lines_reach_the_console(self):
+        for name in ('regal.views', 'bookings.emails', 'payments.fake'):
+            with self.subTest(name=name):
+                logger = logging.getLogger(name)
+                self.assertTrue(logger.isEnabledFor(logging.INFO))
+                app = logging.getLogger(name.split('.')[0])
+                self.assertTrue(any(
+                    isinstance(handler, logging.StreamHandler)
+                    for handler in app.handlers
+                ))
 
 
 class StylesheetTests(TestCase):
