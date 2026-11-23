@@ -39,6 +39,9 @@ class AuditLogEntry(models.Model):
     class Meta:
         ordering = ['-created_at']
         verbose_name_plural = 'audit log entries'
+        permissions = [
+            ('view_sales_dashboard', 'Can see the reports'),
+        ]
 
     def __str__(self):
         return f'{self.get_action_type_display()} by {self.actor}'
