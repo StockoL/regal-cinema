@@ -111,8 +111,9 @@ Fixed with `assertNumQueries`, so a page that starts querying per seat or per ro
 
 | Page | Queries | What they are | Test |
 | ---- | ------- | ------------- | ---- |
-| A screening's seat map, for a visitor | 5 | The screening, any booking of theirs, the closed areas, live holds and live sales. The room's seats come from the cache, and nearly thirty times as many seats make no more queries | `test_the_seat_map_page_makes_a_fixed_number_of_queries`, `test_a_bigger_room_makes_no_more_queries` |
+| A screening's seat map, for a visitor | 6 | The screening, the venue settings for the online cut-off, any booking of theirs, the closed areas, live holds and live sales. The room's seats come from the cache, and nearly thirty times as many seats make no more queries | `test_the_seat_map_page_makes_a_fixed_number_of_queries`, `test_a_bigger_room_makes_no_more_queries` |
 | A layout's seats, cached | 0 | Served from the cache until a seat or layout of the screen changes | `test_the_second_call_makes_no_query` |
+| My bookings | 4 | The session, the customer, their bookings with each screening, film and screen, and every seat with its ticket type | `test_more_bookings_make_no_more_queries` |
 
 ### Failure modes
 
