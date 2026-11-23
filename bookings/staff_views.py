@@ -16,6 +16,7 @@ from .services import (
     check_in,
     decline_cancellation,
     find_bookings,
+    impossible_reference,
 )
 
 DECISIONS = [
@@ -119,6 +120,7 @@ def check_in_search(request):
         'query': query,
         'found': found,
         'can_check_in': request.user.has_perm('bookings.check_in_booking'),
+        'impossible_reference': impossible_reference(query),
     })
 
 

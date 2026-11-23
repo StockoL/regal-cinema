@@ -79,6 +79,21 @@ class CheckInPageTests(TestCase):
     def test_nothing_found_says_so(self):
         self.assertContains(self.search('RGL-ZZZZZ'), 'Nothing found')
 
+    def test_a_reference_with_a_character_it_never_has_says_so(self):
+        """References leave out 0, O, 1, I and L (4.2), so one typed
+        with them is wrong, and the page says why it found nothing."""
+        for query in ('RGL-0ABCD', 'rgl abc1d', 'ABCLD'):
+            with self.subTest(query=query):
+                self.assertContains(
+                    self.search(query),
+                    'Booking references never contain 0, O, 1, I or L.',
+                )
+
+    def test_an_email_search_isnt_told_about_references(self):
+        """An email address often has an l in it."""
+        self.assertNotContains(self.search('lola@example.com'),
+                               'never contain')
+
     def test_looking_up_needs_view_bookings(self):
         self.staff.groups.clear()
         self.assertEqual(self.search('jo').status_code, 403)

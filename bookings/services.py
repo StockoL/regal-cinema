@@ -22,7 +22,14 @@ from .emails import (
     queue_cancellation_declined,
     queue_late_payment_refund,
 )
-from .models import Booking, Cancellation, Refund, SeatBooking, SeatHold
+from .models import (
+    REFERENCE_CHARACTERS,
+    Booking,
+    Cancellation,
+    Refund,
+    SeatBooking,
+    SeatHold,
+)
 
 
 class SeatsUnavailable(Exception):
@@ -357,6 +364,23 @@ def approve_cancellation(cancellation, staff, note):
     return cancellation
 
 
+def reference_code(query):
+    """What staff typed, as the five characters after RGL-: any case,
+    with spaces or a hyphen, with or without the RGL."""
+    code = query.strip().upper().replace(' ', '').replace('-', '')
+    return code[3:] if code.startswith('RGL') else code
+
+
+def impossible_reference(query):
+    """Whether what was typed is shaped like a reference but holds a
+    character references never have (0, O, 1, I or L, see 4.2), so the
+    page can say why nothing was found. An email address is left
+    alone, since it often has an l in it."""
+    code = reference_code(query)
+    return ('@' not in query and len(code) == 5 and code.isalnum()
+            and any(c not in REFERENCE_CHARACTERS for c in code))
+
+
 def find_bookings(query, on_date=None):
     """The staff search box (4.32): a booking reference however it was
     typed, in any case, with spaces, without its hyphen or its RGL, or
@@ -365,9 +389,7 @@ def find_bookings(query, on_date=None):
     query = query.strip()
     if not query:
         return Booking.objects.none()
-    code = query.upper().replace(' ', '').replace('-', '')
-    if code.startswith('RGL'):
-        code = code[3:]
+    code = reference_code(query)
     matches = Q(user__email__icontains=query)
     if len(code) == 5:
         matches |= Q(reference=f'RGL-{code}')

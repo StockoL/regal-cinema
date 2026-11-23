@@ -45,6 +45,7 @@
           {% endfor %}
         </ul>
       {% else %}
+        {% if impossible_reference %}<p>Booking references never contain 0, O, 1, I or L.</p>{% endif %}
         <p>Nothing found for "{{ query }}". Check the date, or search by email.</p>
       {% endif %}
     {% endif %}
