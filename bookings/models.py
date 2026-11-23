@@ -125,6 +125,10 @@ class Booking(models.Model):
     # booking is confirmed, so a failed lookup never undoes it (4.13).
     stripe_fee_pence = models.PositiveIntegerField(null=True, blank=True)
     stripe_net_pence = models.IntegerField(null=True, blank=True)
+    # A chargeback: when the customer's bank opened one, and when it was
+    # settled. Nothing is cancelled automatically (4.13).
+    disputed_at = models.DateTimeField(null=True, blank=True)
+    dispute_closed_at = models.DateTimeField(null=True, blank=True)
     # The staff member who took an in-venue booking (4.14).
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.SET_NULL,
@@ -161,6 +165,10 @@ class Booking(models.Model):
 
     def __str__(self):
         return f'{self.reference} for {self.screening}'
+
+    @property
+    def dispute_open(self):
+        return self.disputed_at is not None and self.dispute_closed_at is None
 
     def save(self, *args, **kwargs):
         if not self.reference:

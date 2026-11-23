@@ -25,6 +25,7 @@
                   <h2>{{ booking.screening.film.title }}</h2>
                   <p class="cluster">{% if booking.screening.film.age_rating %}<span class="badge">Rated {{ booking.screening.film.age_rating }}</span>{% endif %}<span class="badge">{{ booking.get_status_display }}</span></p>
                 </div>
+                {% if booking.dispute_open %}<div class="alert" data-status="warning"><p>The customer's bank has disputed this payment, since {{ booking.disputed_at|date:"j M" }}. Nothing has been cancelled.</p></div>{% endif %}
                 <p>{{ booking.screening.date_time|date:"D j M" }}, {{ booking.screening.date_time|time:"g:i a" }}, {{ booking.screening.screen.name }}</p>
                 <p>{% if booking.user %}{{ booking.user.email }} · {% endif %}{{ booking.reference }}</p>
                 <ul role="list">
