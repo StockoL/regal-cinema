@@ -9,10 +9,16 @@ from payments import get_provider
 from payments.base import FeeUnavailable, RefundFailed
 from screenings.models import Seat
 from screenings.services import layout_seats
+from staff.audit import log_action
+from staff.models import AuditLogEntry
 from venue.models import get_settings
 
 from .basket import check_basket
-from .emails import queue_booking_confirmation, queue_late_payment_refund
+from .emails import (
+    queue_booking_confirmation,
+    queue_cancellation_declined,
+    queue_late_payment_refund,
+)
 from .models import Booking, Cancellation, Refund, SeatBooking, SeatHold
 
 
@@ -266,6 +272,40 @@ def request_cancellation(booking, reason=''):
         )
         booking.status = Booking.Status.CANCELLATION_REQUESTED
         booking.save(update_fields=['status'])
+    return cancellation
+
+
+def decline_cancellation(cancellation, staff, note):
+    """Staff turn a customer's request down (4.22). The note is required
+    and goes to the customer. The booking returns to paid, the decision
+    is logged with the staff member's name, and the customer can ask
+    again later. Raises ValueError without a note, and
+    CancellationNotAllowed if the request isn't waiting."""
+    if not note or not note.strip():
+        raise ValueError('Declining needs a note to the customer.')
+    with transaction.atomic():
+        cancellation = Cancellation.objects.select_for_update().get(
+            pk=cancellation.pk
+        )
+        if cancellation.status != Cancellation.Status.REQUESTED:
+            raise CancellationNotAllowed()
+        # Lock the booking alone: its customer is an optional join.
+        booking = (
+            Booking.objects.select_for_update(of=('self',))
+            .select_related('screening__film', 'user')
+            .get(pk=cancellation.booking_id)
+        )
+        cancellation.status = Cancellation.Status.DECLINED
+        cancellation.decided_by = staff
+        cancellation.decided_at = timezone.now()
+        cancellation.decision_note = note.strip()
+        cancellation.save(update_fields=['status', 'decided_by',
+                                         'decided_at', 'decision_note'])
+        booking.status = Booking.Status.PAID
+        booking.save(update_fields=['status'])
+        log_action(staff, AuditLogEntry.Action.CANCELLATION_DECLINED,
+                   note, booking=booking)
+        queue_cancellation_declined(booking, note.strip())
     return cancellation
 
 

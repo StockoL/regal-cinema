@@ -60,6 +60,18 @@ def queue_late_payment_refund(booking):
     )
 
 
+def queue_cancellation_declined(booking, note):
+    """Tell the customer staff declined their request, with the note
+    staff gave (4.22)."""
+    if booking.user is None:
+        return None
+    return queue_email(
+        OutboundEmail.Kind.CANCELLATION_DECLINED, booking.user.email,
+        'cancellation_declined', {'booking': booking, 'note': note},
+        booking=booking,
+    )
+
+
 def send_outbound_email(email_pk):
     """Send one queued email and record what happened. A failure is
     counted and kept, never raised, so it can't undo the change the
