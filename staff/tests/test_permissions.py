@@ -34,6 +34,12 @@ class StaffPermissionTests(TestCase):
     def test_manager_holds_every_staff_permission(self):
         self.assertLessEqual(STAFF_PERMISSIONS, codenames('Manager'))
 
+    def test_manager_can_look_after_vouchers(self):
+        """Added by the membership app for venues whose groups already
+        existed, and from the start for new ones."""
+        self.assertLessEqual({'view_voucher', 'change_voucher'},
+                             codenames('Manager'))
+
     def test_a_venues_changes_to_a_group_are_kept(self):
         """The groups are defaults, not rules: running migrations again
         never undoes what a venue changed in the admin."""
