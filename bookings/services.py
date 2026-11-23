@@ -215,14 +215,15 @@ def settle_payment(booking, payment_intent_id, amount_pence):
     it came by webhook or by asking Stripe (4.32). A pending booking is
     confirmed, or refunded if its seats have gone. A settled booking
     paid again by a different payment has that payment refunded. The
-    booking is locked first, so two reports of one payment act once."""
+    booking is locked first, so two reports of one payment act once.
+    Returns whether this call confirmed the booking."""
     with transaction.atomic():
         booking = Booking.objects.select_for_update().get(pk=booking.pk)
         if booking.status != Booking.Status.PENDING:
             if payment_intent_id != booking.stripe_payment_intent_id:
                 refund_duplicate_payment(booking, payment_intent_id,
                                          amount_pence)
-            return
+            return False
         # Recorded before confirming, so a refund can find the payment
         # even if the seats turn out to be lost.
         booking.stripe_payment_intent_id = payment_intent_id
@@ -233,15 +234,17 @@ def settle_payment(booking, payment_intent_id, amount_pence):
             confirm_booking(booking)
         except SeatsLost:
             refund_late_payment(booking)
-        else:
-            transaction.on_commit(lambda: record_payment_fee(booking.pk))
+            return False
+        transaction.on_commit(lambda: record_payment_fee(booking.pk))
+        return True
 
 
-def recheck_payment(booking):
+def recheck_payment(booking, actor, reason):
     """Ask Stripe whether the booking's session was paid, for when its
     webhook never came (4.32). A paid session is settled just as the
     webhook would settle it, so running this alongside the webhook acts
-    once. Returns whether Stripe said it was paid."""
+    once. A booking this confirms is logged under the actor, staff or
+    the system user. Returns whether Stripe said it was paid."""
     if not booking.stripe_checkout_session_id:
         return False
     session = get_provider().get_checkout_session(
@@ -249,7 +252,11 @@ def recheck_payment(booking):
     )
     if not session.paid:
         return False
-    settle_payment(booking, session.payment_intent_id, session.amount_pence)
+    with transaction.atomic():
+        if settle_payment(booking, session.payment_intent_id,
+                          session.amount_pence):
+            log_action(actor, AuditLogEntry.Action.PAYMENT_CONFIRMED,
+                       reason, booking=booking)
     return True
 
 
