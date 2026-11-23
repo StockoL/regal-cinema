@@ -311,6 +311,9 @@ def booking_list(request):
         .order_by('screening__date_time')
     )
     now = timezone.now()
+    venue = get_settings()
+    for booking in bookings:
+        booking.cancel_state = cancellation_state(booking, venue)
     return render(request, 'bookings/booking_list.html', {
         'upcoming': [b for b in bookings if b.screening.date_time >= now],
         'past': [b for b in reversed(bookings)

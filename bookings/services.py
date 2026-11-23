@@ -228,13 +228,15 @@ class CancellationNotAllowed(Exception):
     already been asked about, it's past, or it's inside the cutoff."""
 
 
-def cancellation_state(booking):
+def cancellation_state(booking, venue=None):
     """What a customer can do about cancelling a booking (4.22).
 
     'open' when it's paid and more than the venue's cutoff away, so the
     request form is offered; 'phone' when it's paid but inside the
     cutoff and still to come, so the page gives the box office; None
     for a booking that's past, not paid or already being dealt with.
+    A page listing many bookings passes the venue settings in, so they
+    are read once.
     """
     if booking.status != Booking.Status.PAID:
         return None
@@ -242,7 +244,8 @@ def cancellation_state(booking):
     now = timezone.now()
     if starts <= now:
         return None
-    cutoff = timedelta(hours=get_settings().cancellation_cutoff_hours)
+    venue = venue or get_settings()
+    cutoff = timedelta(hours=venue.cancellation_cutoff_hours)
     return 'open' if now < starts - cutoff else 'phone'
 
 

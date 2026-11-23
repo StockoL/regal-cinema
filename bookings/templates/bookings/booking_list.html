@@ -10,7 +10,7 @@
       <h2>Upcoming</h2>
       {% if upcoming %}
         <ul class="flow" role="list">
-          {% for booking in upcoming %}{% include 'bookings/_booking_card.html' %}{% endfor %}
+          {% for booking in upcoming %}{% include 'bookings/_booking_card.html' with offer_cancel=True %}{% endfor %}
         </ul>
       {% else %}
         <p>Nothing coming up. <a href="{% url 'screenings:screening_list' %}">See what's on</a></p>
@@ -18,7 +18,7 @@
       {% if past %}
         <h2>Past</h2>
         <ul class="flow" role="list">
-          {% for booking in past %}{% include 'bookings/_booking_card.html' %}{% endfor %}
+          {% for booking in past %}{% include 'bookings/_booking_card.html' with offer_cancel=True %}{% endfor %}
         </ul>
       {% endif %}
     {% else %}

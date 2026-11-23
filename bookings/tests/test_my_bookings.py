@@ -92,6 +92,24 @@ class MyBookingsTests(TestCase):
         self.assertContains(response, '£9.50 refunded')
         self.assertNotContains(response, '£9.50 paid')
 
+    def test_an_upcoming_booking_offers_a_cancellation(self):
+        """Journey 7, wireframe 17."""
+        booking = self.book(self.upcoming)
+        self.assertContains(self.client.get(self.url), reverse(
+            'bookings:cancellation_request', args=[booking.reference]
+        ))
+
+    def test_a_past_or_requested_booking_doesnt(self):
+        """Journey 7, "Past or cancelled"."""
+        past = self.book(self.past, number=1)
+        asked = self.book(self.upcoming, number=2)
+        asked.status = Booking.Status.CANCELLATION_REQUESTED
+        asked.save()
+        html = self.client.get(self.url).content.decode()
+        self.assertNotIn('Request a cancellation', html)
+        self.assertIn('Cancellation requested', html)
+        self.assertNotIn(f'{past.reference}/cancel/', html)
+
     def test_an_unpaid_booking_isnt_listed(self):
         booking = self.book(self.upcoming, paid=False)
         self.assertNotContains(self.client.get(self.url), booking.reference)
@@ -111,9 +129,9 @@ class MyBookingsTests(TestCase):
         """A fixed number of queries, however many bookings (4.33)."""
         self.book(self.upcoming, number=1)
         self.client.get(self.url)
-        with self.assertNumQueries(4):
+        with self.assertNumQueries(5):
             self.client.get(self.url)
         self.book(self.upcoming, number=2)
         self.book(self.past, number=3)
-        with self.assertNumQueries(4):
+        with self.assertNumQueries(5):
             self.client.get(self.url)
