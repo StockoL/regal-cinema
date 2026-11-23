@@ -12,7 +12,7 @@ from payments.base import PaymentUnavailable
 
 from .emails import send_outbound_email
 from .models import Booking, OutboundEmail, Refund, SeatHold
-from .services import recheck_payment, send_refund
+from .services import recheck_payment, record_payment_fee, send_refund
 
 # Younger sessions are left to the webhook; older ones have long since
 # expired unpaid, or been settled.
@@ -106,4 +106,22 @@ def retry_emails():
         email.refresh_from_db(fields=['status'])
         if email.status == OutboundEmail.Status.SENT:
             counts['sent'] += 1
+    return counts
+
+
+def retry_fees():
+    """Ask again for the fee on every booking paid through Stripe over
+    five minutes ago that still has none. One not ready yet waits for
+    the next run (4.13). Returns the counts."""
+    bookings = Booking.objects.filter(
+        stripe_payment_intent_id__isnull=False, stripe_fee_pence__isnull=True,
+        paid_at__lt=timezone.now() - RETRY_AFTER,
+    )
+    counts = {'retried': 0, 'filled': 0}
+    for booking in bookings:
+        record_payment_fee(booking.pk)
+        counts['retried'] += 1
+        booking.refresh_from_db(fields=['stripe_fee_pence'])
+        if booking.stripe_fee_pence is not None:
+            counts['filled'] += 1
     return counts

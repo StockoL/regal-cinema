@@ -14,11 +14,13 @@ from bookings.models import Booking, OutboundEmail, Refund, SeatHold
 from bookings.reconcile import (
     recheck_stuck_payments,
     retry_emails,
+    retry_fees,
     retry_refunds,
     tidy_up,
 )
 from bookings.services import start_booking, start_payment
 from bookings.tests.test_holds import make_screening
+from payments.base import PaymentFee
 from payments.fake import FakeProvider
 from screenings.models import ScreeningPrice, TicketType
 from staff.models import AuditLogEntry
@@ -281,3 +283,53 @@ class EmailRetryTests(TestCase):
         out = StringIO()
         call_command('reconcile_pending', stdout=out)
         self.assertIn('Retried 1 email: 1 sent.', out.getvalue())
+
+
+class FeeRetryTests(TestCase):
+    """A fee Stripe couldn't report yet is asked for again, so every
+    paid booking ends up with its fee and net (architecture 4.13)."""
+
+    def setUp(self):
+        FakeProvider.reset()
+        screening, _ = make_screening()
+        self.booking = Booking.objects.create(
+            screening=screening, status=Booking.Status.PAID,
+            stripe_payment_intent_id='pi_1',
+            paid_at=timezone.now() - timedelta(minutes=10),
+        )
+        FakeProvider.fees['pi_1'] = PaymentFee(fee_pence=34, net_pence=916)
+
+    def test_a_missing_fee_is_filled_in(self):
+        self.assertEqual(retry_fees(), {'retried': 1, 'filled': 1})
+        self.booking.refresh_from_db()
+        self.assertEqual((self.booking.stripe_fee_pence,
+                          self.booking.stripe_net_pence), (34, 916))
+
+    def test_a_fee_still_not_ready_waits_for_the_next_run(self):
+        FakeProvider.fees.clear()
+        self.assertEqual(retry_fees(), {'retried': 1, 'filled': 0})
+
+    def test_a_booking_with_its_fee_is_left_alone(self):
+        Booking.objects.filter(pk=self.booking.pk).update(
+            stripe_fee_pence=34, stripe_net_pence=916,
+        )
+        self.assertEqual(retry_fees()['retried'], 0)
+
+    def test_a_booking_just_paid_is_left_to_its_own_lookup(self):
+        Booking.objects.filter(pk=self.booking.pk).update(
+            paid_at=timezone.now(),
+        )
+        self.assertEqual(retry_fees()['retried'], 0)
+
+    def test_a_booking_paid_without_stripe_is_left_alone(self):
+        """A booking taken at the venue has no Stripe payment."""
+        Booking.objects.filter(pk=self.booking.pk).update(
+            stripe_payment_intent_id=None,
+        )
+        self.assertEqual(retry_fees()['retried'], 0)
+
+    def test_the_command_reports_the_fees(self):
+        out = StringIO()
+        call_command('reconcile_pending', stdout=out)
+        self.assertIn('Looked up 1 missing fee: 1 filled in.',
+                      out.getvalue())

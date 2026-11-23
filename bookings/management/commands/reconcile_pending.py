@@ -3,6 +3,7 @@ from django.core.management.base import BaseCommand
 from bookings.reconcile import (
     recheck_stuck_payments,
     retry_emails,
+    retry_fees,
     retry_refunds,
     tidy_up,
 )
@@ -11,9 +12,9 @@ from bookings.reconcile import (
 class Command(BaseCommand):
     help = (
         'Ask Stripe about pending bookings whose webhook never came, '
-        'send failed refunds and emails again, then clear away old '
-        'holds and abandoned bookings (architecture 4.32). Safe to run '
-        'twice.'
+        'send failed refunds and emails again, fill in missing fees, '
+        'then clear away old holds and abandoned bookings (architecture '
+        '4.32). Safe to run twice.'
     )
 
     def handle(self, *args, **options):
@@ -33,6 +34,12 @@ class Command(BaseCommand):
         noun = 'email' if emails['retried'] == 1 else 'emails'
         self.stdout.write(
             f"Retried {emails['retried']} {noun}: {emails['sent']} sent."
+        )
+        fees = retry_fees()
+        noun = 'fee' if fees['retried'] == 1 else 'fees'
+        self.stdout.write(
+            f"Looked up {fees['retried']} missing {noun}: "
+            f"{fees['filled']} filled in."
         )
         removed = tidy_up()
         holds = 'hold' if removed['holds'] == 1 else 'holds'
