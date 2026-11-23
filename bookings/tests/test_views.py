@@ -638,16 +638,17 @@ class SeatMapQueryTests(TestCase):
             )
 
     def test_the_seat_map_page_makes_a_fixed_number_of_queries(self):
-        """Five once the room's layout is cached: the screening, any
-        booking of theirs, the closed areas, live holds and live sales."""
+        """Six once the room's layout is cached: the screening, the
+        venue settings for the online cut-off, any booking of theirs, the
+        closed areas, live holds and live sales."""
         self.client.get(self.url)
-        with self.assertNumQueries(5):
+        with self.assertNumQueries(6):
             self.client.get(self.url)
 
     def test_a_bigger_room_makes_no_more_queries(self):
         self.add_seats(range(3, 60))
         self.client.get(self.url)
-        with self.assertNumQueries(5):
+        with self.assertNumQueries(6):
             self.client.get(self.url)
 
     def test_a_seat_taken_out_of_use_goes_at_once(self):

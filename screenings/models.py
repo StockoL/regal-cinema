@@ -13,6 +13,8 @@ from django.db import models
 from django.utils import timezone
 from django.utils.text import slugify
 
+from venue.models import get_settings
+
 
 class Film(models.Model):
     """A film or event in the local catalogue, filled from TMDb or by hand
@@ -370,7 +372,7 @@ class Screening(models.Model):
         """Online booking stops this long before the listed start
         (4.23). Staff can still sell at the till (4.14)."""
         cutoff = self.date_time - timedelta(
-            minutes=settings.ONLINE_SALES_CLOSE_MINUTES
+            minutes=get_settings().online_sales_close_minutes
         )
         return timezone.now() >= cutoff
 

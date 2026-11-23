@@ -133,10 +133,6 @@ LOOSELEAF_THEME = 'theme'
 # venue settings record (4.23) exists.
 SCREENING_TRAILER_MINUTES = 20
 SCREENING_TURNAROUND_MINUTES = 15
-# How many minutes before the listed start online sales close. 0 closes
-# them at the start, as the real venue's terms admit no one after the
-# film starts (4.23). The staff till isn't bound by it (4.14).
-ONLINE_SALES_CLOSE_MINUTES = 0
 
 
 # Password validation
