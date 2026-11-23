@@ -60,6 +60,14 @@ class GuestListTests(GuestListSetUp):
             with self.subTest(words=words):
                 self.assertContains(response, words)
 
+    def test_a_reference_stays_on_one_line(self):
+        """Read out at the door, so it never breaks at its hyphen; the
+        table scrolls sideways on a narrow phone instead."""
+        booking = self.book('jo@example.com', self.seat_1)
+        html = self.client.get(self.url).content.decode()
+        self.assertIn(f'<span class="nowrap">{booking.reference}</span>', html)
+        self.assertIn('class="table-wrapper"', html)
+
     def test_a_party_checked_in_shows_when(self):
         booking = self.book('jo@example.com', self.seat_1)
         check_in(booking, self.staff)

@@ -5,4 +5,5 @@
    is set by the layer, not by specificity. */
 @import url("global/lists.css") layer(global);
 @import url("block/seat-map.css") layer(blocks);
+@import url("utilities/nowrap.css") layer(utilities);
 @import url("utilities/print.css") layer(utilities);

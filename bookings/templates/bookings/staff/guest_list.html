@@ -10,6 +10,7 @@
   <p class="no-print"><a href="{% url 'bookings_staff:guest_list_download' screening.pk %}">Download as a spreadsheet (CSV)</a></p>
   <p>{{ bookings|length }} booking{{ bookings|length|pluralize }}, {{ seat_count }} seat{{ seat_count|pluralize }}, {{ checked_in_count }} checked in</p>
   {% if bookings %}
+    <div class="table-wrapper">
     <table class="table">
       <thead>
         <tr><th scope="col">Reference</th><th scope="col">Customer</th><th scope="col">Seats and tickets</th><th scope="col">Checked in</th></tr>
@@ -17,7 +18,7 @@
       <tbody>
         {% for booking in bookings %}
           <tr>
-            <td>{{ booking.reference }}{% if booking.status == 'cancellation_requested' %}<br>Cancellation requested{% endif %}</td>
+            <td><span class="nowrap">{{ booking.reference }}</span>{% if booking.status == 'cancellation_requested' %}<br>Cancellation requested{% endif %}</td>
             <td>{% if booking.user %}{{ booking.user.email }}{% else %}At the venue{% endif %}</td>
             <td>
               <ul role="list">
@@ -30,6 +31,7 @@
         {% endfor %}
       </tbody>
     </table>
+    </div>
   {% else %}
     <p>Nobody has booked this screening.</p>
   {% endif %}

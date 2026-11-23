@@ -1,0 +1,5 @@
+/* Keeps a short value, such as a booking reference, on one line, so it
+   never breaks at its hyphen. LooseLeaf has no utility for it. */
+.nowrap {
+  white-space: nowrap;
+}
