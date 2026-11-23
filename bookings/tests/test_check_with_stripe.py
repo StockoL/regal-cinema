@@ -94,6 +94,12 @@ class CheckWithStripeTests(TestCase):
         self.assertContains(response, 'its seats had gone')
         self.assertEqual(self.status(), Booking.Status.REFUNDED)
 
+    def test_stripe_out_of_reach_says_so_and_changes_nothing(self):
+        FakeProvider.fail_checkout = True
+        response = self.check()
+        self.assertContains(response, 'could not reach Stripe')
+        self.assertEqual(self.status(), Booking.Status.PENDING)
+
     def test_only_a_post_checks(self):
         self.assertEqual(self.client.get(self.url).status_code, 405)
 
