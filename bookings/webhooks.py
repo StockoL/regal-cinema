@@ -1,10 +1,14 @@
 from django.db import transaction
 from django.http import HttpResponse, HttpResponseBadRequest
+from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 
+from accounts.models import get_system_user
 from payments import get_provider
 from payments.base import InvalidSignature
+from staff.audit import log_action
+from staff.models import AuditLogEntry
 
 from .models import Booking, StripeEvent
 from .services import (
@@ -34,8 +38,8 @@ def stripe_webhook(request):
         _, new = StripeEvent.objects.get_or_create(
             event_id=event.id, defaults={'event_type': event.type},
         )
-        if new and event.type == 'checkout.session.completed':
-            session_completed(event.object)
+        if new and event.type in HANDLERS:
+            HANDLERS[event.type](event.object)
     return HttpResponse()
 
 
@@ -77,3 +81,41 @@ def paid_for(session):
     return Booking.objects.filter(
         reference=session['client_reference_id']
     ).first()
+
+
+def dispute_opened(dispute):
+    """The customer's bank has opened a chargeback (4.13). The booking is
+    flagged for staff and logged, and nothing is cancelled."""
+    booking = Booking.objects.filter(
+        stripe_payment_intent_id=dispute.get('payment_intent')
+    ).first()
+    if booking is None or booking.disputed_at is not None:
+        return
+    booking.disputed_at = timezone.now()
+    booking.save(update_fields=['disputed_at'])
+    log_action(get_system_user(), AuditLogEntry.Action.DISPUTE_OPENED,
+               f"The customer's bank opened a dispute, reason: "
+               f"{dispute.get('reason') or 'not given'}.",
+               booking=booking)
+
+
+def dispute_closed(dispute):
+    """The dispute is settled, and the log says how it ended."""
+    booking = Booking.objects.filter(
+        stripe_payment_intent_id=dispute.get('payment_intent')
+    ).first()
+    if booking is None or booking.dispute_closed_at is not None:
+        return
+    booking.dispute_closed_at = timezone.now()
+    booking.save(update_fields=['dispute_closed_at'])
+    log_action(get_system_user(), AuditLogEntry.Action.DISPUTE_CLOSED,
+               f"The dispute closed: {dispute.get('status') or 'unknown'}.",
+               booking=booking)
+
+
+# What each Stripe event does. Any other event is recorded and ignored.
+HANDLERS = {
+    'checkout.session.completed': session_completed,
+    'charge.dispute.created': dispute_opened,
+    'charge.dispute.closed': dispute_closed,
+}

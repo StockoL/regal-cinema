@@ -12,6 +12,7 @@ from bookings.tests.test_holds import make_screening
 from payments.base import PaymentFee
 from payments.fake import FakeProvider
 from screenings.models import ScreeningPrice, TicketType
+from staff.models import AuditLogEntry
 
 
 def completed(session_id, event_id='evt_1', payment_status='paid',
@@ -281,3 +282,58 @@ class PaymentFeeTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(self.booking.status, Booking.Status.PAID)
         self.assertIsNone(self.booking.stripe_fee_pence)
+
+
+class DisputeTests(TestCase):
+    """A chargeback, flagged for staff and never acted on by itself
+    (architecture 4.13; brief decision 59)."""
+
+    def setUp(self):
+        screening, _ = make_screening()
+        self.booking = Booking.objects.create(
+            screening=screening, status=Booking.Status.PAID,
+            stripe_payment_intent_id='pi_1',
+        )
+
+    def send(self, event_type, event_id='evt_d1', **dispute):
+        dispute.setdefault('payment_intent', 'pi_1')
+        payload = json.dumps({
+            'id': event_id, 'type': event_type,
+            'data': {'object': {'id': 'dp_1', **dispute}},
+        }).encode()
+        return self.client.post(
+            WebhookTests.url, payload, content_type='application/json',
+            HTTP_STRIPE_SIGNATURE=FakeProvider.sign(payload),
+        )
+
+    def test_an_opened_dispute_flags_the_booking_and_cancels_nothing(self):
+        response = self.send('charge.dispute.created', reason='fraudulent',
+                             status='needs_response')
+        self.assertEqual(response.status_code, 200)
+        self.booking.refresh_from_db()
+        self.assertTrue(self.booking.dispute_open)
+        self.assertEqual(self.booking.status, Booking.Status.PAID)
+        entry = AuditLogEntry.objects.get()
+        self.assertEqual(
+            (entry.actor, entry.action_type, entry.related_booking),
+            (get_system_user(), AuditLogEntry.Action.DISPUTE_OPENED,
+             self.booking),
+        )
+        self.assertIn('fraudulent', entry.reason)
+
+    def test_a_closed_dispute_records_how_it_ended(self):
+        self.send('charge.dispute.created', reason='fraudulent')
+        self.send('charge.dispute.closed', event_id='evt_d2', status='won')
+        self.booking.refresh_from_db()
+        self.assertFalse(self.booking.dispute_open)
+        self.assertIsNotNone(self.booking.dispute_closed_at)
+        entry = AuditLogEntry.objects.filter(
+            action_type=AuditLogEntry.Action.DISPUTE_CLOSED
+        ).get()
+        self.assertIn('won', entry.reason)
+
+    def test_a_dispute_on_an_unknown_payment_is_acknowledged(self):
+        response = self.send('charge.dispute.created',
+                             payment_intent='pi_other', reason='general')
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(AuditLogEntry.objects.exists())
