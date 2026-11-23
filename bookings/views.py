@@ -307,7 +307,7 @@ def booking_list(request):
             queryset=SeatBooking.objects.select_related('seat',
                                                         'ticket_type')
             .order_by('-seat__area', 'seat__row_index', 'seat__column_index'),
-        ))
+        ), 'vouchers_issued')
         .order_by('screening__date_time')
     )
     now = timezone.now()

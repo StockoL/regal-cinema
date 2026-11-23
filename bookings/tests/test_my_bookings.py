@@ -8,6 +8,7 @@ from django.utils import timezone
 from bookings.models import Booking
 from bookings.services import confirm_booking, start_booking
 from bookings.tests.test_views import make_future_screening
+from membership.models import Voucher
 from screenings.models import Screening, ScreeningPrice, Seat, TicketType
 
 
@@ -110,6 +111,20 @@ class MyBookingsTests(TestCase):
         self.assertIn('Cancellation requested', html)
         self.assertNotIn(f'{past.reference}/cancel/', html)
 
+    def test_a_cancelled_booking_shows_its_voucher(self):
+        """Wireframe 19, "Cancellation approved"."""
+        booking = self.book(self.upcoming)
+        booking.status = Booking.Status.CANCELLED
+        booking.save()
+        voucher = Voucher.objects.create(
+            initial_value_pence=950, remaining_value_pence=950,
+            source=Voucher.Source.BOOKING_CANCELLED, source_booking=booking,
+        )
+        response = self.client.get(self.url)
+        self.assertContains(response, f'Voucher {voucher.code}')
+        self.assertContains(response, '£9.50')
+        self.assertContains(response, 'valid until')
+
     def test_an_unpaid_booking_isnt_listed(self):
         booking = self.book(self.upcoming, paid=False)
         self.assertNotContains(self.client.get(self.url), booking.reference)
@@ -129,9 +144,9 @@ class MyBookingsTests(TestCase):
         """A fixed number of queries, however many bookings (4.33)."""
         self.book(self.upcoming, number=1)
         self.client.get(self.url)
-        with self.assertNumQueries(5):
+        with self.assertNumQueries(6):
             self.client.get(self.url)
         self.book(self.upcoming, number=2)
         self.book(self.past, number=3)
-        with self.assertNumQueries(5):
+        with self.assertNumQueries(6):
             self.client.get(self.url)
