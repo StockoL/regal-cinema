@@ -46,7 +46,7 @@ class StripeProviderTests(SimpleTestCase):
         self.sessions.create.return_value = SimpleNamespace(
             id='cs_test_1', url='https://checkout.stripe.com/c/pay/cs_test_1',
             expires_at=int(EXPIRES.timestamp()), amount_total=1900,
-            status='open',
+            status='open', payment_status='unpaid', payment_intent=None,
         )
 
     def create(self):
@@ -94,7 +94,8 @@ class StripeProviderTests(SimpleTestCase):
                 self.sessions.retrieve.return_value = SimpleNamespace(
                     id='cs_test_1', url='https://checkout.stripe.com/x',
                     expires_at=int(EXPIRES.timestamp()), amount_total=1900,
-                    status=status,
+                    status=status, payment_status='unpaid',
+                    payment_intent=None,
                 )
                 session = StripeProvider().get_checkout_session('cs_test_1')
                 self.sessions.retrieve.assert_called_with('cs_test_1')
@@ -106,6 +107,16 @@ class StripeProviderTests(SimpleTestCase):
         )
         with self.assertRaises(PaymentUnavailable):
             self.create()
+
+    def test_a_paid_session_is_read_with_its_payment(self):
+        self.sessions.retrieve.return_value = SimpleNamespace(
+            id='cs_test_1', url=None, expires_at=int(EXPIRES.timestamp()),
+            amount_total=1900, status='complete', payment_status='paid',
+            payment_intent='pi_1',
+        )
+        session = StripeProvider().get_checkout_session('cs_test_1')
+        self.assertEqual((session.paid, session.payment_intent_id),
+                         (True, 'pi_1'))
 
     def test_it_returns_the_session(self):
         self.assertEqual(self.create(), CheckoutSession(

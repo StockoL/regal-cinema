@@ -14,6 +14,9 @@ class CheckoutSession:
     amount_pence: int
     # Still taking payment: not paid, expired or closed.
     is_open: bool = True
+    # Paid, and by which payment, for when a webhook never came (4.32).
+    paid: bool = False
+    payment_intent_id: str | None = None
 
 
 @dataclass(frozen=True)

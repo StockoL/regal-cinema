@@ -66,6 +66,15 @@ class FakeProviderTests(SimpleTestCase):
             create(self.provider)
         self.assertEqual(FakeProvider.sessions, {})
 
+    def test_a_paid_session_says_so_with_its_payment(self):
+        """What a lost webhook would have said (4.32)."""
+        session = create(self.provider)
+        self.assertFalse(self.provider.get_checkout_session(session.id).paid)
+        FakeProvider.pay(session.id, 'pi_fake_1')
+        found = self.provider.get_checkout_session(session.id)
+        self.assertEqual((found.paid, found.payment_intent_id, found.is_open),
+                         (True, 'pi_fake_1', False))
+
     def test_it_remembers_what_each_session_was_for(self):
         session = create(self.provider, amount=2450)
         self.assertEqual(FakeProvider.sessions[session.id]['amount_pence'],

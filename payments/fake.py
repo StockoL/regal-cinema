@@ -66,6 +66,13 @@ class FakeProvider(PaymentProvider):
         info = cls.sessions[session_id]
         info['session'] = replace(info['session'], is_open=False)
 
+    @classmethod
+    def pay(cls, session_id, payment_intent_id='pi_fake'):
+        """What Stripe does when the customer pays on its page."""
+        info = cls.sessions[session_id]
+        info['session'] = replace(info['session'], is_open=False, paid=True,
+                                  payment_intent_id=payment_intent_id)
+
     @staticmethod
     def sign(payload):
         """The signature the fake accepts for a payload."""

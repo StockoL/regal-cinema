@@ -102,4 +102,8 @@ def checkout_session(session):
                                           tz=timezone.utc),
         amount_pence=session.amount_total,
         is_open=session.status == 'open',
+        paid=session.payment_status == 'paid',
+        # The id, whether Stripe sent it alone or as an object.
+        payment_intent_id=getattr(session.payment_intent, 'id',
+                                  session.payment_intent),
     )
