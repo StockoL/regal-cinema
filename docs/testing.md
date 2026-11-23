@@ -215,7 +215,7 @@ The back office, until the staff pages exist (journey 12).
 | <a id="m27"></a>M27 | Screens and layouts | Open a screen and its Standard layout in the admin; save a layout without a wheelchair space | The seats listed with their grid places; the layout refused with a message | Pass, 4 November ([dev log](development_log.md#4-november-2026-seats-layouts-and-ticket-types)) |
 | <a id="m28"></a>M28 | A screening's prices | Add a screening in the admin | Its price table filled from the ticket class | Pass, 4 November ([dev log](development_log.md#4-november-2026-seats-layouts-and-ticket-types)) |
 | <a id="m29"></a>M29 | An overlapping screening | Add a screening that overlaps another on the same screen | The overlap message on the form, not an error page | Not run yet ([the overlap bug in full](#the-overlap-bug-in-full)) |
-| <a id="m30"></a>M30 | Mark as paid | Tick a pending booking and run Mark as paid | Paid, with its seat count and the time | Pass, 19 November ([dev log](development_log.md#19-november-2026-selling-the-seats)) |
+| <a id="m30"></a>M30 | Mark as paid | Tick a pending booking and run Mark as paid | Paid, with its seat count and the time | Pass, 19 November ([dev log](development_log.md#19-november-2026-selling-the-seats)). Retired 23 November: the action stood in for Stripe and is removed, and a stuck payment is now found with Check with Stripe |
 
 ### 5.6 Edge cases still to run
 
