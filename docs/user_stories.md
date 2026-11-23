@@ -313,7 +313,8 @@ Success: `stripe_payment_intent_id` stays empty on every in-venue booking, so th
 | Anonymous sale  | Given the customer gives no details, when the sale completes, then the booking has no user.                                                                            | Must   |
 | Check-in        | Given a customer arrives with their reference, when staff find the booking and check the party in, then the booking records who did it and when, and the action is logged. | Must   |
 | Guest list      | Given a screening, when staff open its guest list, then every booking is listed with seats, ticket types, proof reminders, food and check-in, ready to print or download. | Should |
-| Find a booking  | Given a reference typed in any case, with spaces or with a look-alike character, or part of an email address, when staff search, then the booking is found with its status, seats and actions. | Must   |
+| Find a booking  | Given a reference typed in any case, with spaces or without its RGL- prefix, or part of an email address, when staff search, then the booking is found with its status, seats and actions. | Must   |
+| Impossible reference | Given a typed reference containing 0, O, 1, I or L, when staff search, then one plain line says references never contain those characters. | Should |
 | Till reconciliation | Given a day's in-venue card sales, when staff type in the terminal's total and close the day, then the difference shows, a Manager signs it off, and it can't be edited after. | Could  |
 | Complimentary   | Given a ticket to give away, when a permitted staff member issues it with a reason, then the booking is complimentary, nothing is charged and the action is logged. | Could  |
 

@@ -642,7 +642,7 @@ Customer accounts. Staff can deactivate a customer's account, with a reason and 
 
 Testing failures on purpose. The fake payment provider (4.27) can be set to decline, time out, send a webhook twice or late, or never send it. Each failure here has a named test, listed in the testing doc.
 
-Finding a booking quickly. One staff search box, behind `view_bookings`, matches a reference whatever its case, spacing or look-alike characters, or part of an email address, optionally narrowed to a screening date. Each result shows its status, screening, seats, what was paid and whether it's checked in, with the actions available. A booking's own page shows a timeline of its audit entries, payment events, refunds and emails in time order.
+Finding a booking quickly. One staff search box, behind `view_bookings`, matches a reference whatever its case or spacing, with or without its `RGL-` prefix, or part of an email address, optionally narrowed to a screening date. A reference never contains 0, O, 1, I or L (4.2), so one typed with them isn't guessed at: the page says in one plain line that references never contain those characters. Each result shows its status, screening, seats, what was paid and whether it's checked in, with the actions available. A booking's own page shows a timeline of its audit entries, payment events, refunds and emails in time order.
 
 ## 4.33 Performance
 
