@@ -1,0 +1,17 @@
+{% extends 'base.html' %}
+
+{% block title %}Staff log in{% endblock %}
+
+{% block content %}
+<div class="wrapper region">
+  <div class="center flow">
+    <h1>Staff log in</h1>
+    <form class="flow" method="post" novalidate>
+      {% csrf_token %}
+      {{ form }}
+      <input type="hidden" name="next" value="{{ next }}">
+      <button class="button" type="submit" data-variant="primary">Log in</button>
+    </form>
+  </div>
+</div>
+{% endblock %}
