@@ -22,8 +22,8 @@
             <li class="card">
               <div class="card__body flow">
                 <div class="cluster" style="--cluster-justify: space-between;">
-                  <h2>{{ booking.screening.film.title }}{% if booking.screening.film.age_rating %} <span class="badge">{{ booking.screening.film.age_rating }}</span>{% endif %}</h2>
-                  <span class="badge">{{ booking.get_status_display }}</span>
+                  <h2>{{ booking.screening.film.title }}</h2>
+                  <p class="cluster">{% if booking.screening.film.age_rating %}<span class="badge">Rated {{ booking.screening.film.age_rating }}</span>{% endif %}<span class="badge">{{ booking.get_status_display }}</span></p>
                 </div>
                 <p>{{ booking.screening.date_time|date:"D j M" }}, {{ booking.screening.date_time|time:"g:i a" }}, {{ booking.screening.screen.name }}</p>
                 <p>{% if booking.user %}{{ booking.user.email }} · {% endif %}{{ booking.reference }}</p>
