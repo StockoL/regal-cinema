@@ -54,9 +54,11 @@ class StripeProvider(PaymentProvider):
         return checkout_session(session)
 
     def get_checkout_session(self, session_id):
-        return checkout_session(
-            self.client.v1.checkout.sessions.retrieve(session_id)
-        )
+        try:
+            session = self.client.v1.checkout.sessions.retrieve(session_id)
+        except (stripe.APIConnectionError, stripe.RateLimitError) as error:
+            raise PaymentUnavailable(str(error)) from None
+        return checkout_session(session)
 
     def parse_webhook(self, payload, signature):
         try:

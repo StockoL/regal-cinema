@@ -74,7 +74,8 @@ class PaymentProvider(ABC):
 
     @abstractmethod
     def get_checkout_session(self, session_id):
-        """Return the CheckoutSession with this id as it is now."""
+        """Return the CheckoutSession with this id as it is now, or
+        raise PaymentUnavailable."""
 
     @abstractmethod
     def parse_webhook(self, payload, signature):

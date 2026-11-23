@@ -108,6 +108,13 @@ class StripeProviderTests(SimpleTestCase):
         with self.assertRaises(PaymentUnavailable):
             self.create()
 
+    def test_a_lookup_that_times_out_says_stripe_cant_be_reached(self):
+        self.sessions.retrieve.side_effect = stripe.APIConnectionError(
+            'Request timed out.'
+        )
+        with self.assertRaises(PaymentUnavailable):
+            StripeProvider().get_checkout_session('cs_test_1')
+
     def test_a_paid_session_is_read_with_its_payment(self):
         self.sessions.retrieve.return_value = SimpleNamespace(
             id='cs_test_1', url=None, expires_at=int(EXPIRES.timestamp()),

@@ -66,6 +66,12 @@ class FakeProviderTests(SimpleTestCase):
             create(self.provider)
         self.assertEqual(FakeProvider.sessions, {})
 
+    def test_a_lookup_can_be_told_it_cant_be_reached(self):
+        session = create(self.provider)
+        FakeProvider.fail_checkout = True
+        with self.assertRaises(PaymentUnavailable):
+            self.provider.get_checkout_session(session.id)
+
     def test_a_paid_session_says_so_with_its_payment(self):
         """What a lost webhook would have said (4.32)."""
         session = create(self.provider)
