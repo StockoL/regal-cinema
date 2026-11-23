@@ -1,0 +1,14 @@
+{% load screenings_extras %}<li class="card">
+  <div class="card__body flow">
+    <div class="cluster" style="--cluster-justify: space-between;">
+      <h3>{{ booking.screening.film.title }}</h3>
+      <span class="badge">{% if booking.status == 'paid' %}Confirmed{% else %}{{ booking.get_status_display }}{% endif %}</span>
+    </div>
+    <p>{{ booking.screening.date_time|date:"D j M" }}, {{ booking.screening.date_time|time:"g:i a" }}, {{ booking.screening.screen.name }}</p>
+    <ul role="list">
+      {% for sold in booking.seats.all %}<li>{{ sold.seat.label }}, {{ sold.ticket_type.name }}</li>{% endfor %}
+      {% if booking.infant_count %}<li>{{ booking.infant_count }} under 2{{ booking.infant_count|pluralize }}, on a lap</li>{% endif %}
+    </ul>
+    <p>Reference {{ booking.reference }}.{% if booking.amount_charged_pence is not None %} {{ booking.amount_charged_pence|pounds }} {% if booking.status == 'refunded' %}refunded{% else %}paid{% endif %}{% endif %}</p>
+  </div>
+</li>

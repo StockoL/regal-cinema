@@ -553,7 +553,8 @@ Paths are lowercase, use hyphens between words, end with a slash, and name thing
 | `/`                          | `screenings`           | What's on, in Reel rows                                        |
 | `/films/<slug>/`             | `screenings`           | Film detail and showtimes                                      |
 | `/screenings/<id>/`          | `bookings`             | Seat map and ticket types for one screening                    |
-| `/booking/...`               | `bookings`             | Checkout steps, confirmation and the Stripe webhook            |
+| `/booking/...`               | `bookings`             | Checkout steps and confirmation            |
+| `/payments/webhook/`        | `bookings`             | The Stripe webhook, at the address registered with Stripe      |
 | `/account/...`               | `accounts`, `bookings` | Register, log in, log out, profile, My Bookings                |
 | `/membership/`               | `membership`           | Tiers and buying a membership                                  |
 | `/hire/`                     | `venue`                | Private hire enquiry form                                      |

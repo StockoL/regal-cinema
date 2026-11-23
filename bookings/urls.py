@@ -17,6 +17,7 @@ urlpatterns = [
          name='booking_pay'),
     path('booking/<str:reference>/confirming/', views.booking_confirming,
          name='booking_confirming'),
+    path('account/bookings/', views.booking_list, name='booking_list'),
     path('payments/webhook/', webhooks.stripe_webhook,
          name='stripe_webhook'),
 ]

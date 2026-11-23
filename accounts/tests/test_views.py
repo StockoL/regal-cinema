@@ -215,6 +215,16 @@ class AccountMenuTests(TestCase):
         self.assertNotIn(f'href="{reverse("accounts:login")}"', menu)
 
 
+    def test_a_customer_can_reach_my_bookings(self):
+        self.client.force_login(
+            User.objects.create_user('customer@example.com', 'a-long-pw-1')
+        )
+        self.assertIn(f'href="{reverse("bookings:booking_list")}"',
+                      self.menu())
+
+    def test_a_visitor_isnt_offered_my_bookings(self):
+        self.assertNotIn('My bookings', self.menu())
+
 class PasswordResetTests(TestCase):
     """Choosing a new password from a link in an email. Uses Django's
     signed tokens, so nothing new is stored (architecture 4.16)."""
