@@ -4,6 +4,7 @@ from django.test import TestCase
 
 from bookings.models import Booking
 from bookings.tests.test_holds import make_screening
+from membership.models import Voucher
 from staff.audit import log_action
 from staff.models import AuditLogEntry
 
@@ -51,3 +52,14 @@ class AuditLogTests(TestCase):
                    booking=self.booking)
         with self.assertRaises(ProtectedError):
             self.booking.delete()
+
+    def test_an_entry_can_name_a_voucher_which_is_then_kept(self):
+        voucher = Voucher.objects.create(
+            initial_value_pence=1850, remaining_value_pence=1850,
+            source=Voucher.Source.BOOKING_CANCELLED,
+        )
+        entry = log_action(self.staff, AuditLogEntry.Action.VOUCHER_ISSUED,
+                           'Approved request', voucher=voucher)
+        self.assertEqual(entry.related_voucher, voucher)
+        with self.assertRaises(ProtectedError):
+            voucher.delete()
