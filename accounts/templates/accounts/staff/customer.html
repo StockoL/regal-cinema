@@ -29,6 +29,24 @@
         <dt>Email address</dt>
         <dd>{% if account.email_verified %}Confirmed{% else %}Not confirmed yet{% endif %}</dd>
       </dl>
+      {% if perms.accounts.deactivate_account %}
+        <form class="flow" method="post" action="{% url 'accounts_staff:account_access' account.pk %}">
+          {% csrf_token %}
+          <input type="hidden" name="active" value="{% if account.is_active %}0{% else %}1{% endif %}">
+          <div class="field">
+            <label for="reason">{% if account.is_active %}Why deactivate it{% else %}Why reactivate it{% endif %} (kept in the audit log)</label>
+            <textarea class="textarea" id="reason" name="reason" rows="3"></textarea>
+          </div>
+          {% if account.is_active %}
+            <p>Deactivating stops the account logging in and signs it out. Its bookings stay.</p>
+            <button class="button" type="submit" data-variant="danger">Deactivate account</button>
+          {% else %}
+            <button class="button" type="submit" data-variant="primary">Reactivate account</button>
+          {% endif %}
+        </form>
+      {% else %}
+        <p>A manager can deactivate or reactivate this account.</p>
+      {% endif %}
       <h3 id="customer-bookings">Bookings ({{ bookings|length }})</h3>
       {% if bookings %}
         <div class="table-wrapper" role="region" aria-labelledby="customer-bookings" tabindex="0">
