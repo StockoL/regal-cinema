@@ -119,3 +119,27 @@ class AttentionPageTests(TestCase):
         self.refund(Refund.Status.SUCCEEDED)
         self.assertNotContains(self.client.get(self.url),
                                'Refunds that failed')
+
+    def disputed(self, closed=False):
+        now = timezone.now()
+        return Booking.objects.create(
+            screening=self.screening, user=self.customer,
+            status=Booking.Status.PAID, stripe_payment_intent_id='pi_7',
+            amount_charged_pence=1900, disputed_at=now,
+            dispute_closed_at=now if closed else None,
+        )
+
+    def test_an_open_dispute_is_listed_with_a_link_to_stripe(self):
+        """The bank's case is answered in Stripe's dashboard (4.13)."""
+        booking = self.disputed()
+        response = self.client.get(self.url)
+        self.assertContains(response, 'Open disputes (1)')
+        self.assertContains(response, booking.reference)
+        self.assertContains(response, '£19.00')
+        self.assertContains(
+            response, 'https://dashboard.stripe.com/test/payments/pi_7',
+        )
+
+    def test_a_closed_dispute_isnt_listed(self):
+        self.disputed(closed=True)
+        self.assertNotContains(self.client.get(self.url), 'Open disputes')

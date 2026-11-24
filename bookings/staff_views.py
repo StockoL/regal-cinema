@@ -15,7 +15,12 @@ from staff.models import AuditLogEntry
 from staff.views import staff_permission_required
 from venue.models import get_settings
 
-from .attention import failed_refunds, stuck_payments, unsent_emails
+from .attention import (
+    failed_refunds,
+    open_disputes,
+    stuck_payments,
+    unsent_emails,
+)
 from .models import Booking, Cancellation, SeatBooking
 from .services import (
     CancellationNotAllowed,
@@ -159,6 +164,7 @@ def attention(request):
         'stuck_payments': list(stuck_payments()),
         'unsent_emails': list(unsent_emails()),
         'failed_refunds': list(failed_refunds()),
+        'open_disputes': list(open_disputes()),
     }
     total = sum(len(items) for items in lists.values())
     return render(request, 'bookings/staff/attention.html',

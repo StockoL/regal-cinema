@@ -53,3 +53,15 @@ def failed_refunds():
         .select_related('booking')
         .order_by('created_at')
     )
+
+
+def open_disputes():
+    """Bookings whose payment the customer's bank is disputing. The
+    venue answers in Stripe's dashboard, and nothing here changes until
+    the dispute closes (4.13)."""
+    return (
+        Booking.objects.filter(disputed_at__isnull=False,
+                               dispute_closed_at__isnull=True)
+        .select_related('screening__film', 'user')
+        .order_by('disputed_at')
+    )

@@ -70,5 +70,24 @@
       </tbody>
     </table>
   {% endif %}
+  {% if open_disputes %}
+    <h2>Open disputes ({{ open_disputes|length }})</h2>
+    <p>The customer's bank has questioned these payments. Nothing is cancelled here: the venue answers the bank in Stripe's dashboard.</p>
+    <table class="table">
+      <thead><tr><th scope="col">Booking</th><th scope="col">Customer</th><th scope="col">Screening</th><th scope="col">Paid</th><th scope="col">Opened</th><th scope="col">Action</th></tr></thead>
+      <tbody>
+        {% for booking in open_disputes %}
+          <tr>
+            <td>{{ booking.reference }}</td>
+            <td>{{ booking.user.email|default:"No account" }}</td>
+            <td>{{ booking.screening.film.title }}, {{ booking.screening.date_time|date:"D j M" }}</td>
+            <td>{% if booking.amount_charged_pence is not None %}{{ booking.amount_charged_pence|pounds }}{% endif %}</td>
+            <td>{{ booking.disputed_at|date:"D j M, g:i a" }}</td>
+            <td><a href="https://dashboard.stripe.com/test/payments/{{ booking.stripe_payment_intent_id }}">Answer in Stripe</a></td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% endif %}
 </div>
 {% endblock %}
