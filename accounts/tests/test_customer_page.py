@@ -35,6 +35,10 @@ class CustomerPageTests(TestCase):
     def test_the_address(self):
         self.assertEqual(reverse('accounts_staff:customer'), self.url)
 
+    def test_the_staff_home_links_to_it(self):
+        self.assertContains(self.client.get(reverse('staff:home')),
+                            f'href="{self.url}"')
+
     def test_it_needs_the_bookings_permission(self):
         self.staff.groups.clear()
         self.assertEqual(self.client.get(self.url).status_code, 403)
