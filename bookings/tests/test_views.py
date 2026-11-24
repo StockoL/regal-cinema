@@ -19,6 +19,8 @@ from screenings.models import (
     TicketClass,
     TicketType,
 )
+from payments.fake import FakeProvider
+from venue.models import VenueSettings
 
 
 def text_of(html):
@@ -81,9 +83,11 @@ class ScreeningSeatsPageTests(TestCase):
         started = make_future_screening(
             date_time=timezone.now() - timedelta(minutes=1)
         )
+        VenueSettings.objects.filter(pk=1).update(phone='01632 960 999')
         response = self.get(started)
         self.assertContains(response, 'Online sales have closed')
-        self.assertContains(response, '01632 960 123')
+        self.assertContains(response, 'Call the box office on <a href='
+                                      '"tel:01632960999">01632 960 999</a>')
         self.assertNotContains(response, '<form')
 
 
@@ -277,6 +281,38 @@ class ChooseSeatsTests(TestCase):
         self.assertRedirects(self.client.get(self.tickets_url), self.url)
 
 
+class SalesPausedSeatsTests(TestCase):
+    """While staff have paused online sales, the seats can still be
+    seen but not chosen (journey 2, "Sales paused"; architecture
+    4.23)."""
+
+    def setUp(self):
+        screening = make_future_screening()
+        self.seat = Seat.objects.create(
+            screen=screening.screen, layout=screening.layout,
+            area=Seat.Area.STALLS, number=1, row_index=0, column_index=1,
+        )
+        self.url = reverse('bookings:screening_seats', args=[screening.pk])
+        self.tickets_url = reverse('bookings:screening_tickets',
+                                   args=[screening.pk])
+        VenueSettings.objects.filter(pk=1).update(
+            online_sales_paused=True, phone='01632 960 999',
+        )
+
+    def test_the_page_says_so_with_the_box_office_number(self):
+        response = self.client.get(self.url)
+        self.assertContains(response, 'Online sales are paused')
+        self.assertContains(response, '<a href="tel:01632960999">'
+                                      '01632 960 999</a>', html=True)
+        self.assertNotContains(response, '>Continue</button>')
+
+    def test_choosing_seats_is_refused(self):
+        response = self.client.post(self.url, {'seats': [self.seat.pk]})
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Online sales are paused')
+        self.assertEqual(self.client.get(self.tickets_url).status_code, 302)
+
+
 class TicketTypesTests(TestCase):
     """A ticket type for each seat, any infants, then the seats are held
     and a pending booking made (journey 2; 4.8 step 3)."""
@@ -390,6 +426,52 @@ class TicketTypesTests(TestCase):
         self.screening.save()
         self.submit()
         self.assertFalse(Booking.objects.exists())
+
+
+class SalesPausedTicketsTests(TestCase):
+    """While online sales are paused no new hold starts, but a booking
+    already pending can still be paid for (journey 2, "Sales paused";
+    architecture 4.23)."""
+
+    def setUp(self):
+        FakeProvider.reset()
+        self.page = TicketTypesTests('setUp')
+        self.page.client = self.client
+        self.page.setUp()
+
+    def pause(self):
+        VenueSettings.objects.filter(pk=1).update(online_sales_paused=True)
+
+    def test_holding_seats_is_refused(self):
+        self.pause()
+        response = self.page.submit()
+        self.assertRedirects(response, self.page.seats_url)
+        self.assertFalse(Booking.objects.exists())
+        self.assertFalse(SeatHold.objects.exists())
+
+    def test_changing_a_pending_booking_is_refused(self):
+        self.page.submit(second='Adult')
+        self.pause()
+        self.page.client.post(self.page.seats_url, {
+            'seats': [seat.pk for seat in self.page.seats],
+        })
+        self.page.submit(second='Child')
+        child = self.page.types['Child']
+        self.assertFalse(SeatHold.objects.filter(ticket_type=child).exists())
+
+    def test_a_pending_booking_can_still_be_paid_for(self):
+        self.page.submit()
+        booking = Booking.objects.get()
+        booking.user = get_user_model().objects.create_user(
+            'customer@example.com', 'a-long-pw-1',
+        )
+        booking.save()
+        self.client.force_login(booking.user)
+        self.pause()
+        response = self.client.post(
+            reverse('bookings:booking_pay', args=[booking.reference]),
+        )
+        self.assertEqual(response.status_code, 303)
 
 
 class CheckoutPlaceholderTests(TestCase):

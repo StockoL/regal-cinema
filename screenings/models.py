@@ -375,8 +375,12 @@ class Screening(models.Model):
     def online_sales_closed(self):
         """Online booking stops this long before the listed start
         (4.23). Staff can still sell at the till (4.14)."""
+        return self.online_sales_closed_under(get_settings())
+
+    def online_sales_closed_under(self, venue):
+        """The same, with settings already read for the page."""
         cutoff = self.date_time - timedelta(
-            minutes=get_settings().online_sales_close_minutes
+            minutes=venue.online_sales_close_minutes
         )
         return timezone.now() >= cutoff
 

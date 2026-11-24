@@ -98,12 +98,13 @@ class GuestListTests(GuestListSetUp):
         self.assertEqual(self.client.get(self.url).status_code, 403)
 
     def test_more_bookings_make_no_more_queries(self):
+        """One of the eight is the venue settings, for the footer."""
         self.book('a@example.com', self.seat_1)
         self.client.get(self.url)
-        with self.assertNumQueries(7):
+        with self.assertNumQueries(8):
             self.client.get(self.url)
         self.book('b@example.com', self.seat_2)
-        with self.assertNumQueries(7):
+        with self.assertNumQueries(8):
             self.client.get(self.url)
 
 

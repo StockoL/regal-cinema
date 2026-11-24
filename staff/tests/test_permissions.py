@@ -7,7 +7,7 @@ STAFF_PERMISSIONS = {
     'cancel_booking', 'refund_booking', 'check_in_booking',
     'create_in_venue_booking', 'view_bookings', 'view_attention',
     'manage_screenings', 'cancel_screening', 'manage_films',
-    'manage_venue_settings', 'view_sales_dashboard',
+    'manage_venue_settings', 'pause_online_sales', 'view_sales_dashboard',
 }
 
 
@@ -28,7 +28,7 @@ class StaffPermissionTests(TestCase):
     def test_front_of_house_starts_with_the_front_of_house_jobs(self):
         self.assertEqual(codenames('FrontOfHouse'), {
             'cancel_booking', 'check_in_booking', 'create_in_venue_booking',
-            'view_bookings', 'view_attention',
+            'view_bookings', 'view_attention', 'pause_online_sales',
         })
 
     def test_manager_holds_every_staff_permission(self):

@@ -25,6 +25,7 @@ urlpatterns = [
     path('tasks/run/', views.scheduled_tasks, name='scheduled_tasks'),
     path('account/', include('accounts.urls')),
     path('staff/bookings/', include('bookings.staff_urls')),
+    path('staff/venue/', include('venue.staff_urls')),
     path('staff/', include('staff.urls')),
     path('', include('bookings.urls')),
     path('', include('screenings.urls')),

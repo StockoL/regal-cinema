@@ -55,3 +55,12 @@ class VenueSettingsAdminTests(TestCase):
         self.assertEqual(self.client.get(
             reverse('admin:venue_venuesettings_delete', args=[1])
         ).status_code, 403)
+
+    def test_pausing_sales_isnt_done_here(self):
+        """It has its own page, which asks why and logs it (4.23)."""
+        response = self.client.post(self.url,
+                                    self.form(online_sales_paused=True))
+        self.assertEqual(response.status_code, 302)
+        self.assertFalse(get_settings().online_sales_paused)
+        page = self.client.get(self.url)
+        self.assertContains(page, reverse('venue_staff:online_sales'))

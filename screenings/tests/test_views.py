@@ -66,9 +66,10 @@ class WhatsOnPageTests(TestCase):
         )
 
     def test_footer_gives_the_placeholder_phone_number_as_a_link(self):
-        """01632 960 123 is in the range Ofcom keeps for drama."""
+        """01632 960 123, the settings' default, is in the range Ofcom
+        keeps for drama."""
         self.assertContains(
-            self.response, '<a href="tel:+441632960123">01632 960 123</a>'
+            self.response, '<a href="tel:01632960123">01632 960 123</a>'
         )
 
     def test_page_doesnt_name_the_real_cinemas_town(self):

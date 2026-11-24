@@ -79,8 +79,11 @@ def screening_seats(request, pk):
     if screening.is_cancelled:
         return render(request, 'bookings/screening_cancelled.html',
                       {'screening': screening}, status=410)
+    venue = get_settings()
+    closed = screening.online_sales_closed_under(venue)
     error = None
-    if request.method == 'POST' and not screening.online_sales_closed:
+    if (request.method == 'POST' and not closed
+            and not venue.online_sales_paused):
         ids = [int(i) for i in request.POST.getlist('seats') if i.isdigit()]
         if ids:
             request.session[session_key_for(screening)] = ids
@@ -92,6 +95,8 @@ def screening_seats(request, pk):
         ticked = set(booking.holds.values_list('seat', flat=True))
     return render(request, 'bookings/screening_seats.html', {
         'screening': screening,
+        'venue': venue,
+        'closed': closed,
         'seat_areas': seat_plan(screening, own_booking=booking),
         'ticked': ticked,
         'error': error,
@@ -136,7 +141,13 @@ def screening_tickets(request, pk):
         infants = booking.infant_count if booking else 0
     error = None
 
-    if request.method == 'POST' and screening.online_sales_closed:
+    # Closed or paused, no new hold starts, and the seat page says why.
+    # A booking already pending can still go on to pay (4.23).
+    venue = get_settings()
+    if request.method == 'POST' and (
+        screening.online_sales_closed_under(venue)
+        or venue.online_sales_paused
+    ):
         return redirect('bookings:screening_seats', pk=screening.pk)
     if request.method == 'POST':
         choices = [(seat, types_by_id.get(picked[seat.pk]))
@@ -317,6 +328,7 @@ def booking_list(request):
     for booking in bookings:
         booking.cancel_state = cancellation_state(booking, venue)
     return render(request, 'bookings/booking_list.html', {
+        'venue': venue,
         'upcoming': [b for b in bookings if b.screening.date_time >= now],
         'past': [b for b in reversed(bookings)
                  if b.screening.date_time < now],

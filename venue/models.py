@@ -42,6 +42,7 @@ class VenueSettings(models.Model):
         verbose_name_plural = 'venue settings'
         permissions = [
             ('manage_venue_settings', 'Can change the venue settings'),
+            ('pause_online_sales', 'Can pause and resume online sales'),
         ]
 
     def __str__(self):
