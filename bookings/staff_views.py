@@ -16,6 +16,7 @@ from staff.views import staff_permission_required
 from venue.models import get_settings
 
 from .attention import (
+    duplicate_payments,
     failed_refunds,
     open_disputes,
     stuck_payments,
@@ -165,6 +166,7 @@ def attention(request):
         'unsent_emails': list(unsent_emails()),
         'failed_refunds': list(failed_refunds()),
         'open_disputes': list(open_disputes()),
+        'duplicate_payments': list(duplicate_payments()),
     }
     total = sum(len(items) for items in lists.values())
     return render(request, 'bookings/staff/attention.html',

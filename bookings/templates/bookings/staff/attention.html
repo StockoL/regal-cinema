@@ -89,5 +89,24 @@
       </tbody>
     </table>
   {% endif %}
+  {% if duplicate_payments %}
+    <h2>Second payments refunded ({{ duplicate_payments|length }})</h2>
+    <p>These customers paid twice for one booking, and the second payment was refunded automatically. They stay here for a week in case the customer gets in touch.</p>
+    <table class="table">
+      <thead><tr><th scope="col">Booking</th><th scope="col">Customer</th><th scope="col">Refunded</th><th scope="col">When</th><th scope="col">Refund</th><th scope="col">Action</th></tr></thead>
+      <tbody>
+        {% for refund in duplicate_payments %}
+          <tr>
+            <td>{{ refund.booking.reference }}</td>
+            <td>{{ refund.booking.user.email|default:"No account" }}</td>
+            <td>{{ refund.amount_pence|pounds }}</td>
+            <td>{{ refund.created_at|date:"D j M, g:i a" }}</td>
+            <td>{{ refund.get_status_display }}</td>
+            <td><a href="https://dashboard.stripe.com/test/payments/{{ refund.stripe_payment_intent_id }}">See it in Stripe</a></td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% endif %}
 </div>
 {% endblock %}

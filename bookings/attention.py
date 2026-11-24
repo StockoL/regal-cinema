@@ -13,6 +13,8 @@ from .services import RECHECK_AFTER
 # The scheduled check runs about hourly, so an email still queued after
 # this long has failed a retry, or the retry never ran.
 EMAIL_WAITED_TOO_LONG = timedelta(hours=1)
+# How long a second payment, already refunded, stays on the page.
+DUPLICATES_SHOWN_FOR = timedelta(days=7)
 
 
 def stuck_payments():
@@ -64,4 +66,18 @@ def open_disputes():
                                dispute_closed_at__isnull=True)
         .select_related('screening__film', 'user')
         .order_by('disputed_at')
+    )
+
+
+def duplicate_payments():
+    """Second payments for a booking already paid, from the last week.
+    Each was refunded automatically, but staff should know in case the
+    customer gets in touch (4.32)."""
+    return (
+        Refund.objects.filter(
+            reason=Refund.DUPLICATE_PAYMENT,
+            created_at__gte=timezone.now() - DUPLICATES_SHOWN_FOR,
+        )
+        .select_related('booking__user')
+        .order_by('-created_at')
     )

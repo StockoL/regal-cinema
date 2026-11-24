@@ -151,3 +151,31 @@ class AttentionPageTests(TestCase):
     def test_a_closed_dispute_isnt_listed(self):
         self.disputed(closed=True)
         self.assertNotContains(self.client.get(self.url), 'Open disputes')
+
+    def duplicate(self, days):
+        booking = self.disputed(closed=True)
+        refund = Refund.objects.create(
+            booking=booking, amount_pence=1900,
+            reason=Refund.DUPLICATE_PAYMENT, stripe_payment_intent_id='pi_8',
+            status=Refund.Status.SUCCEEDED, created_by=get_system_user(),
+        )
+        Refund.objects.filter(pk=refund.pk).update(
+            created_at=timezone.now() - timedelta(days=days),
+        )
+        return refund
+
+    def test_a_duplicate_payment_this_week_is_listed(self):
+        """Refunded automatically, but staff should know a customer
+        paid twice, in case they get in touch (4.32)."""
+        refund = self.duplicate(days=6)
+        response = self.client.get(self.url)
+        self.assertContains(response, 'Second payments refunded (1)')
+        self.assertContains(response, refund.booking.reference)
+        self.assertContains(
+            response, 'https://dashboard.stripe.com/test/payments/pi_8',
+        )
+
+    def test_a_duplicate_payment_over_a_week_old_isnt_listed(self):
+        self.duplicate(days=8)
+        self.assertNotContains(self.client.get(self.url),
+                               'Second payments refunded')
