@@ -18,6 +18,8 @@ urlpatterns = [
     path('attention/', staff_views.attention, name='attention'),
     path('emails/<int:pk>/send-again/', staff_views.send_email_again,
          name='send_email_again'),
+    path('refunds/<int:pk>/try-again/', staff_views.try_refund_again,
+         name='try_refund_again'),
     path('check-with-stripe/<str:reference>/',
          staff_views.check_with_stripe, name='check_with_stripe'),
     path('screenings/<int:pk>/guests/', staff_views.guest_list,

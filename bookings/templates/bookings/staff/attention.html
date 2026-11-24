@@ -62,7 +62,7 @@
     <h2>Refunds that failed ({{ failed_refunds|length }})</h2>
     <p>Stripe refused these. The scheduled check sends each one again, and the reason below says whether that's likely to work.</p>
     <table class="table">
-      <thead><tr><th scope="col">Booking</th><th scope="col">Amount</th><th scope="col">Why it was refunded</th><th scope="col">When</th><th scope="col">Stripe's reason</th></tr></thead>
+      <thead><tr><th scope="col">Booking</th><th scope="col">Amount</th><th scope="col">Why it was refunded</th><th scope="col">When</th><th scope="col">Stripe's reason</th><th scope="col">Action</th></tr></thead>
       <tbody>
         {% for refund in failed_refunds %}
           <tr>
@@ -71,6 +71,16 @@
             <td>{{ refund.reason_text }}</td>
             <td>{{ refund.created_at|date:"D j M, g:i a" }}</td>
             <td>{{ refund.error }}</td>
+            <td>
+              {% if perms.bookings.refund_booking %}
+                <form method="post" action="{% url 'bookings_staff:try_refund_again' refund.pk %}">
+                  {% csrf_token %}
+                  <button class="button" type="submit" data-variant="secondary">Try again</button>
+                </form>
+              {% else %}
+                A manager can try it again.
+              {% endif %}
+            </td>
           </tr>
         {% endfor %}
       </tbody>

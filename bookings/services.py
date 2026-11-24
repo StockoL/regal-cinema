@@ -10,6 +10,7 @@ from membership.models import Voucher
 from payments import get_provider
 from payments.base import FeeUnavailable, RefundFailed
 from screenings.models import Seat
+from screenings.templatetags.screenings_extras import pounds
 from screenings.services import layout_seats
 from staff.audit import log_action
 from staff.models import AuditLogEntry
@@ -300,6 +301,23 @@ def send_refund(refund_pk):
         refund.status = Refund.Status.FAILED
         refund.error = str(error)
     refund.save(update_fields=['stripe_refund_id', 'status', 'error'])
+
+
+def retry_refund(refund, staff):
+    """A member of staff sends a refund Stripe refused again, with the
+    same idempotency key, so it can't pay out twice (4.13). Money goes
+    out on their say-so, so it's logged under them with how it went.
+    Returns the refund as it ends up."""
+    send_refund(refund.pk)
+    refund.refresh_from_db()
+    if refund.status == Refund.Status.SUCCEEDED:
+        outcome = 'it went through'
+    else:
+        outcome = f'Stripe refused it again: {refund.error}'
+    log_action(staff, AuditLogEntry.Action.REFUND,
+               f'Sent a failed refund of {pounds(refund.amount_pence)} '
+               f'again, and {outcome}', booking=refund.booking)
+    return refund
 
 
 class CancellationNotAllowed(Exception):

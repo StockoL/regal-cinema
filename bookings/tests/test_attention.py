@@ -13,6 +13,8 @@ from django.utils import timezone
 from accounts.models import get_system_user
 from bookings.models import Booking, OutboundEmail, Refund
 from bookings.tests.test_holds import make_screening
+from payments.fake import FakeProvider
+from staff.models import AuditLogEntry
 
 User = get_user_model()
 
@@ -231,6 +233,66 @@ class AttentionPageTests(TestCase):
         self.assertEqual(self.client.get(
             reverse('bookings_staff:send_email_again', args=[email.pk]),
         ).status_code, 405)
+
+    def as_manager(self):
+        self.staff.groups.set([Group.objects.get(name='Manager')])
+
+    def try_again(self, refund):
+        return self.client.post(
+            reverse('bookings_staff:try_refund_again', args=[refund.pk]),
+            follow=True,
+        )
+
+    def test_a_manager_gets_try_again_on_a_failed_refund(self):
+        self.as_manager()
+        refund = self.refund(Refund.Status.FAILED)
+        again = reverse('bookings_staff:try_refund_again', args=[refund.pk])
+        self.assertContains(self.client.get(self.url), f'action="{again}"')
+
+    def test_front_of_house_is_told_a_manager_can_try_again(self):
+        refund = self.refund(Refund.Status.FAILED)
+        response = self.client.get(self.url)
+        self.assertContains(response, 'A manager can try it again.')
+        self.assertNotContains(response, reverse(
+            'bookings_staff:try_refund_again', args=[refund.pk],
+        ))
+        self.assertEqual(self.try_again(refund).status_code, 403)
+
+    def test_trying_again_sends_it_and_logs_who_did(self):
+        FakeProvider.reset()
+        self.as_manager()
+        refund = self.refund(Refund.Status.FAILED)
+        response = self.try_again(refund)
+        self.assertRedirects(response, self.url)
+        self.assertContains(response, 'The refund of £9.50 went through.')
+        refund.refresh_from_db()
+        self.assertEqual(refund.status, Refund.Status.SUCCEEDED)
+        entry = AuditLogEntry.objects.get(
+            action_type=AuditLogEntry.Action.REFUND,
+        )
+        self.assertEqual((entry.actor, entry.related_booking),
+                         (self.staff, refund.booking))
+        self.assertIn('went through', entry.reason)
+
+    def test_a_refund_refused_again_says_why(self):
+        FakeProvider.reset()
+        FakeProvider.fail_refunds = True
+        self.as_manager()
+        refund = self.refund(Refund.Status.FAILED)
+        response = self.try_again(refund)
+        self.assertContains(response, 'Stripe refused it again')
+        refund.refresh_from_db()
+        self.assertEqual(refund.status, Refund.Status.FAILED)
+        self.assertIn('refused it again', AuditLogEntry.objects.get().reason)
+
+    def test_a_refund_that_went_through_isnt_sent_again(self):
+        FakeProvider.reset()
+        self.as_manager()
+        refund = self.refund(Refund.Status.SUCCEEDED)
+        response = self.try_again(refund)
+        self.assertContains(response, 'has not failed')
+        self.assertEqual(FakeProvider.refunds, {})
+        self.assertFalse(AuditLogEntry.objects.exists())
 
 
 class AttentionCountTests(TestCase):

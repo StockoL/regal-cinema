@@ -11,6 +11,7 @@ from django.views.decorators.http import require_POST
 
 from payments.base import PaymentUnavailable
 from screenings.models import Screening
+from screenings.templatetags.screenings_extras import pounds
 from staff.models import AuditLogEntry
 from staff.views import staff_permission_required
 from venue.models import get_settings
@@ -23,7 +24,13 @@ from .attention import (
     unsent_emails,
 )
 from .emails import send_again
-from .models import Booking, Cancellation, OutboundEmail, SeatBooking
+from .models import (
+    Booking,
+    Cancellation,
+    OutboundEmail,
+    Refund,
+    SeatBooking,
+)
 from .services import (
     CancellationNotAllowed,
     CheckInRefused,
@@ -34,6 +41,7 @@ from .services import (
     impossible_reference,
     recheck_payment,
     recheck_too_soon,
+    retry_refund,
 )
 
 DECISIONS = [
@@ -189,6 +197,26 @@ def send_email_again(request, pk):
         else:
             messages.error(request, f'The email to {email.recipient} still '
                                     f'could not be sent: {email.last_error}')
+    return redirect('bookings_staff:attention')
+
+
+@require_POST
+@staff_permission_required('bookings.refund_booking')
+def try_refund_again(request, pk):
+    """Send a refund Stripe refused again, from the needs-attention
+    page (4.13)."""
+    refund = get_object_or_404(Refund, pk=pk)
+    amount = pounds(refund.amount_pence)
+    if refund.status != Refund.Status.FAILED:
+        messages.info(request, f'The refund of {amount} has not failed, so '
+                               f'it was not sent again.')
+    else:
+        refund = retry_refund(refund, request.user)
+        if refund.status == Refund.Status.SUCCEEDED:
+            messages.success(request, f'The refund of {amount} went through.')
+        else:
+            messages.error(request, f'Stripe refused it again: '
+                                    f'{refund.error}')
     return redirect('bookings_staff:attention')
 
 
