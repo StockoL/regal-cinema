@@ -6,7 +6,7 @@ from datetime import timedelta
 from django.db.models import Q
 from django.utils import timezone
 
-from .models import Booking, OutboundEmail
+from .models import Booking, OutboundEmail, Refund
 from .reconcile import STUCK_UNTIL
 from .services import RECHECK_AFTER
 
@@ -40,6 +40,16 @@ def unsent_emails():
             | Q(status=OutboundEmail.Status.QUEUED,
                 created_at__lt=timezone.now() - EMAIL_WAITED_TOO_LONG)
         )
+        .select_related('booking')
+        .order_by('created_at')
+    )
+
+
+def failed_refunds():
+    """Refunds Stripe refused. The scheduled check sends each again, so
+    one still here is likely to need a person."""
+    return (
+        Refund.objects.filter(status=Refund.Status.FAILED)
         .select_related('booking')
         .order_by('created_at')
     )

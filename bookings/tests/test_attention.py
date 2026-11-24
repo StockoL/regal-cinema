@@ -6,7 +6,8 @@ from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
 
-from bookings.models import Booking, OutboundEmail
+from accounts.models import get_system_user
+from bookings.models import Booking, OutboundEmail, Refund
 from bookings.tests.test_holds import make_screening
 
 User = get_user_model()
@@ -97,3 +98,24 @@ class AttentionPageTests(TestCase):
         self.outbox(30)
         self.outbox(120, status=OutboundEmail.Status.SENT)
         self.assertNotContains(self.client.get(self.url), 'Emails not sent')
+
+    def refund(self, status):
+        return Refund.objects.create(
+            booking=self.pending(minutes=60 * 48), amount_pence=950,
+            reason='Paid after the seats were sold to someone else',
+            stripe_payment_intent_id='pi_1', status=status,
+            error='No such payment_intent', created_by=get_system_user(),
+        )
+
+    def test_a_failed_refund_is_listed_with_stripes_reason(self):
+        refund = self.refund(Refund.Status.FAILED)
+        response = self.client.get(self.url)
+        self.assertContains(response, 'Refunds that failed (1)')
+        self.assertContains(response, refund.booking.reference)
+        self.assertContains(response, '£9.50')
+        self.assertContains(response, 'No such payment_intent')
+
+    def test_a_refund_that_went_through_isnt_listed(self):
+        self.refund(Refund.Status.SUCCEEDED)
+        self.assertNotContains(self.client.get(self.url),
+                               'Refunds that failed')
