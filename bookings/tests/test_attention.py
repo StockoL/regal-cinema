@@ -115,6 +115,14 @@ class AttentionPageTests(TestCase):
         self.assertContains(response, '£9.50')
         self.assertContains(response, 'No such payment_intent')
 
+    def test_a_duplicate_payment_refund_reads_as_words(self):
+        refund = self.refund(Refund.Status.FAILED)
+        refund.reason = Refund.DUPLICATE_PAYMENT
+        refund.save()
+        response = self.client.get(self.url)
+        self.assertContains(response, 'A second payment for a booking')
+        self.assertNotContains(response, 'duplicate_payment')
+
     def test_a_refund_that_went_through_isnt_listed(self):
         self.refund(Refund.Status.SUCCEEDED)
         self.assertNotContains(self.client.get(self.url),

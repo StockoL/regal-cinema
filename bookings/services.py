@@ -207,7 +207,7 @@ def refund_duplicate_payment(booking, payment_intent_id, amount_pence):
     a customer paying on two sessions (4.32, "Paying twice"). It's
     refunded against itself and the booking is left as it was."""
     return queue_refund(booking, payment_intent_id, amount_pence,
-                        'duplicate_payment')
+                        Refund.DUPLICATE_PAYMENT)
 
 
 def settle_payment(booking, payment_intent_id, amount_pence):
