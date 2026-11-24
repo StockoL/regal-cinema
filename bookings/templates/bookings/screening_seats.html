@@ -11,7 +11,11 @@
   <h1>{{ screening.film.title }}</h1>
   <p>{{ screening.date_time|date:"l j F" }} at {{ screening.date_time|time:"g:i a" }}, {{ screening.screen }}</p>
 
-  {% if screening.online_sales_closed %}
+  {% if venue.online_sales_paused %}
+    <div class="alert flow" data-status="info">
+      <p>Online sales are paused for now. You can still book by calling the box office on <a href="tel:{{ venue.phone|cut:' ' }}">{{ venue.phone }}</a>.</p>
+    </div>
+  {% elif closed %}
     <div class="alert flow" data-status="info">
       <p>Online sales have closed for this screening. Call the box office on <a href="tel:+441632960123">01632 960 123</a>, or ask at the box office if you're already here.</p>
     </div>

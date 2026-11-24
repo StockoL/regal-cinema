@@ -19,6 +19,7 @@ from screenings.models import (
     TicketClass,
     TicketType,
 )
+from venue.models import VenueSettings
 
 
 def text_of(html):
@@ -275,6 +276,38 @@ class ChooseSeatsTests(TestCase):
 
     def test_the_tickets_step_needs_seats_first(self):
         self.assertRedirects(self.client.get(self.tickets_url), self.url)
+
+
+class SalesPausedSeatsTests(TestCase):
+    """While staff have paused online sales, the seats can still be
+    seen but not chosen (journey 2, "Sales paused"; architecture
+    4.23)."""
+
+    def setUp(self):
+        screening = make_future_screening()
+        self.seat = Seat.objects.create(
+            screen=screening.screen, layout=screening.layout,
+            area=Seat.Area.STALLS, number=1, row_index=0, column_index=1,
+        )
+        self.url = reverse('bookings:screening_seats', args=[screening.pk])
+        self.tickets_url = reverse('bookings:screening_tickets',
+                                   args=[screening.pk])
+        VenueSettings.objects.filter(pk=1).update(
+            online_sales_paused=True, phone='01632 960 999',
+        )
+
+    def test_the_page_says_so_with_the_box_office_number(self):
+        response = self.client.get(self.url)
+        self.assertContains(response, 'Online sales are paused')
+        self.assertContains(response, '<a href="tel:01632960999">'
+                                      '01632 960 999</a>', html=True)
+        self.assertNotContains(response, '>Continue</button>')
+
+    def test_choosing_seats_is_refused(self):
+        response = self.client.post(self.url, {'seats': [self.seat.pk]})
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Online sales are paused')
+        self.assertEqual(self.client.get(self.tickets_url).status_code, 302)
 
 
 class TicketTypesTests(TestCase):
