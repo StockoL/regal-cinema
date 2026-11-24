@@ -1,0 +1,56 @@
+{% extends 'base.html' %}
+{% load screenings_extras %}
+
+{% block title %}Customer accounts{% endblock %}
+
+{% block content %}
+<div class="wrapper region flow">
+  <p><a href="{% url 'staff:home' %}">Staff</a></p>
+  <h1>Customer accounts</h1>
+  <form class="flow" method="get" role="search">
+    <div class="field">
+      <label for="email">Customer's email address</label>
+      <input class="input" type="email" id="email" name="email" value="{{ email }}" autocomplete="off" required>
+    </div>
+    <button class="button" type="submit" data-variant="primary">Find</button>
+  </form>
+  {% if email %}
+    {% if not account %}
+      <p>No customer account uses that address.</p>
+    {% elif account.is_staff or account.email == system_email %}
+      <p>That's a staff account, managed in the admin.</p>
+    {% else %}
+      <h2>{{ account.email }}</h2>
+      <dl class="flow">
+        <dt>Status</dt>
+        <dd>{% if account.is_active %}Can log in{% else %}Deactivated: can't log in{% endif %}</dd>
+        <dt>Joined</dt>
+        <dd>{{ account.date_joined|date:"j F Y" }}</dd>
+        <dt>Email address</dt>
+        <dd>{% if account.email_verified %}Confirmed{% else %}Not confirmed yet{% endif %}</dd>
+      </dl>
+      <h3 id="customer-bookings">Bookings ({{ bookings|length }})</h3>
+      {% if bookings %}
+        <div class="table-wrapper" role="region" aria-labelledby="customer-bookings" tabindex="0">
+        <table class="table">
+          <thead><tr><th scope="col">Booking</th><th scope="col">Screening</th><th scope="col">Status</th><th scope="col">Seats</th><th scope="col">Paid</th></tr></thead>
+          <tbody>
+            {% for booking in bookings %}
+              <tr>
+                <td>{{ booking.reference }}</td>
+                <td>{{ booking.screening.film.title }}, {{ booking.screening.date_time|date:"D j M Y" }}, {{ booking.screening.date_time|time:"g:i a" }}</td>
+                <td>{{ booking.get_status_display }}</td>
+                <td>{{ booking.seat_count }}</td>
+                <td>{% if booking.amount_charged_pence is not None %}{{ booking.amount_charged_pence|pounds }}{% endif %}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        </div>
+      {% else %}
+        <p>No bookings under this address.</p>
+      {% endif %}
+    {% endif %}
+  {% endif %}
+</div>
+{% endblock %}
