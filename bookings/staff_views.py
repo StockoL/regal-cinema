@@ -15,7 +15,7 @@ from staff.models import AuditLogEntry
 from staff.views import staff_permission_required
 from venue.models import get_settings
 
-from .attention import stuck_payments
+from .attention import stuck_payments, unsent_emails
 from .models import Booking, Cancellation, SeatBooking
 from .services import (
     CancellationNotAllowed,
@@ -155,9 +155,13 @@ def check_in_booking(request, reference):
 @staff_permission_required('bookings.view_attention')
 def attention(request):
     """What needs a person, each with its action beside it (4.32)."""
-    return render(request, 'bookings/staff/attention.html', {
+    lists = {
         'stuck_payments': list(stuck_payments()),
-    })
+        'unsent_emails': list(unsent_emails()),
+    }
+    total = sum(len(items) for items in lists.values())
+    return render(request, 'bookings/staff/attention.html',
+                  {**lists, 'total': total})
 
 
 @require_POST

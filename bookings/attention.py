@@ -1,11 +1,18 @@
 """What needs a person: the needs-attention page's lists (architecture
 4.32). Each is a query, so the page and its count stay cheap."""
 
+from datetime import timedelta
+
+from django.db.models import Q
 from django.utils import timezone
 
-from .models import Booking
+from .models import Booking, OutboundEmail
 from .reconcile import STUCK_UNTIL
 from .services import RECHECK_AFTER
+
+# The scheduled check runs about hourly, so an email still queued after
+# this long has failed a retry, or the retry never ran.
+EMAIL_WAITED_TOO_LONG = timedelta(hours=1)
 
 
 def stuck_payments():
@@ -21,4 +28,18 @@ def stuck_payments():
         )
         .select_related('screening__film', 'user')
         .order_by('checkout_started_at')
+    )
+
+
+def unsent_emails():
+    """Emails the outbox gave up on, and ones still queued an hour after
+    they were written."""
+    return (
+        OutboundEmail.objects.filter(
+            Q(status=OutboundEmail.Status.FAILED)
+            | Q(status=OutboundEmail.Status.QUEUED,
+                created_at__lt=timezone.now() - EMAIL_WAITED_TOO_LONG)
+        )
+        .select_related('booking')
+        .order_by('created_at')
     )

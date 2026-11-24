@@ -6,7 +6,7 @@ from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
 
-from bookings.models import Booking
+from bookings.models import Booking, OutboundEmail
 from bookings.tests.test_holds import make_screening
 
 User = get_user_model()
@@ -68,3 +68,32 @@ class AttentionPageTests(TestCase):
     def test_with_nothing_to_do_it_says_so(self):
         self.assertContains(self.client.get(self.url),
                             'Nothing needs attention.')
+
+    def outbox(self, minutes, **fields):
+        email = OutboundEmail.objects.create(
+            kind=OutboundEmail.Kind.CONFIRMATION, recipient='jo@example.com',
+            subject='Your booking', text_body='Your seats', **fields,
+        )
+        OutboundEmail.objects.filter(pk=email.pk).update(
+            created_at=timezone.now() - timedelta(minutes=minutes),
+        )
+        return email
+
+    def test_a_failed_email_is_listed_with_its_error(self):
+        self.outbox(10, status=OutboundEmail.Status.FAILED, attempts=5,
+                    last_error='Mail server refused the address')
+        response = self.client.get(self.url)
+        self.assertContains(response, 'Emails not sent (1)')
+        self.assertContains(response, 'Mail server refused the address')
+        self.assertContains(response, 'Confirmation')
+
+    def test_an_email_queued_over_an_hour_is_listed(self):
+        """The scheduled check runs hourly, so by then a retry has
+        failed or never ran."""
+        self.outbox(61)
+        self.assertContains(self.client.get(self.url), 'Emails not sent (1)')
+
+    def test_a_recent_or_sent_email_isnt_listed(self):
+        self.outbox(30)
+        self.outbox(120, status=OutboundEmail.Status.SENT)
+        self.assertNotContains(self.client.get(self.url), 'Emails not sent')
