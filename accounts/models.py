@@ -53,6 +53,12 @@ class User(AbstractUser):
 
     objects = UserManager()
 
+    class Meta:
+        permissions = [
+            ('deactivate_account',
+             'Can deactivate or reactivate a customer account'),
+        ]
+
     def __str__(self):
         return self.email
 

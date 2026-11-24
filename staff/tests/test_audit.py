@@ -63,3 +63,23 @@ class AuditLogTests(TestCase):
         self.assertEqual(entry.related_voucher, voucher)
         with self.assertRaises(ProtectedError):
             voucher.delete()
+
+    def test_an_entry_can_name_a_customer_account(self):
+        customer = get_user_model().objects.create_user('jo@example.com',
+                                                        'a-long-pw-1')
+        entry = log_action(self.staff,
+                           AuditLogEntry.Action.ACCOUNT_DEACTIVATED,
+                           'Repeated chargebacks', user=customer)
+        self.assertEqual(entry.related_user, customer)
+
+    def test_deleting_the_account_keeps_the_entry_without_it(self):
+        """A GDPR deletion removes who it was, not what was done (4.21)."""
+        customer = get_user_model().objects.create_user('jo@example.com',
+                                                        'a-long-pw-1')
+        entry = log_action(self.staff,
+                           AuditLogEntry.Action.ACCOUNT_DEACTIVATED,
+                           'Repeated chargebacks', user=customer)
+        customer.delete()
+        entry.refresh_from_db()
+        self.assertIsNone(entry.related_user)
+        self.assertEqual(entry.reason, 'Repeated chargebacks')

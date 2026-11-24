@@ -8,6 +8,7 @@ STAFF_PERMISSIONS = {
     'create_in_venue_booking', 'view_bookings', 'view_attention',
     'manage_screenings', 'cancel_screening', 'manage_films',
     'manage_venue_settings', 'pause_online_sales', 'view_sales_dashboard',
+    'deactivate_account',
 }
 
 
