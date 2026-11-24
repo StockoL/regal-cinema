@@ -11,8 +11,13 @@
     <p>Nothing needs attention.</p>
   {% endif %}
   {% if stuck_payments %}
-    <h2>Payments with no word from Stripe ({{ stuck_payments|length }})</h2>
+    <h2 id="stuck-payments">Payments with no word from Stripe ({{ stuck_payments|length }})</h2>
     <p>The customer went to Stripe's page, and no webhook has confirmed a payment. Most simply left without paying.</p>
+    <div class="table-wrapper" role="region" aria-labelledby="stuck-payments" tabindex="0">
+    <div class="table-wrapper" role="region" aria-labelledby="unsent-emails" tabindex="0">
+    <div class="table-wrapper" role="region" aria-labelledby="failed-refunds" tabindex="0">
+    <div class="table-wrapper" role="region" aria-labelledby="open-disputes" tabindex="0">
+    <div class="table-wrapper" role="region" aria-labelledby="duplicate-payments" tabindex="0">
     <table class="table">
       <thead><tr><th scope="col">Booking</th><th scope="col">Customer</th><th scope="col">Screening</th><th scope="col">Went to pay</th><th scope="col">Action</th></tr></thead>
       <tbody>
@@ -32,9 +37,10 @@
         {% endfor %}
       </tbody>
     </table>
+    </div>
   {% endif %}
   {% if unsent_emails %}
-    <h2>Emails not sent ({{ unsent_emails|length }})</h2>
+    <h2 id="unsent-emails">Emails not sent ({{ unsent_emails|length }})</h2>
     <p>The outbox tries each email up to five times. These either gave up or are still waiting an hour after they were written.</p>
     <table class="table">
       <thead><tr><th scope="col">To</th><th scope="col">Email</th><th scope="col">Booking</th><th scope="col">Written</th><th scope="col">Tries</th><th scope="col">Last error</th><th scope="col">Action</th></tr></thead>
@@ -57,9 +63,10 @@
         {% endfor %}
       </tbody>
     </table>
+    </div>
   {% endif %}
   {% if failed_refunds %}
-    <h2>Refunds that failed ({{ failed_refunds|length }})</h2>
+    <h2 id="failed-refunds">Refunds that failed ({{ failed_refunds|length }})</h2>
     <p>Stripe refused these. The scheduled check sends each one again, and the reason below says whether that's likely to work.</p>
     <table class="table">
       <thead><tr><th scope="col">Booking</th><th scope="col">Amount</th><th scope="col">Why it was refunded</th><th scope="col">When</th><th scope="col">Stripe's reason</th><th scope="col">Action</th></tr></thead>
@@ -85,9 +92,10 @@
         {% endfor %}
       </tbody>
     </table>
+    </div>
   {% endif %}
   {% if open_disputes %}
-    <h2>Open disputes ({{ open_disputes|length }})</h2>
+    <h2 id="open-disputes">Open disputes ({{ open_disputes|length }})</h2>
     <p>The customer's bank has questioned these payments. Nothing is cancelled here: the venue answers the bank in Stripe's dashboard.</p>
     <table class="table">
       <thead><tr><th scope="col">Booking</th><th scope="col">Customer</th><th scope="col">Screening</th><th scope="col">Paid</th><th scope="col">Opened</th><th scope="col">Action</th></tr></thead>
@@ -104,9 +112,10 @@
         {% endfor %}
       </tbody>
     </table>
+    </div>
   {% endif %}
   {% if duplicate_payments %}
-    <h2>Second payments refunded ({{ duplicate_payments|length }})</h2>
+    <h2 id="duplicate-payments">Second payments refunded ({{ duplicate_payments|length }})</h2>
     <p>These customers paid twice for one booking, and the second payment was refunded automatically. They stay here for a week in case the customer gets in touch.</p>
     <table class="table">
       <thead><tr><th scope="col">Booking</th><th scope="col">Customer</th><th scope="col">Refunded</th><th scope="col">When</th><th scope="col">Refund</th><th scope="col">Action</th></tr></thead>
@@ -123,6 +132,7 @@
         {% endfor %}
       </tbody>
     </table>
+    </div>
   {% endif %}
 </div>
 {% endblock %}

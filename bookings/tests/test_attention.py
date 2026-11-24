@@ -59,6 +59,15 @@ class AttentionPageTests(TestCase):
                         args=[booking.reference])
         self.assertContains(response, f'action="{check}"')
 
+    def test_a_wide_table_scrolls_by_itself_on_a_phone(self):
+        """Not the whole page, and a keyboard can reach it (4.17)."""
+        self.pending(minutes=6)
+        self.assertContains(
+            self.client.get(self.url),
+            '<div class="table-wrapper" role="region" '
+            'aria-labelledby="stuck-payments" tabindex="0">',
+        )
+
     def test_only_sessions_5_minutes_to_24_hours_old_are_listed(self):
         """Younger ones are left to the webhook. Older ones expired
         long ago and were checked by the scheduled job."""
