@@ -1,0 +1,36 @@
+{% extends 'base.html' %}
+
+{% block title %}Needs attention{% endblock %}
+
+{% block content %}
+<div class="wrapper region flow">
+  <p><a href="{% url 'staff:home' %}">Staff</a></p>
+  <h1>Needs attention</h1>
+  {% if not stuck_payments %}
+    <p>Nothing needs attention.</p>
+  {% endif %}
+  {% if stuck_payments %}
+    <h2>Payments with no word from Stripe ({{ stuck_payments|length }})</h2>
+    <p>The customer went to Stripe's page, and no webhook has confirmed a payment. Most simply left without paying.</p>
+    <table class="table">
+      <thead><tr><th scope="col">Booking</th><th scope="col">Customer</th><th scope="col">Screening</th><th scope="col">Went to pay</th><th scope="col">Action</th></tr></thead>
+      <tbody>
+        {% for booking in stuck_payments %}
+          <tr>
+            <td>{{ booking.reference }}</td>
+            <td>{{ booking.user.email|default:"No account" }}</td>
+            <td>{{ booking.screening.film.title }}, {{ booking.screening.date_time|date:"D j M" }}, {{ booking.screening.date_time|time:"g:i a" }}</td>
+            <td>{{ booking.checkout_started_at|date:"D j M, g:i a" }}</td>
+            <td>
+              <form method="post" action="{% url 'bookings_staff:check_with_stripe' booking.reference %}">
+                {% csrf_token %}
+                <button class="button" type="submit" data-variant="secondary">Check with Stripe</button>
+              </form>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% endif %}
+</div>
+{% endblock %}

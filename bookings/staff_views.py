@@ -15,6 +15,7 @@ from staff.models import AuditLogEntry
 from staff.views import staff_permission_required
 from venue.models import get_settings
 
+from .attention import stuck_payments
 from .models import Booking, Cancellation, SeatBooking
 from .services import (
     CancellationNotAllowed,
@@ -149,6 +150,14 @@ def check_in_booking(request, reference):
     else:
         messages.success(request, f'Checked in {reference}.')
     return redirect(f"{reverse('bookings_staff:check_in')}?q={reference}")
+
+
+@staff_permission_required('bookings.view_attention')
+def attention(request):
+    """What needs a person, each with its action beside it (4.32)."""
+    return render(request, 'bookings/staff/attention.html', {
+        'stuck_payments': list(stuck_payments()),
+    })
 
 
 @require_POST

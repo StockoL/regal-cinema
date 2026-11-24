@@ -15,6 +15,7 @@ urlpatterns = [
     path('check-in/', staff_views.check_in_search, name='check_in'),
     path('check-in/<str:reference>/', staff_views.check_in_booking,
          name='check_in_booking'),
+    path('attention/', staff_views.attention, name='attention'),
     path('check-with-stripe/<str:reference>/',
          staff_views.check_with_stripe, name='check_with_stripe'),
     path('screenings/<int:pk>/guests/', staff_views.guest_list,
