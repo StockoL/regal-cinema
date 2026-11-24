@@ -163,9 +163,8 @@ def attention(request):
 @require_POST
 @staff_permission_required('bookings.view_attention')
 def check_with_stripe(request, reference):
-    """Ask Stripe about a payment whose webhook never came (4.32). The
-    check-in search leaves pending bookings out, so this goes back to
-    the staff home until the needs-attention page lists them."""
+    """Ask Stripe about a payment whose webhook never came, then go back
+    to the needs-attention page that lists them (4.32)."""
     booking = get_object_or_404(Booking, reference=reference)
     if booking.status != Booking.Status.PENDING:
         messages.error(request, f'{reference} is not waiting for payment.')
@@ -174,7 +173,7 @@ def check_with_stripe(request, reference):
                                 f'minutes ago. Give Stripe a little longer.')
     else:
         recheck_message(request, booking)
-    return redirect('staff:home')
+    return redirect('bookings_staff:attention')
 
 
 def recheck_message(request, booking):

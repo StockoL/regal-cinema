@@ -68,7 +68,7 @@ class CheckWithStripeTests(TestCase):
     def test_an_unpaid_session_says_so(self):
         response = self.check()
         self.assertContains(response, 'has not been paid')
-        self.assertRedirects(response, reverse('staff:home'))
+        self.assertRedirects(response, reverse('bookings_staff:attention'))
         self.assertEqual(self.status(), Booking.Status.PENDING)
 
     def test_a_session_under_five_minutes_old_isnt_checked(self):
