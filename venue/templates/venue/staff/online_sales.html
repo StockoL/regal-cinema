@@ -1,0 +1,32 @@
+{% extends 'base.html' %}
+
+{% block title %}Online sales{% endblock %}
+
+{% block content %}
+<div class="wrapper region">
+  <div class="center flow">
+    <p><a href="{% url 'staff:home' %}">Staff</a></p>
+    <h1>Online sales</h1>
+    {% if venue.online_sales_paused %}
+      <div class="alert flow" data-status="warning">
+        <p>Online sales are paused. Customers can still look at screenings and seats, and are asked to call {{ venue.phone }}. Bookings already waiting for payment can still be paid for, and sales at the box office carry on.</p>
+      </div>
+    {% else %}
+      <div class="alert flow" data-status="success">
+        <p>Online sales are on.</p>
+      </div>
+      <p>Pause them if something stops bookings going through, such as payments or email being down. Bookings already waiting for payment can still be paid for, and sales at the box office carry on.</p>
+    {% endif %}
+    <form class="flow" method="post">
+      {% csrf_token %}
+      <input type="hidden" name="paused" value="{% if venue.online_sales_paused %}0{% else %}1{% endif %}">
+      <div class="field">
+        <label for="reason">Why (kept in the audit log)</label>
+        <textarea class="textarea" id="reason" name="reason" rows="3"{% if error %} aria-invalid="true" aria-describedby="reason-error"{% endif %}></textarea>
+        {% if error %}<p class="field__error" id="reason-error">{{ error }}</p>{% endif %}
+      </div>
+      <button class="button" type="submit" data-variant="primary">{% if venue.online_sales_paused %}Resume online sales{% else %}Pause online sales{% endif %}</button>
+    </form>
+  </div>
+</div>
+{% endblock %}
