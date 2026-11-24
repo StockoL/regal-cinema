@@ -82,12 +82,19 @@ class LoggingSettingsTests(TestCase):
         for name in ('regal.views', 'bookings.emails', 'payments.fake'):
             with self.subTest(name=name):
                 logger = logging.getLogger(name)
-                self.assertTrue(logger.isEnabledFor(logging.INFO))
+                self.assertEqual(logger.getEffectiveLevel(), logging.INFO)
                 app = logging.getLogger(name.split('.')[0])
                 self.assertTrue(any(
                     isinstance(handler, logging.StreamHandler)
                     for handler in app.handlers
                 ))
+
+    def test_the_test_run_keeps_them_quiet(self):
+        """A test that makes an email fail on purpose shouldn't fill
+        the test output with its warning or traceback."""
+        logger = logging.getLogger('bookings.emails')
+        self.assertFalse(logger.isEnabledFor(logging.ERROR))
+        self.assertTrue(logger.isEnabledFor(logging.CRITICAL))
 
 
 class StylesheetTests(TestCase):
