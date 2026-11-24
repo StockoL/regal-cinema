@@ -1,0 +1,138 @@
+{% extends 'base.html' %}
+{% load screenings_extras %}
+
+{% block title %}Needs attention{% endblock %}
+
+{% block content %}
+<div class="wrapper region flow">
+  <p><a href="{% url 'staff:home' %}">Staff</a></p>
+  <h1>Needs attention</h1>
+  {% if not total %}
+    <p>Nothing needs attention.</p>
+  {% endif %}
+  {% if stuck_payments %}
+    <h2 id="stuck-payments">Payments with no word from Stripe ({{ stuck_payments|length }})</h2>
+    <p>The customer went to Stripe's page, and no webhook has confirmed a payment. Most simply left without paying.</p>
+    <div class="table-wrapper" role="region" aria-labelledby="stuck-payments" tabindex="0">
+    <div class="table-wrapper" role="region" aria-labelledby="unsent-emails" tabindex="0">
+    <div class="table-wrapper" role="region" aria-labelledby="failed-refunds" tabindex="0">
+    <div class="table-wrapper" role="region" aria-labelledby="open-disputes" tabindex="0">
+    <div class="table-wrapper" role="region" aria-labelledby="duplicate-payments" tabindex="0">
+    <table class="table">
+      <thead><tr><th scope="col">Booking</th><th scope="col">Customer</th><th scope="col">Screening</th><th scope="col">Went to pay</th><th scope="col">Action</th></tr></thead>
+      <tbody>
+        {% for booking in stuck_payments %}
+          <tr>
+            <td>{{ booking.reference }}</td>
+            <td>{{ booking.user.email|default:"No account" }}</td>
+            <td>{{ booking.screening.film.title }}, {{ booking.screening.date_time|date:"D j M" }}, {{ booking.screening.date_time|time:"g:i a" }}</td>
+            <td>{{ booking.checkout_started_at|date:"D j M, g:i a" }}</td>
+            <td>
+              <form method="post" action="{% url 'bookings_staff:check_with_stripe' booking.reference %}">
+                {% csrf_token %}
+                <button class="button" type="submit" data-variant="secondary">Check with Stripe</button>
+              </form>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    </div>
+  {% endif %}
+  {% if unsent_emails %}
+    <h2 id="unsent-emails">Emails not sent ({{ unsent_emails|length }})</h2>
+    <p>The outbox tries each email up to five times. These either gave up or are still waiting an hour after they were written.</p>
+    <table class="table">
+      <thead><tr><th scope="col">To</th><th scope="col">Email</th><th scope="col">Booking</th><th scope="col">Written</th><th scope="col">Tries</th><th scope="col">Last error</th><th scope="col">Action</th></tr></thead>
+      <tbody>
+        {% for email in unsent_emails %}
+          <tr>
+            <td>{{ email.recipient }}</td>
+            <td>{{ email.get_kind_display }}</td>
+            <td>{{ email.booking.reference|default:"None" }}</td>
+            <td>{{ email.created_at|date:"D j M, g:i a" }}</td>
+            <td>{{ email.attempts }}</td>
+            <td>{{ email.last_error|default:"None yet" }}</td>
+            <td>
+              <form method="post" action="{% url 'bookings_staff:send_email_again' email.pk %}">
+                {% csrf_token %}
+                <button class="button" type="submit" data-variant="secondary">Send again</button>
+              </form>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    </div>
+  {% endif %}
+  {% if failed_refunds %}
+    <h2 id="failed-refunds">Refunds that failed ({{ failed_refunds|length }})</h2>
+    <p>Stripe refused these. The scheduled check sends each one again, and the reason below says whether that's likely to work.</p>
+    <table class="table">
+      <thead><tr><th scope="col">Booking</th><th scope="col">Amount</th><th scope="col">Why it was refunded</th><th scope="col">When</th><th scope="col">Stripe's reason</th><th scope="col">Action</th></tr></thead>
+      <tbody>
+        {% for refund in failed_refunds %}
+          <tr>
+            <td>{{ refund.booking.reference }}</td>
+            <td>{{ refund.amount_pence|pounds }}</td>
+            <td>{{ refund.reason_text }}</td>
+            <td>{{ refund.created_at|date:"D j M, g:i a" }}</td>
+            <td>{{ refund.error }}</td>
+            <td>
+              {% if perms.bookings.refund_booking %}
+                <form method="post" action="{% url 'bookings_staff:try_refund_again' refund.pk %}">
+                  {% csrf_token %}
+                  <button class="button" type="submit" data-variant="secondary">Try again</button>
+                </form>
+              {% else %}
+                A manager can try it again.
+              {% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    </div>
+  {% endif %}
+  {% if open_disputes %}
+    <h2 id="open-disputes">Open disputes ({{ open_disputes|length }})</h2>
+    <p>The customer's bank has questioned these payments. Nothing is cancelled here: the venue answers the bank in Stripe's dashboard.</p>
+    <table class="table">
+      <thead><tr><th scope="col">Booking</th><th scope="col">Customer</th><th scope="col">Screening</th><th scope="col">Paid</th><th scope="col">Opened</th><th scope="col">Action</th></tr></thead>
+      <tbody>
+        {% for booking in open_disputes %}
+          <tr>
+            <td>{{ booking.reference }}</td>
+            <td>{{ booking.user.email|default:"No account" }}</td>
+            <td>{{ booking.screening.film.title }}, {{ booking.screening.date_time|date:"D j M" }}</td>
+            <td>{% if booking.amount_charged_pence is not None %}{{ booking.amount_charged_pence|pounds }}{% endif %}</td>
+            <td>{{ booking.disputed_at|date:"D j M, g:i a" }}</td>
+            <td><a href="https://dashboard.stripe.com/test/payments/{{ booking.stripe_payment_intent_id }}">Answer in Stripe</a></td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    </div>
+  {% endif %}
+  {% if duplicate_payments %}
+    <h2 id="duplicate-payments">Second payments refunded ({{ duplicate_payments|length }})</h2>
+    <p>These customers paid twice for one booking, and the second payment was refunded automatically. They stay here for a week in case the customer gets in touch.</p>
+    <table class="table">
+      <thead><tr><th scope="col">Booking</th><th scope="col">Customer</th><th scope="col">Refunded</th><th scope="col">When</th><th scope="col">Refund</th><th scope="col">Action</th></tr></thead>
+      <tbody>
+        {% for refund in duplicate_payments %}
+          <tr>
+            <td>{{ refund.booking.reference }}</td>
+            <td>{{ refund.booking.user.email|default:"No account" }}</td>
+            <td>{{ refund.amount_pence|pounds }}</td>
+            <td>{{ refund.created_at|date:"D j M, g:i a" }}</td>
+            <td>{{ refund.get_status_display }}</td>
+            <td><a href="https://dashboard.stripe.com/test/payments/{{ refund.stripe_payment_intent_id }}">See it in Stripe</a></td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

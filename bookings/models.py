@@ -272,8 +272,18 @@ class Refund(models.Model):
     )
     created_at = models.DateTimeField(auto_now_add=True)
 
+    # The reason given to an automatic refund of a second payment (4.32).
+    DUPLICATE_PAYMENT = 'duplicate_payment'
+
     def __str__(self):
         return f'{self.amount_pence}p refund for {self.booking.reference}'
+
+    @property
+    def reason_text(self):
+        """The reason as staff read it."""
+        if self.reason == self.DUPLICATE_PAYMENT:
+            return 'A second payment for a booking already paid'
+        return self.reason
 
 
 class OutboundEmail(models.Model):

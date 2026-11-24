@@ -11,11 +11,26 @@ from django.views.decorators.http import require_POST
 
 from payments.base import PaymentUnavailable
 from screenings.models import Screening
+from screenings.templatetags.screenings_extras import pounds
 from staff.models import AuditLogEntry
 from staff.views import staff_permission_required
 from venue.models import get_settings
 
-from .models import Booking, Cancellation, SeatBooking
+from .attention import (
+    duplicate_payments,
+    failed_refunds,
+    open_disputes,
+    stuck_payments,
+    unsent_emails,
+)
+from .emails import send_again
+from .models import (
+    Booking,
+    Cancellation,
+    OutboundEmail,
+    Refund,
+    SeatBooking,
+)
 from .services import (
     CancellationNotAllowed,
     CheckInRefused,
@@ -26,6 +41,7 @@ from .services import (
     impossible_reference,
     recheck_payment,
     recheck_too_soon,
+    retry_refund,
 )
 
 DECISIONS = [
@@ -151,12 +167,64 @@ def check_in_booking(request, reference):
     return redirect(f"{reverse('bookings_staff:check_in')}?q={reference}")
 
 
+@staff_permission_required('bookings.view_attention')
+def attention(request):
+    """What needs a person, each with its action beside it (4.32)."""
+    lists = {
+        'stuck_payments': list(stuck_payments()),
+        'unsent_emails': list(unsent_emails()),
+        'failed_refunds': list(failed_refunds()),
+        'open_disputes': list(open_disputes()),
+        'duplicate_payments': list(duplicate_payments()),
+    }
+    total = sum(len(items) for items in lists.values())
+    return render(request, 'bookings/staff/attention.html',
+                  {**lists, 'total': total})
+
+
+@require_POST
+@staff_permission_required('bookings.view_attention')
+def send_email_again(request, pk):
+    """Send an unsent email again from the needs-attention page (4.20)."""
+    email = get_object_or_404(OutboundEmail, pk=pk)
+    if email.status == OutboundEmail.Status.SENT:
+        messages.info(request, f'The email to {email.recipient} was '
+                               f'already sent.')
+    else:
+        email = send_again(email.pk)
+        if email.status == OutboundEmail.Status.SENT:
+            messages.success(request, f'Sent the email to {email.recipient}.')
+        else:
+            messages.error(request, f'The email to {email.recipient} still '
+                                    f'could not be sent: {email.last_error}')
+    return redirect('bookings_staff:attention')
+
+
+@require_POST
+@staff_permission_required('bookings.refund_booking')
+def try_refund_again(request, pk):
+    """Send a refund Stripe refused again, from the needs-attention
+    page (4.13)."""
+    refund = get_object_or_404(Refund, pk=pk)
+    amount = pounds(refund.amount_pence)
+    if refund.status != Refund.Status.FAILED:
+        messages.info(request, f'The refund of {amount} has not failed, so '
+                               f'it was not sent again.')
+    else:
+        refund = retry_refund(refund, request.user)
+        if refund.status == Refund.Status.SUCCEEDED:
+            messages.success(request, f'The refund of {amount} went through.')
+        else:
+            messages.error(request, f'Stripe refused it again: '
+                                    f'{refund.error}')
+    return redirect('bookings_staff:attention')
+
+
 @require_POST
 @staff_permission_required('bookings.view_attention')
 def check_with_stripe(request, reference):
-    """Ask Stripe about a payment whose webhook never came (4.32). The
-    check-in search leaves pending bookings out, so this goes back to
-    the staff home until the needs-attention page lists them."""
+    """Ask Stripe about a payment whose webhook never came, then go back
+    to the needs-attention page that lists them (4.32)."""
     booking = get_object_or_404(Booking, reference=reference)
     if booking.status != Booking.Status.PENDING:
         messages.error(request, f'{reference} is not waiting for payment.')
@@ -165,7 +233,7 @@ def check_with_stripe(request, reference):
                                 f'minutes ago. Give Stripe a little longer.')
     else:
         recheck_message(request, booking)
-    return redirect('staff:home')
+    return redirect('bookings_staff:attention')
 
 
 def recheck_message(request, booking):
