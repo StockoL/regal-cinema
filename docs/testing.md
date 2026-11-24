@@ -127,15 +127,15 @@ Each way a payment can go wrong has a named test, run against the fake payment p
 | A forged webhook | Refused with a 400, and nothing recorded | `test_a_forged_webhook_is_refused` | Written |
 | The customer presses Pay twice | One Checkout Session | `test_paying_again_returns_the_same_session` | Written |
 | A session expires unpaid | Nothing is booked, and paying again gets a new session | `test_a_session_that_expired_unpaid_books_nothing`, `test_paying_after_the_session_expired_gets_a_new_one` | Written |
-| A refund fails | Stored as failed with the provider's reason | `test_a_refund_that_fails_is_kept_with_its_reason` | Written. Retrying it waits for the scheduled job |
+| A refund fails | Stored as failed with the provider's reason | `test_a_refund_that_fails_is_kept_with_its_reason`, `test_a_failed_refund_is_sent_again` | Written. Listing it for staff waits for the needs-attention page |
 | Confirming fails halfway | Nothing partial is saved | `test_a_lost_seat_saves_nothing` | Partly: a lost seat saves nothing; a failure forced halfway is planned as `test_a_failed_confirmation_saves_nothing` |
 | The webhook arrives before the customer is back from Stripe | Confirmed once, and the confirming page shows the booking | `test_a_webhook_before_the_redirect_confirms_once` | Planned |
 | A second payment for a booking already paid | The second payment is refunded against itself, and the booking left as it was | `test_a_second_payment_is_refunded` | Written. Listing it for staff waits for the needs-attention page |
 | The card is declined | Stripe shows it and lets the customer try another card; the booking stays pending with its seats | `test_a_declined_card_leaves_the_booking_pending` | Written |
 | Stripe times out | Nothing is saved, and the customer is back on checkout with their seats held and a message to try again | `test_a_timeout_confirms_nothing` | Written |
-| The webhook arrives late | Confirmed when it arrives, or earlier by the scheduled check | `test_a_late_webhook_confirms_once` | Planned |
-| The webhook never arrives | `reconcile_pending` or Check with Stripe confirms it | `test_a_missing_webhook_is_recovered` | Planned |
-| An email can't be sent | The booking stands, the email is retried, and after five tries it's listed for staff | `test_an_email_that_cant_be_sent_leaves_the_booking_paid`, `test_after_five_tries_it_is_marked_failed` | Written. The retries wait for the scheduled job, and the list for the needs-attention page |
+| The webhook arrives late | Confirmed when it arrives, or earlier by the scheduled check | `test_a_late_webhook_confirms_once` | Written |
+| The webhook never arrives | `reconcile_pending` or Check with Stripe confirms it | `test_a_missing_webhook_is_recovered`, `test_a_paid_session_is_confirmed_and_logged_under_the_staff` | Written |
+| An email can't be sent | The booking stands, the email is retried, and after five tries it's listed for staff | `test_an_email_that_cant_be_sent_leaves_the_booking_paid`, `test_after_five_tries_it_is_marked_failed`, `test_the_fifth_failure_gives_up` | Written. The list waits for the needs-attention page |
 
 ### Load testing
 
@@ -215,7 +215,7 @@ The back office, until the staff pages exist (journey 12).
 | <a id="m27"></a>M27 | Screens and layouts | Open a screen and its Standard layout in the admin; save a layout without a wheelchair space | The seats listed with their grid places; the layout refused with a message | Pass, 4 November ([dev log](development_log.md#4-november-2026-seats-layouts-and-ticket-types)) |
 | <a id="m28"></a>M28 | A screening's prices | Add a screening in the admin | Its price table filled from the ticket class | Pass, 4 November ([dev log](development_log.md#4-november-2026-seats-layouts-and-ticket-types)) |
 | <a id="m29"></a>M29 | An overlapping screening | Add a screening that overlaps another on the same screen | The overlap message on the form, not an error page | Not run yet ([the overlap bug in full](#the-overlap-bug-in-full)) |
-| <a id="m30"></a>M30 | Mark as paid | Tick a pending booking and run Mark as paid | Paid, with its seat count and the time | Pass, 19 November ([dev log](development_log.md#19-november-2026-selling-the-seats)) |
+| <a id="m30"></a>M30 | Mark as paid | Tick a pending booking and run Mark as paid | Paid, with its seat count and the time | Pass, 19 November ([dev log](development_log.md#19-november-2026-selling-the-seats)). Retired 23 November: the action stood in for Stripe and is removed, and a stuck payment is now found with Check with Stripe |
 
 ### 5.6 Edge cases still to run
 

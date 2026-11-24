@@ -9,6 +9,7 @@ from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
+from payments.base import PaymentUnavailable
 from screenings.models import Screening
 from staff.models import AuditLogEntry
 from staff.views import staff_permission_required
@@ -23,6 +24,8 @@ from .services import (
     decline_cancellation,
     find_bookings,
     impossible_reference,
+    recheck_payment,
+    recheck_too_soon,
 )
 
 DECISIONS = [
@@ -146,6 +149,48 @@ def check_in_booking(request, reference):
     else:
         messages.success(request, f'Checked in {reference}.')
     return redirect(f"{reverse('bookings_staff:check_in')}?q={reference}")
+
+
+@require_POST
+@staff_permission_required('bookings.view_attention')
+def check_with_stripe(request, reference):
+    """Ask Stripe about a payment whose webhook never came (4.32). The
+    check-in search leaves pending bookings out, so this goes back to
+    the staff home until the needs-attention page lists them."""
+    booking = get_object_or_404(Booking, reference=reference)
+    if booking.status != Booking.Status.PENDING:
+        messages.error(request, f'{reference} is not waiting for payment.')
+    elif recheck_too_soon(booking):
+        messages.error(request, f'{reference} started paying less than five '
+                                f'minutes ago. Give Stripe a little longer.')
+    else:
+        recheck_message(request, booking)
+    return redirect('staff:home')
+
+
+def recheck_message(request, booking):
+    """Ask Stripe, and tell staff what it said."""
+    reference = booking.reference
+    try:
+        paid = recheck_payment(
+            booking, request.user,
+            'Paid on Stripe with no webhook. Found by Check with Stripe.',
+        )
+    except PaymentUnavailable:
+        messages.error(request, 'The site could not reach Stripe. Try '
+                                'again in a minute.')
+        return
+    if not paid:
+        messages.info(request, f'Stripe says {reference} has not been paid.')
+        return
+    booking.refresh_from_db()
+    if booking.status == Booking.Status.REFUNDED:
+        messages.error(request, f'{reference} was paid after its seats '
+                                f'had gone, so the payment is being '
+                                f'refunded.')
+    else:
+        messages.success(request, f'Stripe says {reference} was paid, '
+                                  f'so it is now confirmed.')
 
 
 # The bookings that will be at the door: a request still waiting stands

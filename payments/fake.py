@@ -24,7 +24,8 @@ class FakeProvider(PaymentProvider):
     fees = {}
     # Set by a test to make every refund fail (4.32).
     fail_refunds = False
-    # Set by a test to make creating a session time out (4.32).
+    # Set by a test to make creating or looking up a session time out
+    # (4.32).
     fail_checkout = False
 
     @classmethod
@@ -58,6 +59,8 @@ class FakeProvider(PaymentProvider):
         return session
 
     def get_checkout_session(self, session_id):
+        if self.fail_checkout:
+            raise PaymentUnavailable('The fake provider was told to time out.')
         return self.sessions[session_id]['session']
 
     @classmethod
@@ -65,6 +68,13 @@ class FakeProvider(PaymentProvider):
         """What Stripe does when a session runs out unpaid."""
         info = cls.sessions[session_id]
         info['session'] = replace(info['session'], is_open=False)
+
+    @classmethod
+    def pay(cls, session_id, payment_intent_id='pi_fake'):
+        """What Stripe does when the customer pays on its page."""
+        info = cls.sessions[session_id]
+        info['session'] = replace(info['session'], is_open=False, paid=True,
+                                  payment_intent_id=payment_intent_id)
 
     @staticmethod
     def sign(payload):

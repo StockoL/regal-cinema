@@ -1,0 +1,127 @@
+"""The scheduled check: payments, holds and bookings left behind when
+something didn't finish (architecture 4.32). Every step is safe to run
+twice."""
+
+from datetime import timedelta
+
+from django.db.models import Q
+from django.utils import timezone
+
+from accounts.models import get_system_user
+from payments.base import PaymentUnavailable
+
+from .emails import send_outbound_email
+from .models import Booking, OutboundEmail, Refund, SeatHold
+from .services import recheck_payment, record_payment_fee, send_refund
+
+# Younger sessions are left to the webhook; older ones have long since
+# expired unpaid, or been settled.
+STUCK_FROM = timedelta(minutes=10)
+STUCK_UNTIL = timedelta(hours=24)
+# How long an expired hold, and a pending booking that was never paid,
+# are kept before they're cleared away.
+HOLDS_KEPT_FOR = timedelta(hours=24)
+ABANDONED_AFTER = timedelta(days=7)
+# Something queued this recently is still being sent after its commit,
+# so a retry leaves it alone.
+RETRY_AFTER = timedelta(minutes=5)
+
+
+def recheck_stuck_payments():
+    """Ask Stripe about every pending booking whose session started
+    between 10 minutes and 24 hours ago, confirming any that were paid
+    under the system user. One that Stripe can't answer for is skipped
+    until the next run. Returns the counts."""
+    now = timezone.now()
+    stuck = Booking.objects.filter(
+        status=Booking.Status.PENDING,
+        checkout_started_at__lte=now - STUCK_FROM,
+        checkout_started_at__gte=now - STUCK_UNTIL,
+    )
+    counts = {'checked': 0, 'paid': 0, 'unreachable': 0}
+    system = get_system_user()
+    for booking in stuck:
+        counts['checked'] += 1
+        try:
+            if recheck_payment(booking, system,
+                               'Paid on Stripe with no webhook. Found by '
+                               'the scheduled check.'):
+                counts['paid'] += 1
+        except PaymentUnavailable:
+            counts['unreachable'] += 1
+    return counts
+
+
+def tidy_up():
+    """Delete holds that expired over a day ago, and pending bookings
+    over a week old with their holds. Lazy expiry already frees the
+    seats (4.8), so this only keeps the tables small. A booking with a
+    refund, a sold seat, a cancellation or an audit entry is kept,
+    because money or history is attached to it. Returns the counts."""
+    now = timezone.now()
+    holds, _ = SeatHold.objects.filter(
+        expires_at__lt=now - HOLDS_KEPT_FOR,
+    ).delete()
+    _, deleted = Booking.objects.filter(
+        status=Booking.Status.PENDING,
+        created_at__lt=now - ABANDONED_AFTER,
+        refunds__isnull=True, seats__isnull=True,
+        cancellations__isnull=True, audit_entries__isnull=True,
+    ).delete()
+    return {'holds': holds, 'bookings': deleted.get('bookings.Booking', 0)}
+
+
+def retry_refunds():
+    """Send again every refund that failed, and any still pending from
+    over five minutes ago, whose send after the commit never ran. Each
+    keeps its idempotency key, so one Stripe already made isn't paid
+    twice. Returns the counts."""
+    refunds = Refund.objects.filter(
+        Q(status=Refund.Status.FAILED)
+        | Q(status=Refund.Status.PENDING,
+            created_at__lt=timezone.now() - RETRY_AFTER)
+    )
+    counts = {'retried': 0, 'succeeded': 0}
+    for refund in refunds:
+        send_refund(refund.pk)
+        counts['retried'] += 1
+        refund.refresh_from_db(fields=['status'])
+        if refund.status == Refund.Status.SUCCEEDED:
+            counts['succeeded'] += 1
+    return counts
+
+
+def retry_emails():
+    """Send every outbox email still queued from over five minutes ago,
+    whether its first send failed or never ran. The fifth failure marks
+    it failed, and it's left for staff (4.20). Returns the counts."""
+    emails = OutboundEmail.objects.filter(
+        status=OutboundEmail.Status.QUEUED,
+        created_at__lt=timezone.now() - RETRY_AFTER,
+    )
+    counts = {'retried': 0, 'sent': 0}
+    for email in emails:
+        send_outbound_email(email.pk)
+        counts['retried'] += 1
+        email.refresh_from_db(fields=['status'])
+        if email.status == OutboundEmail.Status.SENT:
+            counts['sent'] += 1
+    return counts
+
+
+def retry_fees():
+    """Ask again for the fee on every booking paid through Stripe over
+    five minutes ago that still has none. One not ready yet waits for
+    the next run (4.13). Returns the counts."""
+    bookings = Booking.objects.filter(
+        stripe_payment_intent_id__isnull=False, stripe_fee_pence__isnull=True,
+        paid_at__lt=timezone.now() - RETRY_AFTER,
+    )
+    counts = {'retried': 0, 'filled': 0}
+    for booking in bookings:
+        record_payment_fee(booking.pk)
+        counts['retried'] += 1
+        booking.refresh_from_db(fields=['stripe_fee_pence'])
+        if booking.stripe_fee_pence is not None:
+            counts['filled'] += 1
+    return counts

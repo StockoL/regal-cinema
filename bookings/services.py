@@ -210,6 +210,68 @@ def refund_duplicate_payment(booking, payment_intent_id, amount_pence):
                         'duplicate_payment')
 
 
+def settle_payment(booking, payment_intent_id, amount_pence):
+    """Act on Stripe's word that a booking's session was paid, whether
+    it came by webhook or by asking Stripe (4.32). A pending booking is
+    confirmed, or refunded if its seats have gone. A settled booking
+    paid again by a different payment has that payment refunded. The
+    booking is locked first, so two reports of one payment act once.
+    Returns whether this call confirmed the booking."""
+    with transaction.atomic():
+        booking = Booking.objects.select_for_update().get(pk=booking.pk)
+        if booking.status != Booking.Status.PENDING:
+            if payment_intent_id != booking.stripe_payment_intent_id:
+                refund_duplicate_payment(booking, payment_intent_id,
+                                         amount_pence)
+            return False
+        # Recorded before confirming, so a refund can find the payment
+        # even if the seats turn out to be lost.
+        booking.stripe_payment_intent_id = payment_intent_id
+        booking.amount_charged_pence = amount_pence
+        booking.save(update_fields=['stripe_payment_intent_id',
+                                    'amount_charged_pence'])
+        try:
+            confirm_booking(booking)
+        except SeatsLost:
+            refund_late_payment(booking)
+            return False
+        transaction.on_commit(lambda: record_payment_fee(booking.pk))
+        return True
+
+
+# The webhook usually comes within seconds, so it gets this long before
+# staff can ask Stripe themselves (4.32).
+RECHECK_AFTER = timedelta(minutes=5)
+
+
+def recheck_too_soon(booking):
+    """Whether the booking's session is too new for staff to ask Stripe
+    about yet."""
+    return (booking.checkout_started_at is None
+            or timezone.now() - booking.checkout_started_at < RECHECK_AFTER)
+
+
+def recheck_payment(booking, actor, reason):
+    """Ask Stripe whether the booking's session was paid, for when its
+    webhook never came (4.32). A paid session is settled just as the
+    webhook would settle it, so running this alongside the webhook acts
+    once. A booking this confirms is logged under the actor, staff or
+    the system user. Returns whether Stripe said it was paid."""
+    if not booking.stripe_checkout_session_id:
+        return False
+    session = get_provider().get_checkout_session(
+        booking.stripe_checkout_session_id
+    )
+    if not session.paid:
+        return False
+    with transaction.atomic():
+        if settle_payment(booking, session.payment_intent_id,
+                          session.amount_pence):
+            log_action(actor, AuditLogEntry.Action.PAYMENT_CONFIRMED,
+                       reason, booking=booking)
+    return True
+
+
 def queue_refund(booking, payment_intent_id, amount_pence, reason):
     """Record a pending refund, named to the system user, and send it to
     the provider once the transaction has committed (4.13)."""
@@ -491,8 +553,11 @@ def start_payment(booking, success_url, cancel_url):
         idempotency_key=f'checkout-{key}',
     )
     with transaction.atomic():
-        booking.stripe_checkout_session_id = session.id
-        booking.save(update_fields=['stripe_checkout_session_id'])
+        if session.id != booking.stripe_checkout_session_id:
+            booking.stripe_checkout_session_id = session.id
+            booking.checkout_started_at = timezone.now()
+            booking.save(update_fields=['stripe_checkout_session_id',
+                                        'checkout_started_at'])
         booking.holds.update(expires_at=session.expires_at)
     return session
 

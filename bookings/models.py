@@ -115,6 +115,9 @@ class Booking(models.Model):
     stripe_checkout_session_id = models.CharField(
         max_length=255, unique=True, null=True, blank=True
     )
+    # When that session was made, so one whose webhook never came can be
+    # found by its age and checked with Stripe (4.32).
+    checkout_started_at = models.DateTimeField(null=True, blank=True)
     # The payment, set once Stripe says it went through (4.13). A refund
     # goes back against the payment intent.
     stripe_payment_intent_id = models.CharField(

@@ -302,6 +302,23 @@ class StartPaymentTests(TestCase):
         self.booking.refresh_from_db()
         self.assertEqual(self.booking.stripe_checkout_session_id, session.id)
 
+    def test_when_the_session_started_is_stored(self):
+        """So its age can be asked about when no webhook comes (4.32)."""
+        before = timezone.now()
+        self.pay()
+        self.booking.refresh_from_db()
+        self.assertGreaterEqual(self.booking.checkout_started_at, before)
+        self.assertLessEqual(self.booking.checkout_started_at,
+                             timezone.now())
+
+    def test_returning_to_an_open_session_keeps_its_start(self):
+        self.pay()
+        self.booking.refresh_from_db()
+        started = self.booking.checkout_started_at
+        self.pay()
+        self.booking.refresh_from_db()
+        self.assertEqual(self.booking.checkout_started_at, started)
+
     def test_the_holds_last_as_long_as_the_session(self):
         session = self.pay()
         self.assertEqual(

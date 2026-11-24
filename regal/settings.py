@@ -209,6 +209,28 @@ STRIPE_WEBHOOK_SECRET = os.environ.get('STRIPE_WEBHOOK_SECRET', '')
 TEST_RUNNER = 'regal.test_runner.RegalTestRunner'
 
 
+# Scheduled work (architecture 4.32)
+
+# The bearer token cron-job.org sends to /tasks/run/. Left empty,
+# nothing can run the scheduled work.
+SCHEDULED_TASK_TOKEN = os.environ.get('SCHEDULED_TASK_TOKEN', '')
+
+
+# Logging
+
+# The site's own modules log at info level to the console, where Render
+# collects it. Django's own logging is left as it is.
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {'console': {'class': 'logging.StreamHandler'}},
+    'loggers': {
+        name: {'handlers': ['console'], 'level': 'INFO'}
+        for name in ('accounts', 'bookings', 'membership', 'payments',
+                     'regal', 'screenings', 'staff', 'venue')
+    },
+}
+
 # Caches (architecture 4.29, 4.34)
 
 # Rate limits count in the database, so the two workers in render.yaml
