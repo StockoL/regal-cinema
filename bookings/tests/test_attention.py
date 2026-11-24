@@ -179,3 +179,54 @@ class AttentionPageTests(TestCase):
         self.duplicate(days=8)
         self.assertNotContains(self.client.get(self.url),
                                'Second payments refunded')
+
+
+class AttentionCountTests(TestCase):
+    """The staff home shows how many things need a person, beside the
+    link to the page (journey 12, "Needs attention")."""
+
+    url = reverse('staff:home')
+
+    def setUp(self):
+        self.screening, _ = make_screening()
+        self.staff = User.objects.create_user('staff@example.com',
+                                              'a-long-pw-1', is_staff=True)
+        self.staff.groups.add(Group.objects.get(name='FrontOfHouse'))
+        self.client.force_login(self.staff)
+
+    def stuck(self):
+        Booking.objects.create(
+            screening=self.screening,
+            checkout_started_at=timezone.now() - timedelta(minutes=6),
+        )
+
+    def test_the_count_is_beside_the_link(self):
+        self.stuck()
+        self.stuck()
+        response = self.client.get(self.url)
+        self.assertContains(response, reverse('bookings_staff:attention'))
+        self.assertContains(
+            response,
+            '<span class="badge" data-status="warning">2'
+            '<span class="visually-hidden"> waiting</span></span>',
+            html=True,
+        )
+
+    def test_with_nothing_waiting_there_is_no_count(self):
+        response = self.client.get(self.url)
+        self.assertContains(response, reverse('bookings_staff:attention'))
+        self.assertNotContains(response, 'class="badge"')
+
+    def test_staff_without_the_permission_get_no_link(self):
+        self.staff.groups.clear()
+        self.assertNotContains(self.client.get(self.url),
+                               reverse('bookings_staff:attention'))
+
+    def test_counting_makes_one_query_a_list_however_many_there_are(self):
+        self.stuck()
+        with self.assertNumQueries(9):
+            self.client.get(self.url)
+        for _ in range(5):
+            self.stuck()
+        with self.assertNumQueries(9):
+            self.client.get(self.url)

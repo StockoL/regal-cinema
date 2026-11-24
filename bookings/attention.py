@@ -81,3 +81,12 @@ def duplicate_payments():
         .select_related('booking__user')
         .order_by('-created_at')
     )
+
+
+def attention_count():
+    """How many things the page lists, for the staff home. One count
+    query a list, so it costs the same however many there are."""
+    return sum(items.count() for items in (
+        stuck_payments(), unsent_emails(), failed_refunds(),
+        open_disputes(), duplicate_payments(),
+    ))

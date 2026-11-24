@@ -5,6 +5,8 @@ from django.core.exceptions import PermissionDenied
 from django.shortcuts import render
 from django.urls import reverse
 
+from bookings.attention import attention_count
+
 
 def staff_required(view):
     """The staff area is for staff accounts. A visitor goes to the staff
@@ -38,5 +40,9 @@ def staff_permission_required(permission):
 @staff_required
 def home(request):
     """The staff area's front page, offering the tools this member of
-    staff's permissions allow."""
-    return render(request, 'staff/home.html')
+    staff's permissions allow, with how many things need attention for
+    those who can see them (4.32)."""
+    count = None
+    if request.user.has_perm('bookings.view_attention'):
+        count = attention_count()
+    return render(request, 'staff/home.html', {'attention_count': count})
