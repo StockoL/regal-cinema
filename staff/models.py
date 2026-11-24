@@ -24,6 +24,8 @@ class AuditLogEntry(models.Model):
         DISPUTE_OPENED = 'dispute_opened', 'Dispute opened'
         DISPUTE_CLOSED = 'dispute_closed', 'Dispute closed'
         PAYMENT_CONFIRMED = 'payment_confirmed', 'Payment confirmed'
+        ACCOUNT_DEACTIVATED = 'account_deactivated', 'Account deactivated'
+        ACCOUNT_REACTIVATED = 'account_reactivated', 'Account reactivated'
 
     # Staff accounts are deactivated, never deleted, so the log always
     # names a real person, or the system user (4.21).
@@ -39,6 +41,12 @@ class AuditLogEntry(models.Model):
     related_voucher = models.ForeignKey(
         'membership.Voucher', on_delete=models.PROTECT,
         related_name='audit_entries', null=True, blank=True,
+    )
+    # The customer account an action was about. SET_NULL, so deleting
+    # an account under UK GDPR keeps the entry without naming it (4.21).
+    related_user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL,
+        related_name='audit_entries_about', null=True, blank=True,
     )
     reason = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
