@@ -328,6 +328,7 @@ def booking_list(request):
     for booking in bookings:
         booking.cancel_state = cancellation_state(booking, venue)
     return render(request, 'bookings/booking_list.html', {
+        'venue': venue,
         'upcoming': [b for b in bookings if b.screening.date_time >= now],
         'past': [b for b in reversed(bookings)
                  if b.screening.date_time < now],

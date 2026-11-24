@@ -66,7 +66,8 @@ def cancellation_list(request):
         ))
         .order_by('requested_at')
     )
-    fee = get_settings().cancellation_fee_pence
+    venue = get_settings()
+    fee = venue.cancellation_fee_pence
     for cancellation in waiting:
         charged = cancellation.booking.amount_charged_pence
         cancellation.voucher_pence = (
@@ -77,6 +78,7 @@ def cancellation_list(request):
         .select_related('actor', 'related_booking')[:10]
     )
     return render(request, 'bookings/staff/cancellation_list.html', {
+        'venue': venue,
         'waiting': waiting,
         'fee_pence': fee,
         'recent': recent,

@@ -13,6 +13,7 @@ from django_looseleaf import tokens
 
 from regal.email_config import email_settings
 from regal.ratelimit import rate_limit
+from venue.models import VenueSettings
 
 
 class HealthCheckTests(TestCase):
@@ -37,6 +38,17 @@ class HealthCheckTests(TestCase):
     def test_works_with_debug_off(self):
         response = self.client.get(reverse('health'))
         self.assertEqual(response.status_code, 200)
+
+
+class FooterTests(TestCase):
+    """The footer gives the box office number from the venue settings,
+    so a venue changes it in one place (4.23)."""
+
+    def test_the_footer_phone_comes_from_the_settings(self):
+        VenueSettings.objects.filter(pk=1).update(phone='01632 960 999')
+        response = self.client.get(reverse('screenings:screening_list'))
+        self.assertContains(response, '<a href="tel:01632960999">'
+                                      '01632 960 999</a>', html=True)
 
 
 @override_settings(SCHEDULED_TASK_TOKEN='a-long-random-token')

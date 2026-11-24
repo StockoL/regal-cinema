@@ -125,11 +125,12 @@ class CheckInPageTests(TestCase):
         self.assertContains(self.client.get(reverse('staff:home')), self.url)
 
     def test_more_bookings_found_make_no_more_queries(self):
+        """One of the seven is the venue settings, for the footer."""
         self.search('jo')
-        with self.assertNumQueries(6):
+        with self.assertNumQueries(7):
             self.search('jo')
         Booking.objects.create(screening=self.booking.screening,
                                user=self.booking.user,
                                status=Booking.Status.PAID)
-        with self.assertNumQueries(6):
+        with self.assertNumQueries(7):
             self.search('jo')

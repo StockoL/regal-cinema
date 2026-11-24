@@ -83,9 +83,11 @@ class ScreeningSeatsPageTests(TestCase):
         started = make_future_screening(
             date_time=timezone.now() - timedelta(minutes=1)
         )
+        VenueSettings.objects.filter(pk=1).update(phone='01632 960 999')
         response = self.get(started)
         self.assertContains(response, 'Online sales have closed')
-        self.assertContains(response, '01632 960 123')
+        self.assertContains(response, 'Call the box office on <a href='
+                                      '"tel:01632960999">01632 960 999</a>')
         self.assertNotContains(response, '<form')
 
 

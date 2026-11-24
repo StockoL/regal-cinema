@@ -346,10 +346,12 @@ class AttentionCountTests(TestCase):
                                reverse('bookings_staff:attention'))
 
     def test_counting_makes_one_query_a_list_however_many_there_are(self):
+        """Five counts, the venue settings for the footer, and the
+        login and permission lookups every staff page makes."""
         self.stuck()
-        with self.assertNumQueries(9):
+        with self.assertNumQueries(10):
             self.client.get(self.url)
         for _ in range(5):
             self.stuck()
-        with self.assertNumQueries(9):
+        with self.assertNumQueries(10):
             self.client.get(self.url)

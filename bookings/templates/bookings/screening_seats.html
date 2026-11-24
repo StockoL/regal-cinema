@@ -17,7 +17,7 @@
     </div>
   {% elif closed %}
     <div class="alert flow" data-status="info">
-      <p>Online sales have closed for this screening. Call the box office on <a href="tel:+441632960123">01632 960 123</a>, or ask at the box office if you're already here.</p>
+      <p>Online sales have closed for this screening. Call the box office on <a href="tel:{{ venue.phone|cut:' ' }}">{{ venue.phone }}</a>, or ask at the box office if you're already here.</p>
     </div>
   {% else %}
     <p>Tick the seats you want, then continue. The circle is reached by stairs only. The stalls are step-free.</p>
