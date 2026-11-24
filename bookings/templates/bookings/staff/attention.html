@@ -37,7 +37,7 @@
     <h2>Emails not sent ({{ unsent_emails|length }})</h2>
     <p>The outbox tries each email up to five times. These either gave up or are still waiting an hour after they were written.</p>
     <table class="table">
-      <thead><tr><th scope="col">To</th><th scope="col">Email</th><th scope="col">Booking</th><th scope="col">Written</th><th scope="col">Tries</th><th scope="col">Last error</th></tr></thead>
+      <thead><tr><th scope="col">To</th><th scope="col">Email</th><th scope="col">Booking</th><th scope="col">Written</th><th scope="col">Tries</th><th scope="col">Last error</th><th scope="col">Action</th></tr></thead>
       <tbody>
         {% for email in unsent_emails %}
           <tr>
@@ -47,6 +47,12 @@
             <td>{{ email.created_at|date:"D j M, g:i a" }}</td>
             <td>{{ email.attempts }}</td>
             <td>{{ email.last_error|default:"None yet" }}</td>
+            <td>
+              <form method="post" action="{% url 'bookings_staff:send_email_again' email.pk %}">
+                {% csrf_token %}
+                <button class="button" type="submit" data-variant="secondary">Send again</button>
+              </form>
+            </td>
           </tr>
         {% endfor %}
       </tbody>

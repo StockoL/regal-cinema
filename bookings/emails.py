@@ -114,3 +114,21 @@ def send_outbound_email(email_pk):
         email.sent_at = timezone.now()
     email.save(update_fields=['attempts', 'last_error', 'status',
                               'sent_at'])
+
+
+def send_again(email_pk):
+    """Staff send an unsent email again (4.20). It starts a fresh five
+    tries, so if this one fails the scheduled check carries on with it.
+    An email already sent is left alone. Returns the email as it ends
+    up."""
+    with transaction.atomic():
+        email = OutboundEmail.objects.select_for_update().get(pk=email_pk)
+        if email.status == OutboundEmail.Status.SENT:
+            return email
+        email.status = OutboundEmail.Status.QUEUED
+        email.attempts = 0
+        email.last_error = ''
+        email.save(update_fields=['status', 'attempts', 'last_error'])
+    send_outbound_email(email_pk)
+    email.refresh_from_db()
+    return email

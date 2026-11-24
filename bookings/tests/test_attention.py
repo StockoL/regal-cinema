@@ -1,7 +1,11 @@
 from datetime import timedelta
+from smtplib import SMTPException
+from unittest import mock
 
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
+from django.core import mail
+from django.core.mail import EmailMultiAlternatives
 from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
@@ -179,6 +183,54 @@ class AttentionPageTests(TestCase):
         self.duplicate(days=8)
         self.assertNotContains(self.client.get(self.url),
                                'Second payments refunded')
+
+    def send_again(self, email):
+        return self.client.post(
+            reverse('bookings_staff:send_email_again', args=[email.pk]),
+            follow=True,
+        )
+
+    def test_an_unsent_email_has_send_again_beside_it(self):
+        email = self.outbox(10, status=OutboundEmail.Status.FAILED,
+                            attempts=5)
+        again = reverse('bookings_staff:send_email_again', args=[email.pk])
+        self.assertContains(self.client.get(self.url), f'action="{again}"')
+
+    def test_sending_again_sends_it_and_clears_it_from_the_list(self):
+        email = self.outbox(10, status=OutboundEmail.Status.FAILED,
+                            attempts=5, last_error='Mail is down')
+        response = self.send_again(email)
+        self.assertRedirects(response, self.url)
+        self.assertContains(response, 'Sent the email to jo@example.com.')
+        self.assertNotContains(response, 'Emails not sent')
+        email.refresh_from_db()
+        self.assertEqual(email.status, OutboundEmail.Status.SENT)
+        self.assertEqual(len(mail.outbox), 1)
+
+    def test_a_send_that_fails_again_says_why(self):
+        """It gets a fresh five tries, so the scheduled check keeps
+        going with it."""
+        email = self.outbox(10, status=OutboundEmail.Status.FAILED,
+                            attempts=5)
+        with mock.patch.object(EmailMultiAlternatives, 'send',
+                               side_effect=SMTPException('Mail is down')):
+            response = self.send_again(email)
+        self.assertContains(response, 'Mail is down')
+        email.refresh_from_db()
+        self.assertEqual((email.status, email.attempts),
+                         (OutboundEmail.Status.QUEUED, 1))
+
+    def test_an_email_already_sent_isnt_sent_twice(self):
+        email = self.outbox(10, status=OutboundEmail.Status.SENT)
+        response = self.send_again(email)
+        self.assertContains(response, 'was already sent')
+        self.assertEqual(mail.outbox, [])
+
+    def test_sending_again_is_a_post(self):
+        email = self.outbox(10, status=OutboundEmail.Status.FAILED)
+        self.assertEqual(self.client.get(
+            reverse('bookings_staff:send_email_again', args=[email.pk]),
+        ).status_code, 405)
 
 
 class AttentionCountTests(TestCase):

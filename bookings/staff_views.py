@@ -22,7 +22,8 @@ from .attention import (
     stuck_payments,
     unsent_emails,
 )
-from .models import Booking, Cancellation, SeatBooking
+from .emails import send_again
+from .models import Booking, Cancellation, OutboundEmail, SeatBooking
 from .services import (
     CancellationNotAllowed,
     CheckInRefused,
@@ -171,6 +172,24 @@ def attention(request):
     total = sum(len(items) for items in lists.values())
     return render(request, 'bookings/staff/attention.html',
                   {**lists, 'total': total})
+
+
+@require_POST
+@staff_permission_required('bookings.view_attention')
+def send_email_again(request, pk):
+    """Send an unsent email again from the needs-attention page (4.20)."""
+    email = get_object_or_404(OutboundEmail, pk=pk)
+    if email.status == OutboundEmail.Status.SENT:
+        messages.info(request, f'The email to {email.recipient} was '
+                               f'already sent.')
+    else:
+        email = send_again(email.pk)
+        if email.status == OutboundEmail.Status.SENT:
+            messages.success(request, f'Sent the email to {email.recipient}.')
+        else:
+            messages.error(request, f'The email to {email.recipient} still '
+                                    f'could not be sent: {email.last_error}')
+    return redirect('bookings_staff:attention')
 
 
 @require_POST
