@@ -9,7 +9,7 @@ from django.contrib.auth.models import Group, Permission
 
 FRONT_OF_HOUSE = [
     'view_bookings', 'check_in_booking', 'create_in_venue_booking',
-    'cancel_booking', 'view_attention',
+    'cancel_booking', 'view_attention', 'pause_online_sales',
 ]
 
 # A Manager holds every permission in the project's own apps, which
