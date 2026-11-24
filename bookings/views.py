@@ -141,7 +141,13 @@ def screening_tickets(request, pk):
         infants = booking.infant_count if booking else 0
     error = None
 
-    if request.method == 'POST' and screening.online_sales_closed:
+    # Closed or paused, no new hold starts, and the seat page says why.
+    # A booking already pending can still go on to pay (4.23).
+    venue = get_settings()
+    if request.method == 'POST' and (
+        screening.online_sales_closed_under(venue)
+        or venue.online_sales_paused
+    ):
         return redirect('bookings:screening_seats', pk=screening.pk)
     if request.method == 'POST':
         choices = [(seat, types_by_id.get(picked[seat.pk]))
